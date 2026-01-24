@@ -143,7 +143,9 @@ button {
 	cursor: pointer;
 	background: var(--indigo);
 	color: #fff;
-	transition: transform 0.15s ease, box-shadow 0.15s ease,
+	transition:
+		transform 0.15s ease,
+		box-shadow 0.15s ease,
 		background 0.2s ease;
 }
 
@@ -296,11 +298,6 @@ textarea {
 .velocity-panel label {
 	font-size: 11px;
 	letter-spacing: 0.08em;
-}
-
-.velocity-lead {
-	grid-column: 1 / 2;
-	grid-row: 2;
 }
 
 .velocity-grid .field:not(.velocity-lead) input[type="range"] {
@@ -666,7 +663,10 @@ textarea {
 	font-size: 13px;
 	cursor: pointer;
 	box-shadow: none;
-	transition: background 0.2s ease, color 0.2s ease, border 0.2s ease;
+	transition:
+		background 0.2s ease,
+		color 0.2s ease,
+		border 0.2s ease;
 }
 
 .records-tab-button.active {
