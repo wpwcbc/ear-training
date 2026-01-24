@@ -869,6 +869,7 @@ textarea {
 	border-radius: 14px;
 	overflow-x: auto;
 	background: #ffffff;
+	max-width: 100%;
 }
 
 .stats-row {
@@ -876,6 +877,15 @@ textarea {
 	grid-template-columns: minmax(160px, 2.2fr) repeat(3, minmax(90px, 1fr));
 	align-items: center;
 	min-width: 520px;
+}
+
+.stats-cell {
+	white-space: nowrap;
+}
+
+.stats-label {
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .stats-cell {
@@ -915,12 +925,12 @@ textarea {
 
 .tests-table .stats-row {
 	grid-template-columns:
-		minmax(180px, 2.2fr)
+		minmax(200px, 2.2fr)
 		minmax(90px, 1fr)
-		minmax(110px, 1fr)
 		minmax(120px, 1fr)
-		minmax(150px, 1.4fr);
-	min-width: 680px;
+		minmax(130px, 1fr)
+		minmax(190px, 1.4fr);
+	min-width: 730px;
 }
 
 @media (max-width: 860px) {
