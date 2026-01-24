@@ -1,0 +1,20 @@
+{
+	"id": "blues-12-bar",
+	"name": "Blues (12-bar)",
+	"category": "Tunes",
+	"defaultKey": "C",
+	"chords": [
+		{ "chordDegree": "1", "quality": "7", "scaleId": "mixolydian" },
+		{ "chordDegree": "1", "quality": "7", "scaleId": "mixolydian" },
+		{ "chordDegree": "1", "quality": "7", "scaleId": "mixolydian" },
+		{ "chordDegree": "1", "quality": "7", "scaleId": "mixolydian" },
+		{ "chordDegree": "4", "quality": "7", "scaleId": "mixolydian" },
+		{ "chordDegree": "4", "quality": "7", "scaleId": "mixolydian" },
+		{ "chordDegree": "1", "quality": "7", "scaleId": "mixolydian" },
+		{ "chordDegree": "1", "quality": "7", "scaleId": "mixolydian" },
+		{ "chordDegree": "5", "quality": "7", "scaleId": "mixolydian" },
+		{ "chordDegree": "4", "quality": "7", "scaleId": "mixolydian" },
+		{ "chordDegree": "1", "quality": "7", "scaleId": "mixolydian" },
+		{ "chordDegree": "5", "quality": "7", "scaleId": "mixolydian" }
+	]
+}
