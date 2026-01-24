@@ -226,6 +226,7 @@ const elMode2Rows = getById("mode2Rows");
 const elMode2Template = getById("mode2RowTemplate");
 const elSaveProgressionName = getById("saveProgressionName");
 const elSaveProgressionError = getById("saveProgressionError");
+const elSaveProgressionControls = getById("saveProgressionControls");
 const elVelocityRoot = getById("velocityRoot");
 const elVelocityFifth = getById("velocityFifth");
 const elVelocitySeventh = getById("velocitySeventh");
@@ -307,6 +308,15 @@ function setSaveError(message = "") {
     }
     elSaveProgressionError.textContent = trimmed;
     elSaveProgressionError.classList.remove("hidden");
+}
+function updateSaveControlsVisibility(mode) {
+    if (mode === "mode1") {
+        elSaveProgressionControls.classList.remove("hidden");
+    }
+    else {
+        elSaveProgressionControls.classList.add("hidden");
+        setSaveError();
+    }
 }
 // ------------------------------
 // Mode + config handling
@@ -547,6 +557,7 @@ function updateModeUI() {
         elMode1.classList.add("hidden");
         elMode2.classList.remove("hidden");
     }
+    updateSaveControlsVisibility(activeMode);
     resetLiveDisplay();
 }
 function readMinRootSetting() {

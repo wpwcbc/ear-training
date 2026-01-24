@@ -376,6 +376,8 @@ const elSaveProgressionName: HTMLInputElement =
 	getById("saveProgressionName");
 const elSaveProgressionError: HTMLParagraphElement =
 	getById("saveProgressionError");
+const elSaveProgressionControls: HTMLDivElement =
+	getById("saveProgressionControls");
 const elVelocityRoot: HTMLInputElement = getById("velocityRoot");
 const elVelocityFifth: HTMLInputElement = getById("velocityFifth");
 const elVelocitySeventh: HTMLInputElement = getById("velocitySeventh");
@@ -468,6 +470,15 @@ function setSaveError(message = ""): void {
 	}
 	elSaveProgressionError.textContent = trimmed;
 	elSaveProgressionError.classList.remove("hidden");
+}
+
+function updateSaveControlsVisibility(mode: ActiveMode): void {
+	if (mode === "mode1") {
+		elSaveProgressionControls.classList.remove("hidden");
+	} else {
+		elSaveProgressionControls.classList.add("hidden");
+		setSaveError();
+	}
 }
 
 // ------------------------------
@@ -757,6 +768,7 @@ function updateModeUI(): void {
 		elMode1.classList.add("hidden");
 		elMode2.classList.remove("hidden");
 	}
+	updateSaveControlsVisibility(activeMode);
 	resetLiveDisplay();
 }
 

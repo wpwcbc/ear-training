@@ -42,23 +42,6 @@
 						<div>
 							<h2>Chord Progression Setup</h2>
 						</div>
-						<div class="controls save-controls">
-							<div class="save-inputs">
-								<input
-									id="saveProgressionName"
-									placeholder="Progression name"
-								/>
-								<button id="btnSaveProgression" class="ghost">
-									Save progression
-								</button>
-							</div>
-							<p
-								id="saveProgressionError"
-								class="note save-error hidden"
-							>
-								&nbsp;
-							</p>
-						</div>
 					</div>
 
 					<div class="mode-toggle">
@@ -75,6 +58,27 @@
 							<input type="radio" name="mode" value="mode2" />
 							Mode 2: Random progression
 						</label>
+					</div>
+
+					<div
+						class="controls save-controls"
+						id="saveProgressionControls"
+					>
+						<div class="save-inputs">
+							<input
+								id="saveProgressionName"
+								placeholder="Progression name"
+							/>
+							<button id="btnSaveProgression" class="ghost">
+								Save progression
+							</button>
+						</div>
+						<p
+							id="saveProgressionError"
+							class="note save-error hidden"
+						>
+							&nbsp;
+						</p>
 					</div>
 
 					<div id="mode1Config">
