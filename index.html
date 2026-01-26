@@ -162,7 +162,6 @@
 						<button id="btnStartTest" class="secondary">
 							Start Test
 						</button>
-						<button id="btnStopTest" class="ghost">Stop</button>
 					</div>
 				</div>
 
@@ -182,6 +181,17 @@
 							type="number"
 							min="1"
 							value="1"
+						/>
+					</div>
+					<div class="field">
+						<label for="loopShiftInput"
+							>Key shift per loop (semitones)</label
+						>
+						<input
+							id="loopShiftInput"
+							type="number"
+							step="1"
+							value="0"
 						/>
 					</div>
 				</div>
@@ -273,6 +283,7 @@
 						<button id="btnReplay" class="ghost" disabled>
 							Replay
 						</button>
+						<button id="btnStopTest" class="ghost">Stop</button>
 					</div>
 				</div>
 

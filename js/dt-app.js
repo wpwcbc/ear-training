@@ -220,6 +220,7 @@ const elMode2 = getById("mode2Config");
 const elKeyInput = getById("keyInput");
 const elMinRootInput = getById("minRootInput");
 const elLoopTimesInput = getById("loopTimesInput");
+const elLoopShiftInput = getById("loopShiftInput");
 const elProgressionRows = getById("progressionRows");
 const elChordTemplate = getById("chordRowTemplate");
 const elMode2Rows = getById("mode2Rows");
@@ -574,6 +575,10 @@ function readMode1Config() {
     if (!Number.isFinite(loopTimes) || loopTimes < 1) {
         throw new Error("Loop times must be at least 1.");
     }
+    const loopShiftRaw = Number(elLoopShiftInput.value || 0);
+    if (!Number.isFinite(loopShiftRaw) || !Number.isInteger(loopShiftRaw)) {
+        throw new Error("Key shift per loop must be a whole number.");
+    }
     const keyCenter = elKeyInput.value.trim();
     if (!keyCenter) {
         throw new Error("Enter a key center.");
@@ -612,6 +617,7 @@ function readMode1Config() {
         minRootNote,
         minRootMidi,
         loopTimes: Math.floor(loopTimes),
+        loopKeyShift: Math.trunc(loopShiftRaw),
     };
 }
 function buildCustomPresetFromSetup(name) {
@@ -928,11 +934,14 @@ let currentTestName = CUSTOM_PROGRESSION_NAME;
 function buildMode1Queue(config) {
     const queue = [];
     for (let loopIndex = 0; loopIndex < config.loopTimes; loopIndex += 1) {
+        const shiftedKey = loopIndex === 0 || config.loopKeyShift === 0
+            ? config.keyCenter
+            : theory.transposeKeyCenter(config.keyCenter, config.loopKeyShift * loopIndex);
         config.progression.forEach((chord, chordIndex) => {
             for (let i = 0; i < chord.questions; i += 1) {
                 queue.push({
                     mode: "mode1",
-                    keyCenter: config.keyCenter,
+                    keyCenter: shiftedKey,
                     minRootMidi: config.minRootMidi,
                     chordIndex,
                     chordCount: config.progression.length,
@@ -1200,6 +1209,7 @@ function rerunMode1(shiftSemis) {
         elMinRootInput.value = newConfig.minRootNote;
     }
     elLoopTimesInput.value = String(newConfig.loopTimes ?? 1);
+    elLoopShiftInput.value = String(newConfig.loopKeyShift ?? 0);
     lastMode1Config = newConfig;
     startTest(newConfig, "mode1");
 }

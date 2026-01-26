@@ -30,6 +30,7 @@ interface Mode1Config {
 	minRootNote: string;
 	minRootMidi: number;
 	loopTimes: number;
+	loopKeyShift: number;
 }
 
 interface Mode2Config {
@@ -368,6 +369,7 @@ const elMode2: HTMLDivElement = getById("mode2Config");
 const elKeyInput: HTMLInputElement = getById("keyInput");
 const elMinRootInput: HTMLInputElement = getById("minRootInput");
 const elLoopTimesInput: HTMLInputElement = getById("loopTimesInput");
+const elLoopShiftInput: HTMLInputElement = getById("loopShiftInput");
 const elProgressionRows: HTMLDivElement = getById("progressionRows");
 const elChordTemplate: HTMLTemplateElement = getById("chordRowTemplate");
 const elMode2Rows: HTMLDivElement = getById("mode2Rows");
@@ -787,6 +789,10 @@ function readMode1Config(): Mode1Config {
 	if (!Number.isFinite(loopTimes) || loopTimes < 1) {
 		throw new Error("Loop times must be at least 1.");
 	}
+	const loopShiftRaw: number = Number(elLoopShiftInput.value || 0);
+	if (!Number.isFinite(loopShiftRaw) || !Number.isInteger(loopShiftRaw)) {
+		throw new Error("Key shift per loop must be a whole number.");
+	}
 	const keyCenter: string = elKeyInput.value.trim();
 	if (!keyCenter) {
 		throw new Error("Enter a key center.");
@@ -834,6 +840,7 @@ function readMode1Config(): Mode1Config {
 		minRootNote,
 		minRootMidi,
 		loopTimes: Math.floor(loopTimes),
+		loopKeyShift: Math.trunc(loopShiftRaw),
 	};
 }
 
@@ -1222,11 +1229,18 @@ let currentTestName: string = CUSTOM_PROGRESSION_NAME;
 function buildMode1Queue(config: Mode1Config): Mode1QueueEvent[] {
 	const queue: Mode1QueueEvent[] = [];
 	for (let loopIndex = 0; loopIndex < config.loopTimes; loopIndex += 1) {
+		const shiftedKey =
+			loopIndex === 0 || config.loopKeyShift === 0
+				? config.keyCenter
+				: theory.transposeKeyCenter(
+						config.keyCenter,
+						config.loopKeyShift * loopIndex,
+					);
 		config.progression.forEach((chord, chordIndex) => {
 			for (let i = 0; i < chord.questions; i += 1) {
 				queue.push({
 					mode: "mode1",
-					keyCenter: config.keyCenter,
+					keyCenter: shiftedKey,
 					minRootMidi: config.minRootMidi,
 					chordIndex,
 					chordCount: config.progression.length,
@@ -1541,6 +1555,7 @@ function rerunMode1(shiftSemis: number): void {
 		elMinRootInput.value = newConfig.minRootNote;
 	}
 	elLoopTimesInput.value = String(newConfig.loopTimes ?? 1);
+	elLoopShiftInput.value = String(newConfig.loopKeyShift ?? 0);
 	lastMode1Config = newConfig;
 	startTest(newConfig, "mode1");
 }
