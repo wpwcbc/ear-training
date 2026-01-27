@@ -1037,7 +1037,8 @@ async function handleImportCustom(
 
 async function loadTuneProgressions(): Promise<void> {
 	try {
-		const response = await fetch("./tunes/index.json");
+		const indexUrl = new URL("../tunes/index.json", window.location.href);
+		const response = await fetch(indexUrl);
 		if (!response.ok) {
 			return;
 		}
@@ -1047,7 +1048,8 @@ async function loadTuneProgressions(): Promise<void> {
 		}
 		const loaded: ProgressionPreset[] = [];
 		for (const fileName of fileList) {
-			const res = await fetch(`./tunes/${fileName}`);
+			const fileUrl = new URL(`../tunes/${fileName}`, window.location.href);
+			const res = await fetch(fileUrl);
 			if (!res.ok) {
 				continue;
 			}

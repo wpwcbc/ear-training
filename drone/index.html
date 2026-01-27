@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width,initial-scale=1" />
+		<title>Drone + Progression</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+			rel="stylesheet"
+		/>
+		<link rel="stylesheet" href="../degreeTrainer.css" />
+	</head>
+	<body>
+		<main>
+			<header class="hero">
+				<div>
+					<span class="tag">Drone + Progression</span>
+					<h1>Hold the harmony. Move at your pace.</h1>
+					<p>
+						Start a sustained chord progression and step through each
+						change manually. Perfect for ear focus, improvisation, and
+						intonation.
+					</p>
+				</div>
+				<div class="panel">
+					<h3>Quick guide</h3>
+					<ol>
+						<li>Pick or build a progression.</li>
+						<li>Set key center, loops, and key shift per loop.</li>
+						<li>Press Start Audio, then Start Drone.</li>
+						<li>Use Next chord to advance.</li>
+					</ol>
+				</div>
+			</header>
+
+			<div class="setup-grid">
+				<section class="panel" id="chordProgressionPanel">
+					<div class="panel-header">
+						<div>
+							<h2>Chord Progression Setup</h2>
+						</div>
+						<div
+							class="controls save-controls"
+							id="saveProgressionControls"
+						>
+							<div class="save-inputs">
+								<input
+									id="saveProgressionName"
+									placeholder="Progression name"
+								/>
+								<button id="btnSaveProgression" class="ghost">
+									Save progression
+								</button>
+							</div>
+							<p
+								id="saveProgressionError"
+								class="note save-error hidden"
+							>
+								&nbsp;
+							</p>
+						</div>
+					</div>
+
+					<div class="mode-toggle">
+						<label class="mode-pill">
+							<input
+								type="radio"
+								name="mode"
+								value="mode1"
+								checked
+							/>
+							Mode 1: Your progression
+						</label>
+						<label class="mode-pill">
+							<input type="radio" name="mode" value="mode2" />
+							Mode 2: Random progression
+						</label>
+					</div>
+
+					<div id="mode1Config">
+						<div class="config-grid">
+							<div class="field">
+								<label for="keyInput">Key center</label>
+								<input
+									id="keyInput"
+									value="C"
+									placeholder="C, Eb, F#"
+								/>
+							</div>
+						</div>
+						<div class="progression">
+							<div id="progressionRows"></div>
+							<div class="progression-actions">
+								<button id="btnAddChord" class="ghost">
+									Add chord
+								</button>
+							</div>
+						</div>
+					</div>
+
+					<div id="mode2Config" class="hidden">
+						<div class="config-grid">
+							<div class="field">
+								<label for="mode2Questions"
+									>Questions per test</label
+								>
+								<input
+									id="mode2Questions"
+									type="number"
+									min="1"
+									value="10"
+								/>
+							</div>
+						</div>
+						<div class="progression">
+							<h3>Allowed upper degrees by chord type</h3>
+							<div id="mode2Rows" class="mode2-rows"></div>
+						</div>
+					</div>
+				</section>
+
+				<section class="panel" id="progressionPanel">
+					<div class="panel-header">
+						<div>
+							<h2>Progression Presets</h2>
+							<p class="note">
+								Choose a built-in progression to fill the setup.
+							</p>
+						</div>
+					</div>
+					<div id="progressionList" class="progression-list"></div>
+				</section>
+			</div>
+
+			<section class="panel" id="setupPanel">
+				<div class="panel-header">
+					<div>
+						<h2>Controls</h2>
+						<p class="note">Use b / # for accidentals. Example: b3, #4.</p>
+					</div>
+					<div class="controls">
+						<button id="btnStartAudio">Start Audio</button>
+						<button id="btnStartDrone" class="secondary">
+							Start Drone
+						</button>
+						<button id="btnStopDrone" class="ghost">Stop</button>
+					</div>
+				</div>
+
+				<div class="config-grid" style="margin-bottom: 12px">
+					<div class="field">
+						<label for="minRootInput">Lowest chord root (min)</label>
+						<input id="minRootInput" value="G2" placeholder="G2" />
+					</div>
+					<div class="field">
+						<label for="loopTimesInput">Loop progression (times)</label>
+						<input
+							id="loopTimesInput"
+							type="number"
+							min="1"
+							value="1"
+						/>
+					</div>
+					<div class="field">
+						<label for="loopShiftInput"
+							>Key shift per loop (semitones)</label
+						>
+						<input
+							id="loopShiftInput"
+							type="number"
+							step="1"
+							value="0"
+						/>
+					</div>
+				</div>
+
+				<div class="velocity-panel">
+					<h3>Velocity mix</h3>
+					<div class="velocity-grid">
+						<div class="field">
+							<label for="velocityRoot">Chord root</label>
+							<div class="slider-row">
+								<input
+									id="velocityRoot"
+									type="range"
+									min="0"
+									max="1"
+									step="0.01"
+									value="0.9"
+								/>
+								<span id="velocityRootValue">0.90</span>
+							</div>
+						</div>
+						<div class="field">
+							<label for="velocityFifth">Chord 5th</label>
+							<div class="slider-row">
+								<input
+									id="velocityFifth"
+									type="range"
+									min="0"
+									max="1"
+									step="0.01"
+									value="0.65"
+								/>
+								<span id="velocityFifthValue">0.65</span>
+							</div>
+						</div>
+						<div class="field">
+							<label for="velocitySeventh">Chord 7th</label>
+							<div class="slider-row">
+								<input
+									id="velocitySeventh"
+									type="range"
+									min="0"
+									max="1"
+									step="0.01"
+									value="0.6"
+								/>
+								<span id="velocitySeventhValue">0.60</span>
+							</div>
+						</div>
+						<div class="field">
+							<label for="velocityThird">Chord 3rd</label>
+							<div class="slider-row">
+								<input
+									id="velocityThird"
+									type="range"
+									min="0"
+									max="1"
+									step="0.01"
+									value="0.55"
+								/>
+								<span id="velocityThirdValue">0.55</span>
+							</div>
+						</div>
+						<div class="field velocity-lead">
+							<label for="velocityLead">Lead note</label>
+							<div class="slider-row">
+								<input
+									id="velocityLead"
+									type="range"
+									min="0"
+									max="1"
+									step="0.01"
+									value="1"
+								/>
+								<span id="velocityLeadValue">1.00</span>
+							</div>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<section class="panel" id="exercisePanel">
+				<div class="panel-header">
+					<div>
+						<h2>Exercise</h2>
+						<p class="note">Click next to step through the progression.</p>
+					</div>
+					<div class="controls">
+						<button id="btnNextChord" class="ghost" disabled>
+							Next chord
+						</button>
+					</div>
+				</div>
+
+				<div class="stats">
+					<div class="stat-box">
+						Key center: <span id="droneKeyLabel">-</span>
+					</div>
+					<div class="stat-box">
+						Chord: <span id="droneChordLabel">-</span>
+					</div>
+					<div class="stat-box">
+						Chord tonic: <span id="droneTonicLabel">-</span>
+					</div>
+					<div class="stat-box">
+						Next chord: <span id="droneNextLabel">-</span>
+					</div>
+					<div class="stat-box">
+						Next tonic: <span id="droneNextTonicLabel">-</span>
+					</div>
+					<div class="stat-box">
+						Progress: <span id="droneProgressLabel">-</span>
+					</div>
+				</div>
+
+				<div id="droneStatus" class="status">
+					Configure a progression and press Start.
+				</div>
+			</section>
+		</main>
+
+		<template id="chordRowTemplate">
+			<div class="progression-row">
+				<div class="field field-degree">
+					<label>Degree</label>
+					<input class="chord-degree" value="1" />
+				</div>
+				<div class="field field-quality">
+					<label>Quality</label>
+					<select class="chord-quality"></select>
+				</div>
+				<div class="field field-scale">
+					<label>Scale</label>
+					<select class="scale-select"></select>
+				</div>
+				<div class="field field-allowed">
+					<label>Allowed upper degrees</label>
+					<input class="upper-degrees" placeholder="1 2 b3 4 5 6 b7" />
+				</div>
+				<div class="field field-questions">
+					<label>Questions</label>
+					<input class="question-count" type="number" min="1" value="1" />
+				</div>
+				<div class="field field-remove">
+					<label>&nbsp;</label>
+					<button class="ghost remove-chord" type="button">Remove</button>
+				</div>
+			</div>
+		</template>
+
+		<template id="mode2RowTemplate">
+			<div class="mode2-row">
+				<div class="mode2-toggle">
+					<label class="toggle">
+						<input type="checkbox" class="mode2-enable" checked />
+						<span class="toggle-track"></span>
+					</label>
+					<span class="toggle-label">maj7</span>
+				</div>
+				<div class="mode2-fields">
+					<div class="field">
+						<label>Scale</label>
+						<select class="mode2-scale"></select>
+					</div>
+					<div class="field">
+						<label>Allowed upper degrees</label>
+						<input class="mode2-degrees" />
+					</div>
+				</div>
+			</div>
+		</template>
+
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/15.3.5/Tone.js"></script>
+		<script type="module" src="../js/drone-app.js"></script>
+	</body>
+</html>
