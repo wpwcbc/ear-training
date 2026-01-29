@@ -3,7 +3,7 @@
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width,initial-scale=1" />
-		<title>Drone + Progression</title>
+		<title>Ear Train Station — Progression Drone</title>
 		<link rel="preconnect" href="https://fonts.googleapis.com" />
 		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 		<link
@@ -13,15 +13,76 @@
 		<link rel="stylesheet" href="../degreeTrainer.css" />
 	</head>
 	<body>
+		<nav class="site-nav" aria-label="Primary">
+			<div class="nav-inner">
+				<a class="nav-brand" href="../">
+					<svg
+						class="nav-logo"
+						viewBox="0 0 48 48"
+						aria-hidden="true"
+					>
+						<path
+							d="M8 32c0-9 7-16 16-16s16 7 16 16"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="3"
+							stroke-linecap="round"
+						/>
+						<circle cx="16" cy="32" r="3" fill="currentColor" />
+						<circle cx="32" cy="32" r="3" fill="currentColor" />
+						<path
+							d="M14 40h20"
+							stroke="currentColor"
+							stroke-width="3"
+							stroke-linecap="round"
+						/>
+					</svg>
+					<span>Ear Train Station</span>
+				</a>
+				<input
+					type="checkbox"
+					id="navToggle"
+					class="nav-toggle"
+					aria-label="Toggle navigation"
+				/>
+				<label class="nav-toggle-btn" for="navToggle">
+					<span></span>
+					<span></span>
+					<span></span>
+				</label>
+				<div class="nav-links">
+					<a class="nav-link nav-back" href="../">← Back to home</a>
+					<details class="nav-dropdown">
+						<summary class="nav-link nav-link--dropdown">Tools</summary>
+						<div class="nav-dropdown-menu">
+							<a class="nav-link" href="./?mode=ambience"
+								>Progression Drone Ambience</a
+							>
+							<a class="nav-link" href="./?mode=metronome"
+								>Progression Drone Metronome</a
+							>
+						</div>
+					</details>
+					<details class="nav-dropdown">
+						<summary class="nav-link nav-link--dropdown">Trainings</summary>
+						<div class="nav-dropdown-menu">
+							<a class="nav-link" href="../degree-trainer/"
+								>Scale Degree Trainer</a
+							>
+						</div>
+					</details>
+				</div>
+			</div>
+		</nav>
 		<main>
 			<header class="hero">
 				<div>
-					<span class="tag">Drone + Progression</span>
+					<span class="tag">Progression Drone</span>
 					<h1>Hold the harmony. Move at your pace.</h1>
 					<p>
-						Start a sustained chord progression and step through each
-						change manually. Perfect for ear focus, improvisation, and
-						intonation.
+						Start a sustained chord progression and step through
+						each change manually. Perfect for ear focus,
+						improvisation, and intonation.
 					</p>
 				</div>
 				<div class="panel">
@@ -41,26 +102,6 @@
 						<div>
 							<h2>Chord Progression Setup</h2>
 						</div>
-						<div
-							class="controls save-controls"
-							id="saveProgressionControls"
-						>
-							<div class="save-inputs">
-								<input
-									id="saveProgressionName"
-									placeholder="Progression name"
-								/>
-								<button id="btnSaveProgression" class="ghost">
-									Save progression
-								</button>
-							</div>
-							<p
-								id="saveProgressionError"
-								class="note save-error hidden"
-							>
-								&nbsp;
-							</p>
-						</div>
 					</div>
 
 					<div class="mode-toggle">
@@ -77,6 +118,27 @@
 							<input type="radio" name="mode" value="mode2" />
 							Mode 2: Random progression
 						</label>
+					</div>
+
+					<div
+						class="controls save-controls"
+						id="saveProgressionControls"
+					>
+						<div class="save-inputs">
+							<input
+								id="saveProgressionName"
+								placeholder="Progression name"
+							/>
+							<button id="btnSaveProgression" class="ghost">
+								Save progression
+							</button>
+						</div>
+						<p
+							id="saveProgressionError"
+							class="note save-error hidden"
+						>
+							&nbsp;
+						</p>
 					</div>
 
 					<div id="mode1Config">
@@ -115,7 +177,7 @@
 							</div>
 						</div>
 						<div class="progression">
-							<h3>Allowed upper degrees by chord type</h3>
+							<h3>Chord qualities for random progression</h3>
 							<div id="mode2Rows" class="mode2-rows"></div>
 						</div>
 					</div>
@@ -138,30 +200,40 @@
 				<div class="panel-header">
 					<div>
 						<h2>Controls</h2>
-						<p class="note">Use b / # for accidentals. Example: b3, #4.</p>
+						<p class="note">
+							Use b / # for accidentals. Example: b3, #4.
+						</p>
 					</div>
 					<div class="controls">
 						<button id="btnStartAudio">Start Audio</button>
 						<button id="btnStartDrone" class="secondary">
 							Start Drone
 						</button>
-						<button id="btnStopDrone" class="ghost">Stop</button>
 					</div>
 				</div>
 
 				<div class="config-grid" style="margin-bottom: 12px">
 					<div class="field">
-						<label for="minRootInput">Lowest chord root (min)</label>
+						<label for="minRootInput"
+							>Lowest chord root (min)</label
+						>
 						<input id="minRootInput" value="G2" placeholder="G2" />
 					</div>
 					<div class="field">
-						<label for="loopTimesInput">Loop progression (times)</label>
+						<label for="loopTimesInput"
+							>Loop progression (times)</label
+						>
 						<input
 							id="loopTimesInput"
 							type="number"
 							min="1"
 							value="1"
 						/>
+						<label class="toggle loop-forever-toggle">
+							<input type="checkbox" id="loopForeverToggle" />
+							<span class="toggle-track"></span>
+							<span class="toggle-label">Infinite</span>
+						</label>
 					</div>
 					<div class="field">
 						<label for="loopShiftInput"
@@ -172,6 +244,102 @@
 							type="number"
 							step="1"
 							value="0"
+						/>
+					</div>
+				</div>
+
+				<div class="mode-toggle" id="playbackModeToggle">
+					<label class="mode-pill">
+						<input
+							type="radio"
+							name="playbackMode"
+							value="metronome"
+							checked
+						/>
+						Metronome progression
+					</label>
+					<label class="mode-pill">
+						<input
+							type="radio"
+							name="playbackMode"
+							value="ambience"
+						/>
+						Ambience drone
+					</label>
+				</div>
+
+				<div class="ambience-submode hidden" id="ambienceModeToggle">
+					<div class="ambience-submode__title">Ambience mode</div>
+					<div class="mode-toggle ambience-submode__toggle">
+						<label class="mode-pill">
+							<input
+								type="radio"
+								name="ambienceMode"
+								value="steady"
+							/>
+							Steady chord
+						</label>
+						<label class="mode-pill">
+							<input
+								type="radio"
+								name="ambienceMode"
+								value="breathing"
+								checked
+							/>
+							Breathing chord
+						</label>
+					</div>
+					<div class="ambience-options config-grid">
+						<div class="field">
+							<label for="nextChordKeyInput">Next chord key</label>
+							<input
+								id="nextChordKeyInput"
+								placeholder="Press a key (e.g. Space)"
+							/>
+						</div>
+						<div class="field">
+							<label>Auto-advance (seconds)</label>
+							<div class="auto-advance-row">
+								<label class="toggle">
+									<input type="checkbox" id="autoAdvanceToggle" />
+									<span class="toggle-track"></span>
+									<span class="toggle-label">Enabled</span>
+								</label>
+								<input
+									id="autoAdvanceSeconds"
+									type="number"
+									min="0.5"
+									step="0.5"
+									value="5"
+									aria-label="Auto-advance seconds"
+								/>
+							</div>
+							<p class="note">
+								Manual next-chord keys always work.
+							</p>
+						</div>
+					</div>
+				</div>
+
+				<div class="config-grid hidden" id="metronomeControls">
+					<div class="field">
+						<label for="bpmInput">BPM</label>
+						<input
+							id="bpmInput"
+							type="number"
+							min="30"
+							max="300"
+							value="80"
+						/>
+					</div>
+					<div class="field">
+						<label for="bpbInput">Beats per bar</label>
+						<input
+							id="bpbInput"
+							type="number"
+							min="1"
+							max="12"
+							value="4"
 						/>
 					</div>
 				</div>
@@ -235,33 +403,25 @@
 								<span id="velocityThirdValue">0.55</span>
 							</div>
 						</div>
-						<div class="field velocity-lead">
-							<label for="velocityLead">Lead note</label>
-							<div class="slider-row">
-								<input
-									id="velocityLead"
-									type="range"
-									min="0"
-									max="1"
-									step="0.01"
-									value="1"
-								/>
-								<span id="velocityLeadValue">1.00</span>
-							</div>
-						</div>
 					</div>
 				</div>
+
 			</section>
 
 			<section class="panel" id="exercisePanel">
 				<div class="panel-header">
 					<div>
-						<h2>Exercise</h2>
-						<p class="note">Click next to step through the progression.</p>
+						<h2>Live Exercise</h2>
+						<p class="note">
+							Click next to step through the progression.
+						</p>
 					</div>
 					<div class="controls">
 						<button id="btnNextChord" class="ghost" disabled>
 							Next chord
+						</button>
+						<button id="btnStopDrone" class="ghost" disabled>
+							Stop
 						</button>
 					</div>
 				</div>
@@ -287,6 +447,11 @@
 					</div>
 				</div>
 
+				<div class="chord-sequence-panel">
+					<h3>Progression</h3>
+					<div id="droneChordList" class="chord-sequence-grid"></div>
+				</div>
+
 				<div id="droneStatus" class="status">
 					Configure a progression and press Start.
 				</div>
@@ -294,7 +459,7 @@
 		</main>
 
 		<template id="chordRowTemplate">
-			<div class="progression-row">
+			<div class="progression-row compact">
 				<div class="field field-degree">
 					<label>Degree</label>
 					<input class="chord-degree" value="1" />
@@ -303,27 +468,40 @@
 					<label>Quality</label>
 					<select class="chord-quality"></select>
 				</div>
-				<div class="field field-scale">
-					<label>Scale</label>
-					<select class="scale-select"></select>
-				</div>
-				<div class="field field-allowed">
-					<label>Allowed upper degrees</label>
-					<input class="upper-degrees" placeholder="1 2 b3 4 5 6 b7" />
-				</div>
-				<div class="field field-questions">
-					<label>Questions</label>
-					<input class="question-count" type="number" min="1" value="1" />
+				<div class="field field-duration">
+					<label>Duration</label>
+					<div class="duration-control">
+						<select class="duration-mode">
+							<option value="x">x</option>
+							<option value="/">/</option>
+						</select>
+						<input
+							class="duration-value"
+							type="number"
+							min="1"
+							value="1"
+						/>
+						<select class="duration-div hidden">
+							<option value="2">2</option>
+							<option value="4">4</option>
+						</select>
+					</div>
 				</div>
 				<div class="field field-remove">
 					<label>&nbsp;</label>
-					<button class="ghost remove-chord" type="button">Remove</button>
+					<button
+						class="ghost remove-chord"
+						type="button"
+						aria-label="Remove"
+					>
+						×
+					</button>
 				</div>
 			</div>
 		</template>
 
 		<template id="mode2RowTemplate">
-			<div class="mode2-row">
+			<div class="mode2-row simple">
 				<div class="mode2-toggle">
 					<label class="toggle">
 						<input type="checkbox" class="mode2-enable" checked />
@@ -331,19 +509,20 @@
 					</label>
 					<span class="toggle-label">maj7</span>
 				</div>
-				<div class="mode2-fields">
-					<div class="field">
-						<label>Scale</label>
-						<select class="mode2-scale"></select>
-					</div>
-					<div class="field">
-						<label>Allowed upper degrees</label>
-						<input class="mode2-degrees" />
-					</div>
-				</div>
 			</div>
 		</template>
 
+		<script>
+			document.addEventListener("click", (event) => {
+				document
+					.querySelectorAll(".nav-dropdown[open]")
+					.forEach((dropdown) => {
+						if (!dropdown.contains(event.target)) {
+							dropdown.removeAttribute("open");
+						}
+					});
+			});
+		</script>
 		<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/15.3.5/Tone.js"></script>
 		<script type="module" src="../js/drone-app.js"></script>
 	</body>

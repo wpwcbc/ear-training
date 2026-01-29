@@ -1,4 +1,4 @@
-import { NOTE_NAMES_SHARP, type ChordQuality } from "./dt-constants.js";
+import { NOTE_NAMES_SHARP, type ChordQuality } from "./constants.js";
 
 const MAJOR_SCALE_OFFSETS: Map<string, number> = new Map([
 	["1", 0],

@@ -3,7 +3,7 @@
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width,initial-scale=1" />
-		<title>Scale Degree Trainer</title>
+		<title>Ear Train Station — Scale Degree Trainer</title>
 		<link rel="preconnect" href="https://fonts.googleapis.com" />
 		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 		<link
@@ -13,6 +13,65 @@
 		<link rel="stylesheet" href="../degreeTrainer.css" />
 	</head>
 	<body>
+		<nav class="site-nav" aria-label="Primary">
+			<div class="nav-inner">
+				<a class="nav-brand" href="../">
+					<svg
+						class="nav-logo"
+						viewBox="0 0 48 48"
+						aria-hidden="true"
+					>
+						<path
+							d="M8 32c0-9 7-16 16-16s16 7 16 16"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="3"
+							stroke-linecap="round"
+						/>
+						<circle cx="16" cy="32" r="3" fill="currentColor" />
+						<circle cx="32" cy="32" r="3" fill="currentColor" />
+						<path
+							d="M14 40h20"
+							stroke="currentColor"
+							stroke-width="3"
+							stroke-linecap="round"
+						/>
+					</svg>
+					<span>Ear Train Station</span>
+				</a>
+				<input
+					type="checkbox"
+					id="navToggle"
+					class="nav-toggle"
+					aria-label="Toggle navigation"
+				/>
+				<label class="nav-toggle-btn" for="navToggle">
+					<span></span>
+					<span></span>
+					<span></span>
+				</label>
+				<div class="nav-links">
+					<a class="nav-link nav-back" href="../">← Back to home</a>
+					<details class="nav-dropdown">
+						<summary class="nav-link nav-link--dropdown">Tools</summary>
+						<div class="nav-dropdown-menu">
+							<a class="nav-link" href="../drone/?mode=ambience"
+								>Progression Drone Ambience</a
+							>
+							<a class="nav-link" href="../drone/?mode=metronome"
+								>Progression Drone Metronome</a
+							>
+						</div>
+					</details>
+					<details class="nav-dropdown">
+						<summary class="nav-link nav-link--dropdown">Trainings</summary>
+						<div class="nav-dropdown-menu">
+							<a class="nav-link" href="./">Scale Degree Trainer</a>
+						</div>
+					</details>
+				</div>
+			</div>
+		</nav>
 		<main>
 			<header class="hero">
 				<div>
@@ -446,8 +505,8 @@
 				</div>
 				<div class="field field-remove">
 					<label>&nbsp;</label>
-					<button class="ghost remove-chord" type="button">
-						Remove
+					<button class="ghost remove-chord" type="button" aria-label="Remove">
+						×
 					</button>
 				</div>
 			</div>
@@ -488,6 +547,17 @@
 			<option value="b7"></option>
 		</datalist>
 
+		<script>
+			document.addEventListener("click", (event) => {
+				document
+					.querySelectorAll(".nav-dropdown[open]")
+					.forEach((dropdown) => {
+						if (!dropdown.contains(event.target)) {
+							dropdown.removeAttribute("open");
+						}
+					});
+			});
+		</script>
 		<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/15.3.5/Tone.js"></script>
 		<script type="module" src="../js/dt-app.js"></script>
 	</body>

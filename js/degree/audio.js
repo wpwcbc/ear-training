@@ -8,6 +8,13 @@ export async function ensureAudioReady() {
         return;
     }
     await Tone.start();
+    const warmupSynth = new Tone.Synth({
+        oscillator: { type: "sine" },
+        envelope: { attack: 0.001, decay: 0.01, sustain: 0, release: 0.01 },
+    }).toDestination();
+    warmupSynth.volume.value = -60;
+    warmupSynth.triggerAttackRelease("C4", 0.02);
+    warmupSynth.dispose();
     audioState.chordSynth = new Tone.PolySynth(Tone.Synth, {
         oscillator: { type: "triangle" },
         envelope: {

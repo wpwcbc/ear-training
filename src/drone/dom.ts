@@ -1,0 +1,57 @@
+const getById = <T extends HTMLElement>(id: string): T => {
+	const el = document.getElementById(id);
+	if (!el) {
+		throw new Error("Missing element: " + id);
+	}
+	return el as T;
+};
+
+export const dom = {
+	getById,
+	elMode1: getById<HTMLDivElement>("mode1Config"),
+	elMode2: getById<HTMLDivElement>("mode2Config"),
+	elKeyInput: getById<HTMLInputElement>("keyInput"),
+	elMinRootInput: getById<HTMLInputElement>("minRootInput"),
+	elLoopTimesInput: getById<HTMLInputElement>("loopTimesInput"),
+	elLoopForeverToggle: getById<HTMLInputElement>("loopForeverToggle"),
+	elLoopShiftInput: getById<HTMLInputElement>("loopShiftInput"),
+	elProgressionRows: getById<HTMLDivElement>("progressionRows"),
+	elChordTemplate: getById<HTMLTemplateElement>("chordRowTemplate"),
+	elMode2Rows: getById<HTMLDivElement>("mode2Rows"),
+	elMode2Template: getById<HTMLTemplateElement>("mode2RowTemplate"),
+	elSaveProgressionName: getById<HTMLInputElement>("saveProgressionName"),
+	elSaveProgressionError: getById<HTMLParagraphElement>("saveProgressionError"),
+	elSaveProgressionControls: getById<HTMLDivElement>("saveProgressionControls"),
+	elProgressionList: getById<HTMLDivElement>("progressionList"),
+	elVelocityRoot: getById<HTMLInputElement>("velocityRoot"),
+	elVelocityFifth: getById<HTMLInputElement>("velocityFifth"),
+	elVelocitySeventh: getById<HTMLInputElement>("velocitySeventh"),
+	elVelocityThird: getById<HTMLInputElement>("velocityThird"),
+	elVelocityRootValue: getById<HTMLSpanElement>("velocityRootValue"),
+	elVelocityFifthValue: getById<HTMLSpanElement>("velocityFifthValue"),
+	elVelocitySeventhValue: getById<HTMLSpanElement>("velocitySeventhValue"),
+	elVelocityThirdValue: getById<HTMLSpanElement>("velocityThirdValue"),
+	elNextChordKeyInput: getById<HTMLInputElement>("nextChordKeyInput"),
+	elAutoAdvanceToggle: getById<HTMLInputElement>("autoAdvanceToggle"),
+	elAutoAdvanceSeconds: getById<HTMLInputElement>("autoAdvanceSeconds"),
+	elPlaybackModeToggle: getById<HTMLDivElement>("playbackModeToggle"),
+	elAmbienceModeToggle: getById<HTMLDivElement>("ambienceModeToggle"),
+	elMetronomeControls: getById<HTMLDivElement>("metronomeControls"),
+	elBpmInput: getById<HTMLInputElement>("bpmInput"),
+	elBpbInput: getById<HTMLInputElement>("bpbInput"),
+	elDroneKeyLabel: getById<HTMLSpanElement>("droneKeyLabel"),
+	elDroneChordLabel: getById<HTMLSpanElement>("droneChordLabel"),
+	elDroneTonicLabel: getById<HTMLSpanElement>("droneTonicLabel"),
+	elDroneNextLabel: getById<HTMLSpanElement>("droneNextLabel"),
+	elDroneNextTonicLabel: getById<HTMLSpanElement>("droneNextTonicLabel"),
+	elDroneProgressLabel: getById<HTMLSpanElement>("droneProgressLabel"),
+	elDroneChordList: getById<HTMLDivElement>("droneChordList"),
+	elDroneStatus: getById<HTMLDivElement>("droneStatus"),
+	btnStartAudio: getById<HTMLButtonElement>("btnStartAudio"),
+	btnStartDrone: getById<HTMLButtonElement>("btnStartDrone"),
+	btnStopDrone: getById<HTMLButtonElement>("btnStopDrone"),
+	btnNextChord: getById<HTMLButtonElement>("btnNextChord"),
+	btnAddChord: getById<HTMLButtonElement>("btnAddChord"),
+	btnSaveProgression: getById<HTMLButtonElement>("btnSaveProgression"),
+	elExercisePanel: getById<HTMLElement>("exercisePanel"),
+};

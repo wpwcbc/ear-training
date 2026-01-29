@@ -4,17 +4,17 @@
 	"category": "Tunes",
 	"defaultKey": "C",
 	"chords": [
-		{ "chordDegree": "1", "quality": "7", "scaleId": "mixolydian" },
-		{ "chordDegree": "1", "quality": "7", "scaleId": "mixolydian" },
-		{ "chordDegree": "1", "quality": "7", "scaleId": "mixolydian" },
-		{ "chordDegree": "1", "quality": "7", "scaleId": "mixolydian" },
-		{ "chordDegree": "4", "quality": "7", "scaleId": "mixolydian" },
-		{ "chordDegree": "4", "quality": "7", "scaleId": "mixolydian" },
-		{ "chordDegree": "1", "quality": "7", "scaleId": "mixolydian" },
-		{ "chordDegree": "1", "quality": "7", "scaleId": "mixolydian" },
-		{ "chordDegree": "5", "quality": "7", "scaleId": "mixolydian" },
-		{ "chordDegree": "4", "quality": "7", "scaleId": "mixolydian" },
-		{ "chordDegree": "1", "quality": "7", "scaleId": "mixolydian" },
-		{ "chordDegree": "5", "quality": "7", "scaleId": "mixolydian" }
+		{ "chordDegree": "1", "quality": "7", "scaleId": "mixolydian", "durationMode": "x", "durationValue": 1 },
+		{ "chordDegree": "1", "quality": "7", "scaleId": "mixolydian", "durationMode": "x", "durationValue": 1 },
+		{ "chordDegree": "1", "quality": "7", "scaleId": "mixolydian", "durationMode": "x", "durationValue": 1 },
+		{ "chordDegree": "1", "quality": "7", "scaleId": "mixolydian", "durationMode": "x", "durationValue": 1 },
+		{ "chordDegree": "4", "quality": "7", "scaleId": "mixolydian", "durationMode": "x", "durationValue": 1 },
+		{ "chordDegree": "4", "quality": "7", "scaleId": "mixolydian", "durationMode": "x", "durationValue": 1 },
+		{ "chordDegree": "1", "quality": "7", "scaleId": "mixolydian", "durationMode": "x", "durationValue": 1 },
+		{ "chordDegree": "1", "quality": "7", "scaleId": "mixolydian", "durationMode": "x", "durationValue": 1 },
+		{ "chordDegree": "5", "quality": "7", "scaleId": "mixolydian", "durationMode": "x", "durationValue": 1 },
+		{ "chordDegree": "4", "quality": "7", "scaleId": "mixolydian", "durationMode": "x", "durationValue": 1 },
+		{ "chordDegree": "1", "quality": "7", "scaleId": "mixolydian", "durationMode": "x", "durationValue": 1 },
+		{ "chordDegree": "5", "quality": "7", "scaleId": "mixolydian", "durationMode": "x", "durationValue": 1 }
 	]
 }

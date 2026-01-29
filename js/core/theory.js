@@ -1,4 +1,4 @@
-import { NOTE_NAMES_SHARP } from "./dt-constants.js";
+import { NOTE_NAMES_SHARP } from "./constants.js";
 const MAJOR_SCALE_OFFSETS = new Map([
     ["1", 0],
     ["2", 2],

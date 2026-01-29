@@ -3,7 +3,7 @@
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width,initial-scale=1" />
-		<title>Ear Training Studio</title>
+		<title>Ear Train Station</title>
 		<link rel="preconnect" href="https://fonts.googleapis.com" />
 		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 		<link
@@ -13,10 +13,70 @@
 		<link rel="stylesheet" href="degreeTrainer.css" />
 	</head>
 	<body>
+		<nav class="site-nav" aria-label="Primary">
+			<div class="nav-inner">
+				<a class="nav-brand" href="./">
+					<svg
+						class="nav-logo"
+						viewBox="0 0 48 48"
+						aria-hidden="true"
+					>
+						<path
+							d="M8 32c0-9 7-16 16-16s16 7 16 16"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="3"
+							stroke-linecap="round"
+						/>
+						<circle cx="16" cy="32" r="3" fill="currentColor" />
+						<circle cx="32" cy="32" r="3" fill="currentColor" />
+						<path
+							d="M14 40h20"
+							stroke="currentColor"
+							stroke-width="3"
+							stroke-linecap="round"
+						/>
+					</svg>
+					<span>Ear Train Station</span>
+				</a>
+				<input
+					type="checkbox"
+					id="navToggle"
+					class="nav-toggle"
+					aria-label="Toggle navigation"
+				/>
+				<label class="nav-toggle-btn" for="navToggle">
+					<span></span>
+					<span></span>
+					<span></span>
+				</label>
+				<div class="nav-links">
+					<details class="nav-dropdown">
+						<summary class="nav-link nav-link--dropdown">Tools</summary>
+						<div class="nav-dropdown-menu">
+							<a class="nav-link" href="drone/?mode=ambience"
+								>Progression Drone Ambience</a
+							>
+							<a class="nav-link" href="drone/?mode=metronome"
+								>Progression Drone Metronome</a
+							>
+						</div>
+					</details>
+					<details class="nav-dropdown">
+						<summary class="nav-link nav-link--dropdown">Trainings</summary>
+						<div class="nav-dropdown-menu">
+							<a class="nav-link" href="degree-trainer/"
+								>Scale Degree Trainer</a
+							>
+						</div>
+					</details>
+				</div>
+			</div>
+		</nav>
 		<main>
 			<header class="hero">
 				<div>
-					<span class="tag">Ear Training Suite</span>
+					<span class="tag">Ear Train Station</span>
 					<h1>Practice tools, one home.</h1>
 					<p>
 						Choose a tool below to start training. Each page focuses on a
@@ -36,6 +96,28 @@
 			<section class="panel">
 				<h2>Tools</h2>
 				<div class="tool-grid">
+					<a class="tool-card" href="drone/?mode=ambience">
+						<h3>Progression Drone Ambience</h3>
+						<p>
+							Sustain a progression with a breathing texture and move
+							through changes at your pace.
+						</p>
+						<span class="tool-cta">Open ambience drone →</span>
+					</a>
+					<a class="tool-card" href="drone/?mode=metronome">
+						<h3>Progression Drone Metronome</h3>
+						<p>
+							Play a progression with a fixed BPM and bar durations for
+							steady timekeeping.
+						</p>
+						<span class="tool-cta">Open metronome drone →</span>
+					</a>
+				</div>
+			</section>
+
+			<section class="panel">
+				<h2>Trainings</h2>
+				<div class="tool-grid">
 					<a class="tool-card" href="degree-trainer/">
 						<h3>Scale Degree Trainer</h3>
 						<p>
@@ -44,16 +126,19 @@
 						</p>
 						<span class="tool-cta">Open trainer →</span>
 					</a>
-					<a class="tool-card" href="drone/">
-						<h3>Drone + Progression</h3>
-						<p>
-							Sustain a chord progression and step through changes at
-							your pace.
-						</p>
-						<span class="tool-cta">Open drone →</span>
-					</a>
 				</div>
 			</section>
 		</main>
+		<script>
+			document.addEventListener("click", (event) => {
+				document
+					.querySelectorAll(".nav-dropdown[open]")
+					.forEach((dropdown) => {
+						if (!dropdown.contains(event.target)) {
+							dropdown.removeAttribute("open");
+						}
+					});
+			});
+		</script>
 	</body>
 </html>

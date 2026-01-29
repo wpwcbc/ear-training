@@ -1,0 +1,65 @@
+const getById = <T extends HTMLElement>(id: string): T => {
+	const el: HTMLElement | null = document.getElementById(id);
+	if (!el) {
+		throw new Error("Missing element: " + id);
+	}
+	return el as T;
+};
+
+export const dom = {
+	getById,
+	elMode1: getById<HTMLDivElement>("mode1Config"),
+	elMode2: getById<HTMLDivElement>("mode2Config"),
+	elKeyInput: getById<HTMLInputElement>("keyInput"),
+	elMinRootInput: getById<HTMLInputElement>("minRootInput"),
+	elLoopTimesInput: getById<HTMLInputElement>("loopTimesInput"),
+	elLoopShiftInput: getById<HTMLInputElement>("loopShiftInput"),
+	elProgressionRows: getById<HTMLDivElement>("progressionRows"),
+	elChordTemplate: getById<HTMLTemplateElement>("chordRowTemplate"),
+	elMode2Rows: getById<HTMLDivElement>("mode2Rows"),
+	elMode2Template: getById<HTMLTemplateElement>("mode2RowTemplate"),
+	elSaveProgressionName: getById<HTMLInputElement>("saveProgressionName"),
+	elSaveProgressionError: getById<HTMLParagraphElement>("saveProgressionError"),
+	elSaveProgressionControls: getById<HTMLDivElement>("saveProgressionControls"),
+	elVelocityRoot: getById<HTMLInputElement>("velocityRoot"),
+	elVelocityFifth: getById<HTMLInputElement>("velocityFifth"),
+	elVelocitySeventh: getById<HTMLInputElement>("velocitySeventh"),
+	elVelocityThird: getById<HTMLInputElement>("velocityThird"),
+	elVelocityLead: getById<HTMLInputElement>("velocityLead"),
+	elVelocityRootValue: getById<HTMLSpanElement>("velocityRootValue"),
+	elVelocityFifthValue: getById<HTMLSpanElement>("velocityFifthValue"),
+	elVelocitySeventhValue: getById<HTMLSpanElement>("velocitySeventhValue"),
+	elVelocityThirdValue: getById<HTMLSpanElement>("velocityThirdValue"),
+	elVelocityLeadValue: getById<HTMLSpanElement>("velocityLeadValue"),
+	elKeyLabel: getById<HTMLSpanElement>("keyLabel"),
+	elChordLabel: getById<HTMLSpanElement>("chordLabel"),
+	elTonicLabel: getById<HTMLSpanElement>("tonicLabel"),
+	elQuestionLabel: getById<HTMLSpanElement>("questionLabel"),
+	elTimeLabel: getById<HTMLSpanElement>("timeLabel"),
+	elAttemptsLabel: getById<HTMLSpanElement>("attemptsLabel"),
+	elStatus: getById<HTMLDivElement>("status"),
+	elAnswers: getById<HTMLDivElement>("answers"),
+	elCompletionPanel: getById<HTMLElement>("completionPanel"),
+	elCompletionStats: getById<HTMLDivElement>("completionStats"),
+	elCompletionSummary: getById<HTMLParagraphElement>("completionSummary"),
+	elRerunControls: getById<HTMLDivElement>("rerunControls"),
+	elProgressionList: getById<HTMLDivElement>("progressionList"),
+	btnSaveProgression: getById<HTMLButtonElement>("btnSaveProgression"),
+	elLiveQuestionPanel: getById<HTMLElement>("liveQuestionPanel"),
+	elTestRecords: getById<HTMLDivElement>("testRecords"),
+	elStatsRecords: getById<HTMLDivElement>("statsRecords"),
+	elStatsGroupSelect: getById<HTMLSelectElement>("statsGroupSelect"),
+	elStatsOrderSelect: getById<HTMLSelectElement>("statsOrderSelect"),
+	elTestFilterSelect: getById<HTMLSelectElement>("testFilterSelect"),
+	elRecordsTabButtons: Array.from(
+		document.querySelectorAll<HTMLButtonElement>("[data-records-tab]"),
+	),
+	elRecordsTabPanels: Array.from(
+		document.querySelectorAll<HTMLDivElement>("[data-records-panel]"),
+	),
+	btnStartAudio: getById<HTMLButtonElement>("btnStartAudio"),
+	btnStartTest: getById<HTMLButtonElement>("btnStartTest"),
+	btnStopTest: getById<HTMLButtonElement>("btnStopTest"),
+	btnReplay: getById<HTMLButtonElement>("btnReplay"),
+	btnAddChord: getById<HTMLButtonElement>("btnAddChord"),
+};
