@@ -153,6 +153,7 @@ body {
 	align-items: center;
 	justify-content: center;
 	gap: 4px;
+	flex-direction: column;
 	cursor: pointer;
 }
 
@@ -170,6 +171,10 @@ main {
 	padding: 28px 18px 60px;
 	display: grid;
 	gap: 22px;
+}
+
+main > * {
+	min-width: 0;
 }
 
 h1,
@@ -196,6 +201,10 @@ b {
 	gap: 18px;
 	grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
 	align-items: center;
+}
+
+.hero > * {
+	min-width: 0;
 }
 
 .tool-grid {
@@ -242,6 +251,10 @@ b {
 	align-items: stretch;
 }
 
+.setup-grid > * {
+	min-width: 0;
+}
+
 #chordProgressionPanel,
 #progressionPanel {
 	height: 100%;
@@ -276,6 +289,8 @@ b {
 	padding: 18px 18px 20px;
 	border: 1px solid var(--line);
 	box-shadow: var(--shadow);
+	min-width: 0;
+	max-width: 100%;
 }
 
 .panel-header {
@@ -863,6 +878,7 @@ textarea {
 	background: #fffaf6;
 	display: grid;
 	gap: 10px;
+	overflow-x: auto;
 }
 
 .chord-sequence-panel h3 {
@@ -873,7 +889,9 @@ textarea {
 .chord-sequence-grid {
 	display: grid;
 	gap: 8px;
-	grid-template-columns: repeat(4, minmax(120px, 1fr));
+	grid-template-columns: repeat(4, minmax(140px, 1fr));
+	width: 100%;
+	min-width: 0;
 }
 
 .chord-pill {
@@ -1253,6 +1271,10 @@ textarea {
 		grid-template-columns: 1fr;
 	}
 
+	.hero {
+		grid-template-columns: 1fr;
+	}
+
 	.records-actions {
 		justify-content: flex-start;
 	}
@@ -1280,11 +1302,23 @@ textarea {
 			"degree quality"
 			"questions remove";
 	}
+
+	.chord-sequence-grid {
+		grid-template-columns: repeat(2, minmax(140px, 1fr));
+	}
 }
 
 @media (max-width: 760px) {
 	.nav-toggle-btn {
 		display: inline-flex;
+	}
+
+	.hero {
+		grid-template-columns: 1fr !important;
+	}
+
+	.setup-grid {
+		grid-template-columns: 1fr;
 	}
 
 	.nav-links {
@@ -1317,5 +1351,9 @@ textarea {
 		border: none;
 		padding: 0 0 0 8px;
 		min-width: 0;
+	}
+
+	.chord-sequence-grid {
+		grid-template-columns: 1fr;
 	}
 }
