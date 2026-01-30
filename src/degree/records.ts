@@ -1,4 +1,4 @@
-import { CHORD_QUALITIES } from "../core/constants.js";
+import { CHORD_QUALITIES, type ChordQuality } from "../core/constants.js";
 import * as theory from "../core/theory.js";
 import { dom } from "./dom.js";
 import { state, STORAGE_KEYS, TEST_FILTER_ALL } from "./state.js";
@@ -205,7 +205,7 @@ export const renderRecords = (): void => {
 		CHORD_QUALITIES.map((quality, index) => [quality, index]),
 	);
 	const getQualityIndex = (quality: string): number =>
-		qualityOrder.get(quality) ?? Number.MAX_SAFE_INTEGER;
+		qualityOrder.get(quality as ChordQuality) ?? Number.MAX_SAFE_INTEGER;
 	const getDegreeIndex = (degree: string): number => {
 		if (degree === "/") {
 			return Number.POSITIVE_INFINITY;
