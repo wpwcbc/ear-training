@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width,initial-scale=1" />
+		<title>Ear Train Station — Chord Quality ID</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+			rel="stylesheet"
+		/>
+		<link rel="stylesheet" href="../degreeTrainer.css" />
+	</head>
+	<body>
+		<nav class="site-nav" aria-label="Primary">
+			<div class="nav-inner">
+				<a class="nav-brand" href="../">
+					<svg class="nav-logo" viewBox="0 0 48 48" aria-hidden="true">
+						<path
+							d="M8 32c0-9 7-16 16-16s16 7 16 16"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="3"
+							stroke-linecap="round"
+						/>
+						<circle cx="16" cy="32" r="3" fill="currentColor" />
+						<circle cx="32" cy="32" r="3" fill="currentColor" />
+						<path
+							d="M14 40h20"
+							stroke="currentColor"
+							stroke-width="3"
+							stroke-linecap="round"
+						/>
+					</svg>
+					<span>Ear Train Station</span>
+				</a>
+				<input
+					type="checkbox"
+					id="navToggle"
+					class="nav-toggle"
+					aria-label="Toggle navigation"
+				/>
+				<label class="nav-toggle-btn" for="navToggle">
+					<span></span>
+					<span></span>
+					<span></span>
+				</label>
+				<div class="nav-links">
+					<a class="nav-link nav-back" href="../">← Back to home</a>
+					<details class="nav-dropdown">
+						<summary class="nav-link nav-link--dropdown">Tools</summary>
+						<div class="nav-dropdown-menu">
+							<a class="nav-link" href="../drone/?mode=ambience"
+								>Progression Drone Ambience</a
+							>
+							<a class="nav-link" href="../drone/?mode=metronome"
+								>Progression Drone Metronome</a
+							>
+						</div>
+					</details>
+					<details class="nav-dropdown">
+						<summary class="nav-link nav-link--dropdown">Trainings</summary>
+						<div class="nav-dropdown-menu">
+							<a class="nav-link" href="../degree-trainer/"
+								>Scale Degree Trainer</a
+							>
+							<a class="nav-link" href="../interval-trainer/"
+								>Interval Trainer</a
+							>
+							<a class="nav-link" href="./">Chord Quality ID</a>
+							<a class="nav-link" href="../progression-id/"
+								>Progression ID</a
+							>
+						</div>
+					</details>
+					<details class="nav-dropdown">
+						<summary class="nav-link nav-link--dropdown">Insights</summary>
+						<div class="nav-dropdown-menu">
+							<a class="nav-link" href="../heatmap/"
+								>Weakness Heatmap</a
+							>
+						</div>
+					</details>
+				</div>
+			</div>
+		</nav>
+		<main>
+			<header class="hero">
+				<div>
+					<span class="tag">Chord Quality</span>
+					<h1>Hear the color. Name the chord.</h1>
+					<p>
+						Identify chord qualities across a range of voicings. Focus
+						on the color of each harmony and answer quickly.
+					</p>
+				</div>
+				<div class="panel">
+					<h3>Quick guide</h3>
+					<ol>
+						<li>Select the qualities and voicings to include.</li>
+						<li>Set key center and question count in Controls.</li>
+						<li>Press Start Audio, then Start Test.</li>
+						<li>Answer with the chord quality buttons.</li>
+					</ol>
+				</div>
+			</header>
+
+			<section class="panel" id="setupPanel">
+				<div class="panel-header">
+					<div>
+						<h2>Controls</h2>
+						<p class="note">
+							Use b / # for accidentals. Example: Bb, F#.
+						</p>
+					</div>
+					<div class="controls">
+						<button id="btnStartAudio">Start Audio</button>
+						<button id="btnStartTest" class="secondary">
+							Start Test
+						</button>
+					</div>
+				</div>
+
+				<div class="config-grid" style="margin-bottom: 12px">
+					<div class="field">
+						<label>Playback</label>
+						<div class="mode-toggle">
+							<label class="mode-pill">
+								<input
+									type="radio"
+									name="playbackMode"
+									value="stacked"
+									checked
+								/>
+								Stacked chord
+							</label>
+							<label class="mode-pill">
+								<input
+									type="radio"
+									name="playbackMode"
+									value="arpeggiated"
+								/>
+								One by one
+							</label>
+						</div>
+					</div>
+					<div class="field">
+						<label for="questionCount">Questions per test</label>
+						<input
+							id="questionCount"
+							type="number"
+							min="1"
+							value="10"
+						/>
+					</div>
+					<div class="field">
+						<label for="minRootInput">Lowest chord root (min)</label>
+						<input id="minRootInput" value="G2" placeholder="G2" />
+					</div>
+				</div>
+
+				<div class="progression">
+					<h3>Chord qualities</h3>
+					<div id="qualityOptions" class="mode2-rows option-grid"></div>
+				</div>
+
+				<div class="progression" style="margin-top: 18px">
+					<h3>Voicings to include</h3>
+					<div id="voicingOptions" class="mode2-rows option-grid"></div>
+				</div>
+			</section>
+
+			<section class="panel" id="liveQuestionPanel">
+				<div class="panel-header">
+					<div>
+						<h2>Live question</h2>
+						<p class="note">Replay does not reset the timer.</p>
+					</div>
+					<div class="controls">
+						<button id="btnReplay" class="ghost" disabled>Replay</button>
+						<button id="btnStopTest" class="ghost">Stop</button>
+					</div>
+				</div>
+
+				<div class="stats">
+					<div class="stat-box">
+						Question: <span id="questionLabel">-</span>
+					</div>
+					<div class="stat-box">
+						Time: <span id="timeLabel">0.00s</span>
+					</div>
+					<div class="stat-box">
+						Attempts: <span id="attemptsLabel">0</span>
+					</div>
+				</div>
+
+				<div id="status" class="status">Configure a test and press Start.</div>
+				<div id="answers" class="answers"></div>
+			</section>
+
+			<section id="completionPanel" class="panel hidden">
+				<div class="panel-header">
+					<h2>Test complete</h2>
+				</div>
+				<p id="completionSummary" class="note"></p>
+				<div id="rerunControls" class="controls"></div>
+			</section>
+
+			<section class="panel" id="recordsPanel">
+				<div class="panel-header">
+					<h2>Records</h2>
+				</div>
+				<div
+					class="records-tabs"
+					role="tablist"
+					aria-label="Records tabs"
+				>
+					<button
+						type="button"
+						class="records-tab-button active"
+						data-records-tab="tests"
+						role="tab"
+						aria-selected="true"
+					>
+						Recent tests
+					</button>
+					<button
+						type="button"
+						class="records-tab-button"
+						data-records-tab="stats"
+						role="tab"
+						aria-selected="false"
+					>
+						Stats
+					</button>
+				</div>
+				<div class="records-tab-panel active" data-records-panel="tests">
+					<div class="records-block">
+						<div class="records-header">
+							<h3>Recent tests</h3>
+							<div class="records-actions">
+								<div class="records-select">
+									<label for="testFilterSelect">Filter</label>
+									<select id="testFilterSelect"></select>
+								</div>
+							</div>
+						</div>
+						<div id="testRecords" class="tests-table"></div>
+					</div>
+				</div>
+				<div class="records-tab-panel" data-records-panel="stats">
+					<div class="records-block">
+						<div class="records-header">
+							<h3>Stats</h3>
+							<div class="records-actions">
+								<div class="records-select">
+									<label for="statsGroupSelect">Group by</label>
+									<select id="statsGroupSelect">
+										<option value="quality">By quality</option>
+										<option value="voicing">By voicing</option>
+									</select>
+								</div>
+								<div class="records-select">
+									<label for="statsOrderSelect">Order by</label>
+									<select id="statsOrderSelect">
+										<option value="name">Name</option>
+										<option value="time-asc">Time ↑</option>
+										<option value="time-desc">Time ↓</option>
+									</select>
+								</div>
+							</div>
+						</div>
+						<div id="statsRecords" class="stats-table"></div>
+					</div>
+				</div>
+			</section>
+		</main>
+
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/15.3.5/Tone.js"></script>
+		<script type="module" src="../js/chord-quality/app.js"></script>
+		<script>
+			document.addEventListener("click", (event) => {
+				document
+					.querySelectorAll(".nav-dropdown[open]")
+					.forEach((dropdown) => {
+						if (!dropdown.contains(event.target)) {
+							dropdown.removeAttribute("open");
+						}
+					});
+			});
+		</script>
+	</body>
+</html>

@@ -19,9 +19,31 @@ import type {
 	Question,
 	QuestionRecord,
 	TestRecord,
+	IntervalMode,
+	MelodicDirection,
 } from "./types.js";
 
 let currentTestName = CUSTOM_PROGRESSION_NAME;
+
+const INTERVAL_LABELS: { semis: number; label: string }[] = [
+	{ semis: 0, label: "P1" },
+	{ semis: 1, label: "m2" },
+	{ semis: 2, label: "M2" },
+	{ semis: 3, label: "m3" },
+	{ semis: 4, label: "M3" },
+	{ semis: 5, label: "P4" },
+	{ semis: 6, label: "TT" },
+	{ semis: 7, label: "P5" },
+	{ semis: 8, label: "m6" },
+	{ semis: 9, label: "M6" },
+	{ semis: 10, label: "m7" },
+	{ semis: 11, label: "M7" },
+	{ semis: 12, label: "P8" },
+];
+
+const intervalLabelMap: Map<number, string> = new Map(
+	INTERVAL_LABELS.map((item) => [item.semis, item.label]),
+);
 
 export const startTimer = (): void => {
 	state.startPerfMs = performance.now();
@@ -83,6 +105,7 @@ const buildMode1Queue = (config: Mode1Config): Mode1QueueEvent[] => {
 					quality: chord.quality,
 					allowedUpperDegrees: chord.allowedUpperDegrees,
 					playChord: i === 0,
+					intervalMode: config.intervalMode,
 				});
 			}
 		});
@@ -107,6 +130,7 @@ const buildMode2Queue = (config: Mode2Config): Mode2QueueEvent[] => {
 			quality,
 			allowedUpperDegrees: config.allowedByQuality[quality],
 			playChord: true,
+			intervalMode: config.intervalMode,
 		});
 	}
 	return queue;
@@ -147,12 +171,33 @@ const buildQuestion = (event: QueueEvent): Question => {
 	];
 	const leadVelocity = velocitySettings.lead;
 	const topChordMidi = Math.max(...chordMidis);
-	const correctDegree = theory.pickRandom(event.allowedUpperDegrees);
-	const upperMidi = theory.chooseUpperMidi(
+	let firstDegree = theory.pickRandom(event.allowedUpperDegrees);
+	let secondDegree = theory.pickRandom(event.allowedUpperDegrees);
+	let guard = 0;
+	while (secondDegree === firstDegree && guard < 10) {
+		secondDegree = theory.pickRandom(event.allowedUpperDegrees);
+		guard += 1;
+	}
+	const firstMidi = theory.chooseUpperMidi(
 		chordRootMidi,
-		correctDegree,
+		firstDegree,
 		topChordMidi,
 	);
+	const secondMidi = theory.chooseUpperMidi(
+		chordRootMidi,
+		secondDegree,
+		topChordMidi,
+	);
+	const lowMidi = Math.min(firstMidi, secondMidi);
+	const highMidi = Math.max(firstMidi, secondMidi);
+	const rawInterval = highMidi - lowMidi;
+	const normalized = rawInterval % 12 === 0 ? 12 : rawInterval % 12;
+	const intervalLabel =
+		intervalLabelMap.get(normalized) ?? `${normalized} st`;
+	const intervalMode: IntervalMode =
+		event.intervalMode === "melodic" ? "melodic" : "harmonic";
+	const melodicDirection: MelodicDirection =
+		intervalMode === "melodic" && Math.random() > 0.5 ? "down" : "up";
 
 	return {
 		...event,
@@ -161,8 +206,14 @@ const buildQuestion = (event: QueueEvent): Question => {
 		chordVelocities,
 		leadVelocity,
 		chordNotes: chordMidis.map(theory.midiToNoteNameSharp),
-		upperNote: theory.midiToNoteNameSharp(upperMidi),
-		correctUpperDegree: correctDegree,
+		intervalNotes: [
+			theory.midiToNoteNameSharp(lowMidi),
+			theory.midiToNoteNameSharp(highMidi),
+		],
+		intervalLabel,
+		intervalMode,
+		melodicDirection,
+		intervalSemis: normalized,
 	};
 };
 
@@ -205,28 +256,30 @@ const renderQuestion = (question: Question): void => {
 	state.attempts = 0;
 	dom.elAttemptsLabel.textContent = "0";
 	dom.elAnswers.innerHTML = "";
+	const modeLabel =
+		question.intervalMode === "harmonic" ? "two notes together" : "two notes in sequence";
 	setStatus(
 		question.playChord
-			? "Listen to the chord, then the upper note. Identify the degree."
-			: "New upper note (same chord). Identify the degree.",
+			? `Listen to the chord, then ${modeLabel}. Identify the interval.`
+			: `New interval (same chord). Identify the interval.`,
 	);
 
-	question.allowedUpperDegrees.forEach((deg) => {
+	INTERVAL_LABELS.forEach((interval) => {
 		const button = document.createElement("button");
-		button.textContent = deg;
-		button.addEventListener("click", () => handleAnswer(deg));
+		button.textContent = interval.label;
+		button.addEventListener("click", () => handleAnswer(interval.label));
 		dom.elAnswers.appendChild(button);
 	});
 };
 
-const handleAnswer = (selectedDegree: string): void => {
+const handleAnswer = (selectedInterval: string): void => {
 	if (!state.currentQuestion) {
 		return;
 	}
 	state.attempts += 1;
 	dom.elAttemptsLabel.textContent = String(state.attempts);
 
-	if (selectedDegree === state.currentQuestion.correctUpperDegree) {
+	if (selectedInterval === state.currentQuestion.intervalLabel) {
 		const elapsedSeconds =
 			(performance.now() - state.startPerfMs) / 1000;
 		const chordDegree =
@@ -238,12 +291,12 @@ const handleAnswer = (selectedDegree: string): void => {
 				? state.currentQuestion.keyCenter
 				: "/";
 		state.currentQuestionRecords.push({
-			keyCenter,
 			chordDegree,
 			chordQuality: state.currentQuestion.quality,
-			upperDegree: state.currentQuestion.correctUpperDegree,
+			intervalLabel: state.currentQuestion.intervalLabel,
 			timeSeconds: Number(elapsedSeconds.toFixed(3)),
 			attempts: state.attempts,
+			keyCenter,
 		});
 
 		stopTimer();

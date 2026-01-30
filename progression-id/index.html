@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width,initial-scale=1" />
+		<title>Ear Train Station — Progression ID</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+			rel="stylesheet"
+		/>
+		<link rel="stylesheet" href="../degreeTrainer.css" />
+	</head>
+	<body>
+		<nav class="site-nav" aria-label="Primary">
+			<div class="nav-inner">
+				<a class="nav-brand" href="../">
+					<svg class="nav-logo" viewBox="0 0 48 48" aria-hidden="true">
+						<path
+							d="M8 32c0-9 7-16 16-16s16 7 16 16"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="3"
+							stroke-linecap="round"
+						/>
+						<circle cx="16" cy="32" r="3" fill="currentColor" />
+						<circle cx="32" cy="32" r="3" fill="currentColor" />
+						<path
+							d="M14 40h20"
+							stroke="currentColor"
+							stroke-width="3"
+							stroke-linecap="round"
+						/>
+					</svg>
+					<span>Ear Train Station</span>
+				</a>
+				<input
+					type="checkbox"
+					id="navToggle"
+					class="nav-toggle"
+					aria-label="Toggle navigation"
+				/>
+				<label class="nav-toggle-btn" for="navToggle">
+					<span></span>
+					<span></span>
+					<span></span>
+				</label>
+				<div class="nav-links">
+					<a class="nav-link nav-back" href="../">← Back to home</a>
+					<details class="nav-dropdown">
+						<summary class="nav-link nav-link--dropdown">Tools</summary>
+						<div class="nav-dropdown-menu">
+							<a class="nav-link" href="../drone/?mode=ambience"
+								>Progression Drone Ambience</a
+							>
+							<a class="nav-link" href="../drone/?mode=metronome"
+								>Progression Drone Metronome</a
+							>
+						</div>
+					</details>
+					<details class="nav-dropdown">
+						<summary class="nav-link nav-link--dropdown">Trainings</summary>
+						<div class="nav-dropdown-menu">
+							<a class="nav-link" href="../degree-trainer/"
+								>Scale Degree Trainer</a
+							>
+							<a class="nav-link" href="../interval-trainer/"
+								>Interval Trainer</a
+							>
+							<a class="nav-link" href="../chord-quality/"
+								>Chord Quality ID</a
+							>
+							<a class="nav-link" href="./">Progression ID</a>
+						</div>
+					</details>
+					<details class="nav-dropdown">
+						<summary class="nav-link nav-link--dropdown">Insights</summary>
+						<div class="nav-dropdown-menu">
+							<a class="nav-link" href="../heatmap/"
+								>Weakness Heatmap</a
+							>
+						</div>
+					</details>
+				</div>
+			</div>
+		</nav>
+		<main>
+			<header class="hero">
+				<div>
+					<span class="tag">Progression ID</span>
+					<h1>Hear the roadmap. Name each stop.</h1>
+					<p>
+						Listen to an eight-chord progression and identify each chord
+						degree and quality. Progressions include diatonic moves and
+						common substitutions.
+					</p>
+				</div>
+				<div class="panel">
+					<h3>Quick guide</h3>
+					<ol>
+						<li>Choose key center and mode.</li>
+						<li>Select which substitutions to include.</li>
+						<li>Press Start Audio, then Start Test.</li>
+						<li>Pick degree + quality for each chord.</li>
+					</ol>
+				</div>
+			</header>
+
+			<section class="panel" id="setupPanel">
+				<div class="panel-header">
+					<div>
+						<h2>Controls</h2>
+						<p class="note">
+							Progressions are fixed at 8 chords. Major uses I at both ends,
+							minor uses vi at both ends.
+						</p>
+					</div>
+					<div class="controls">
+						<button id="btnStartAudio">Start Audio</button>
+						<button id="btnStartTest" class="secondary">
+							Start Test
+						</button>
+						<button id="btnStopTest" class="ghost">Stop</button>
+					</div>
+				</div>
+
+				<div class="config-grid" style="margin-bottom: 12px">
+					<div class="field">
+						<label for="keyInput">Key center</label>
+						<input id="keyInput" value="C" placeholder="C, Eb, F#" />
+					</div>
+					<div class="field">
+						<label>Mode</label>
+						<div class="mode-toggle">
+							<label class="mode-pill">
+								<input
+									type="radio"
+									name="mode"
+									value="major"
+									checked
+								/>
+								Major
+							</label>
+							<label class="mode-pill">
+								<input type="radio" name="mode" value="minor" />
+								Minor
+							</label>
+						</div>
+					</div>
+					<div class="field">
+						<label for="minRootInput">Lowest chord root (min)</label>
+						<input id="minRootInput" value="G2" placeholder="G2" />
+					</div>
+				</div>
+
+				<div class="progression">
+					<h3>Substitution options</h3>
+					<div id="substitutionOptions" class="mode2-rows"></div>
+				</div>
+			</section>
+
+			<section class="panel" id="liveQuestionPanel">
+				<div class="panel-header">
+					<div>
+						<h2>Live question</h2>
+						<p class="note">Replay does not reset the timer.</p>
+					</div>
+					<div class="controls">
+						<button id="btnReplay" class="ghost" disabled>
+							Replay
+						</button>
+					</div>
+				</div>
+
+				<div class="stats">
+					<div class="stat-box">
+						Key center: <span id="keyLabel">-</span>
+					</div>
+					<div class="stat-box">
+						Chord: <span id="chordLabel">-</span>
+					</div>
+					<div class="stat-box">
+						Chord tonic: <span id="tonicLabel">-</span>
+					</div>
+					<div class="stat-box">
+						Question: <span id="questionLabel">-</span>
+					</div>
+					<div class="stat-box">
+						Time: <span id="timeLabel">0.00s</span>
+					</div>
+					<div class="stat-box">
+						Attempts: <span id="attemptsLabel">0</span>
+					</div>
+				</div>
+
+				<div id="status" class="status">Configure a test and press Start.</div>
+				<div class="answer-form" id="answerForm">
+					<div class="field">
+						<label for="degreeSelect">Degree</label>
+						<select id="degreeSelect"></select>
+					</div>
+					<div class="field">
+						<label for="qualitySelect">Quality</label>
+						<select id="qualitySelect"></select>
+					</div>
+					<div class="field">
+						<label>&nbsp;</label>
+						<button id="btnSubmitAnswer" class="secondary" type="button">
+							Submit
+						</button>
+					</div>
+				</div>
+			</section>
+
+			<section id="completionPanel" class="panel hidden">
+				<div class="panel-header">
+					<h2>Test complete</h2>
+				</div>
+				<p id="completionSummary" class="note"></p>
+				<div id="rerunControls" class="controls"></div>
+			</section>
+
+			<section class="panel" id="recordsPanel">
+				<div class="panel-header">
+					<div>
+						<h2>Records</h2>
+					</div>
+					<div class="records-tabs" role="tablist">
+						<button
+							class="tab-pill active"
+							data-records-tab="tests"
+							role="tab"
+							aria-selected="true"
+						>
+							Recent tests
+						</button>
+						<button
+							class="tab-pill"
+							data-records-tab="stats"
+							role="tab"
+							aria-selected="false"
+						>
+							Stats
+						</button>
+					</div>
+				</div>
+				<div class="records-panels">
+					<div
+						class="records-panel active"
+						data-records-panel="tests"
+					>
+						<div class="records-actions">
+							<div class="field">
+								<label for="testFilterSelect">Filter</label>
+								<select id="testFilterSelect"></select>
+							</div>
+						</div>
+						<div id="testRecords" class="tests-table"></div>
+					</div>
+					<div class="records-panel" data-records-panel="stats">
+						<div class="records-actions">
+							<div class="field">
+								<label for="statsGroupSelect">Group by</label>
+								<select id="statsGroupSelect">
+									<option value="quality">By quality</option>
+									<option value="degree">By degree</option>
+								</select>
+							</div>
+							<div class="field">
+								<label for="statsOrderSelect">Order by</label>
+								<select id="statsOrderSelect">
+									<option value="name">Name</option>
+									<option value="time-asc">Time ↑</option>
+									<option value="time-desc">Time ↓</option>
+								</select>
+							</div>
+						</div>
+						<div id="statsRecords" class="stats-table"></div>
+					</div>
+				</div>
+			</section>
+		</main>
+
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/15.3.5/Tone.js"></script>
+		<script type="module" src="../js/progression-id/app.js"></script>
+		<script>
+			document.addEventListener("click", (event) => {
+				document
+					.querySelectorAll(".nav-dropdown[open]")
+					.forEach((dropdown) => {
+						if (!dropdown.contains(event.target)) {
+							dropdown.removeAttribute("open");
+						}
+					});
+			});
+		</script>
+	</body>
+</html>

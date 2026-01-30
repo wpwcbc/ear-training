@@ -669,6 +669,18 @@ textarea {
 	align-items: center;
 }
 
+.option-grid {
+	display: grid;
+	gap: 10px;
+	grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+@media (min-width: 1100px) {
+	.option-grid {
+		grid-template-columns: repeat(4, minmax(180px, 1fr));
+	}
+}
+
 .mode2-row.is-disabled {
 	opacity: 0.6;
 }
@@ -946,6 +958,17 @@ textarea {
 	background: #6aa88f;
 }
 
+.answer-form {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+	gap: 12px;
+	margin-top: 12px;
+}
+
+.answer-form .field {
+	gap: 6px;
+}
+
 .note {
 	font-size: 13px;
 	color: var(--muted);
@@ -979,6 +1002,61 @@ textarea {
 .completion-stat .value {
 	font-weight: 600;
 	font-size: 15px;
+}
+
+.heatmap-controls {
+	display: grid;
+	gap: 12px;
+	grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+	margin-bottom: 12px;
+}
+
+.heatmap-grid {
+	display: grid;
+	gap: 8px;
+}
+
+.heatmap-header {
+	font-size: 12px;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	color: var(--muted);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 6px;
+}
+
+.heatmap-header--row {
+	justify-content: flex-start;
+	padding-left: 10px;
+}
+
+.heatmap-cell {
+	border-radius: 12px;
+	border: 1px solid var(--line);
+	padding: 10px 8px;
+	text-align: center;
+	font-size: 13px;
+	display: grid;
+	gap: 4px;
+	align-content: center;
+	min-height: 56px;
+}
+
+.heatmap-cell.is-empty {
+	background: rgba(61, 64, 91, 0.06);
+	color: var(--muted);
+}
+
+.heatmap-value {
+	font-weight: 600;
+	color: var(--indigo);
+}
+
+.heatmap-sub {
+	font-size: 11px;
+	color: var(--muted);
 }
 
 .records-grid {
@@ -1264,6 +1342,15 @@ textarea {
 		minmax(130px, 1fr)
 		minmax(190px, 1.4fr);
 	min-width: 730px;
+}
+
+.tests-table--compact .stats-row {
+	grid-template-columns:
+		minmax(200px, 2.2fr)
+		minmax(90px, 1fr)
+		minmax(120px, 1fr)
+		minmax(180px, 1.4fr);
+	min-width: 600px;
 }
 
 @media (max-width: 860px) {

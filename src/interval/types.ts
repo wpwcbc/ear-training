@@ -4,6 +4,8 @@ import type { ProgressionPreset } from "../core/progressions.js";
 export type ActiveMode = "mode1" | "mode2";
 export type StatsGrouping = "quality" | "degree";
 export type StatsOrder = "name" | "time-asc" | "time-desc";
+export type IntervalMode = "harmonic" | "melodic";
+export type MelodicDirection = "up" | "down";
 
 export interface Mode1Config {
 	keyCenter: string;
@@ -12,6 +14,7 @@ export interface Mode1Config {
 	minRootMidi: number;
 	loopTimes: number;
 	loopKeyShift: number;
+	intervalMode: IntervalMode;
 }
 
 export interface Mode2Config {
@@ -20,6 +23,7 @@ export interface Mode2Config {
 	enabledQualities: ChordQuality[];
 	minRootNote: string;
 	minRootMidi: number;
+	intervalMode: IntervalMode;
 }
 
 export interface BaseQueueEvent {
@@ -32,6 +36,7 @@ export interface BaseQueueEvent {
 	quality: ChordQuality;
 	allowedUpperDegrees: string[];
 	playChord: boolean;
+	intervalMode: IntervalMode;
 }
 
 export interface Mode1QueueEvent extends BaseQueueEvent {
@@ -54,15 +59,18 @@ export type Question = QueueEvent & {
 	chordNotes: string[];
 	chordVelocities: number[];
 	leadVelocity: number;
-	upperNote: string;
-	correctUpperDegree: string;
+	intervalNotes: [string, string];
+	intervalLabel: string;
+	intervalMode: IntervalMode;
+	melodicDirection: MelodicDirection;
+	intervalSemis: number;
 };
 
 export interface QuestionRecord {
 	keyCenter: string;
 	chordDegree: string;
 	chordQuality: ChordQuality;
-	upperDegree: string;
+	intervalLabel: string;
 	timeSeconds: number;
 	attempts: number;
 }

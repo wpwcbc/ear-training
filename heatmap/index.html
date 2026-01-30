@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width,initial-scale=1" />
+		<title>Ear Train Station — Weakness Heatmap</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+			rel="stylesheet"
+		/>
+		<link rel="stylesheet" href="../degreeTrainer.css" />
+	</head>
+	<body>
+		<nav class="site-nav" aria-label="Primary">
+			<div class="nav-inner">
+				<a class="nav-brand" href="../">
+					<svg class="nav-logo" viewBox="0 0 48 48" aria-hidden="true">
+						<path
+							d="M8 32c0-9 7-16 16-16s16 7 16 16"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="3"
+							stroke-linecap="round"
+						/>
+						<circle cx="16" cy="32" r="3" fill="currentColor" />
+						<circle cx="32" cy="32" r="3" fill="currentColor" />
+						<path
+							d="M14 40h20"
+							stroke="currentColor"
+							stroke-width="3"
+							stroke-linecap="round"
+						/>
+					</svg>
+					<span>Ear Train Station</span>
+				</a>
+				<input
+					type="checkbox"
+					id="navToggle"
+					class="nav-toggle"
+					aria-label="Toggle navigation"
+				/>
+				<label class="nav-toggle-btn" for="navToggle">
+					<span></span>
+					<span></span>
+					<span></span>
+				</label>
+				<div class="nav-links">
+					<a class="nav-link nav-back" href="../">← Back to home</a>
+					<details class="nav-dropdown">
+						<summary class="nav-link nav-link--dropdown">Tools</summary>
+						<div class="nav-dropdown-menu">
+							<a class="nav-link" href="../drone/?mode=ambience"
+								>Progression Drone Ambience</a
+							>
+							<a class="nav-link" href="../drone/?mode=metronome"
+								>Progression Drone Metronome</a
+							>
+						</div>
+					</details>
+					<details class="nav-dropdown">
+						<summary class="nav-link nav-link--dropdown">Trainings</summary>
+						<div class="nav-dropdown-menu">
+							<a class="nav-link" href="../degree-trainer/"
+								>Scale Degree Trainer</a
+							>
+							<a class="nav-link" href="../interval-trainer/"
+								>Interval Trainer</a
+							>
+							<a class="nav-link" href="../chord-quality/"
+								>Chord Quality ID</a
+							>
+							<a class="nav-link" href="../progression-id/"
+								>Progression ID</a
+							>
+						</div>
+					</details>
+					<details class="nav-dropdown">
+						<summary class="nav-link nav-link--dropdown">Insights</summary>
+						<div class="nav-dropdown-menu">
+							<a class="nav-link" href="./">Weakness Heatmap</a>
+						</div>
+					</details>
+				</div>
+			</div>
+		</nav>
+		<main>
+			<header class="hero">
+				<div>
+					<span class="tag">Weakness Heatmap</span>
+					<h1>See the gaps. Target the work.</h1>
+					<p>
+						Visualize average response times and attempts across keys,
+						degrees, and qualities. Use it to spot weak spots across all
+						exercises.
+					</p>
+				</div>
+				<div class="panel">
+					<h3>How to read</h3>
+					<ol>
+						<li>Pick an exercise or view overall results.</li>
+						<li>Select the axes you want to compare.</li>
+						<li>Darker cells mean slower responses.</li>
+					</ol>
+				</div>
+			</header>
+
+			<section class="panel">
+				<div class="panel-header">
+					<div>
+						<h2>Heatmap</h2>
+					</div>
+				</div>
+				<div class="records-actions heatmap-controls">
+					<div class="field">
+						<label for="exerciseSelect">Exercise</label>
+						<select id="exerciseSelect"></select>
+					</div>
+					<div class="field">
+						<label for="xAxisSelect">X axis</label>
+						<select id="xAxisSelect">
+							<option value="key">Key</option>
+							<option value="degree">Degree</option>
+							<option value="quality">Quality</option>
+						</select>
+					</div>
+					<div class="field">
+						<label for="yAxisSelect">Y axis</label>
+						<select id="yAxisSelect">
+							<option value="degree">Degree</option>
+							<option value="quality">Quality</option>
+							<option value="key">Key</option>
+						</select>
+					</div>
+				</div>
+				<div id="heatmapLegend" class="note"></div>
+				<div id="heatmapContainer"></div>
+			</section>
+		</main>
+
+		<script type="module" src="../js/heatmap/app.js"></script>
+		<script>
+			document.addEventListener("click", (event) => {
+				document
+					.querySelectorAll(".nav-dropdown[open]")
+					.forEach((dropdown) => {
+						if (!dropdown.contains(event.target)) {
+							dropdown.removeAttribute("open");
+						}
+					});
+			});
+		</script>
+	</body>
+</html>
