@@ -1,40 +1,12 @@
 import { dom } from "./dom.js";
 import { state, STORAGE_KEYS, TEST_FILTER_ALL, } from "./state.js";
 import { QUALITY_OPTIONS, VOICING_OPTIONS } from "./options.js";
-const loadHistory = (key) => {
-    try {
-        const raw = localStorage.getItem(key);
-        if (!raw) {
-            return [];
-        }
-        const parsed = JSON.parse(raw);
-        return Array.isArray(parsed) ? parsed : [];
-    }
-    catch {
-        return [];
-    }
-};
-const saveHistory = (key, records) => {
-    localStorage.setItem(key, JSON.stringify(records));
-};
+import { loadList, prependManyWithLimit, prependWithLimit } from "../core/storage.js";
 export const addRecord = (key, record, limit = 200) => {
-    const records = loadHistory(key);
-    records.unshift(record);
-    if (records.length > limit) {
-        records.length = limit;
-    }
-    saveHistory(key, records);
+    prependWithLimit(key, record, limit);
 };
 export const addRecords = (key, newRecords, limit = 200) => {
-    if (!newRecords.length) {
-        return;
-    }
-    const records = loadHistory(key);
-    const merged = [...newRecords, ...records];
-    if (merged.length > limit) {
-        merged.length = limit;
-    }
-    saveHistory(key, merged);
+    prependManyWithLimit(key, newRecords, limit);
 };
 const updateStatsToggle = () => {
     dom.elStatsGroupSelect.value = state.statsGrouping;
@@ -53,8 +25,8 @@ const updateRecordsTabs = () => {
     });
 };
 export const renderRecords = () => {
-    const tests = loadHistory(STORAGE_KEYS.testHistory);
-    const questions = loadHistory(STORAGE_KEYS.questionHistory);
+    const tests = loadList(STORAGE_KEYS.testHistory);
+    const questions = loadList(STORAGE_KEYS.questionHistory);
     dom.elTestRecords.innerHTML = "";
     dom.elStatsRecords.innerHTML = "";
     const buildCell = (text, className = "stats-cell") => {

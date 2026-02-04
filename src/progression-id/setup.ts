@@ -1,44 +1,36 @@
 import * as theory from "../core/theory.js";
+import { buildToggleRow } from "../ui/toggles.js";
 import { dom } from "./dom.js";
 import type { Config, ProgressionMode, SubstitutionSettings } from "./types.js";
-
-const buildToggleRow = (
-	label: string,
-	id: string,
-	checked: boolean,
-): HTMLDivElement => {
-	const row = document.createElement("div");
-	row.className = "mode2-row simple";
-	row.dataset.optionId = id;
-
-	const field = document.createElement("div");
-	field.className = "field";
-	const toggle = document.createElement("label");
-	toggle.className = "toggle";
-	const input = document.createElement("input");
-	input.type = "checkbox";
-	input.checked = checked;
-	input.dataset.optionId = id;
-	input.className = "option-toggle";
-	const track = document.createElement("span");
-	track.className = "toggle-track";
-	const text = document.createElement("span");
-	text.className = "toggle-label";
-	text.textContent = label;
-	toggle.append(input, track, text);
-	field.append(toggle);
-	row.append(field);
-	return row;
-};
 
 export const renderSubstitutionOptions = (): void => {
 	dom.elSubstitutionOptions.innerHTML = "";
 	dom.elSubstitutionOptions.append(
-		buildToggleRow("Secondary maj ii-V", "secondaryMajorIIV", true),
-		buildToggleRow("Secondary minor iiø-Vb9", "secondaryMinorIIVb9", false),
-		buildToggleRow("Tritone substitutions", "tritoneSubs", true),
-		buildToggleRow("Backdoor (iv–bVII)", "backdoor", true),
-		buildToggleRow("Borrowed bVII / bVI", "borrowed", true),
+		buildToggleRow({
+			label: "Secondary maj ii-V",
+			id: "secondaryMajorIIV",
+			checked: true,
+		}),
+		buildToggleRow({
+			label: "Secondary minor iiø-Vb9",
+			id: "secondaryMinorIIVb9",
+			checked: false,
+		}),
+		buildToggleRow({
+			label: "Tritone substitutions",
+			id: "tritoneSubs",
+			checked: true,
+		}),
+		buildToggleRow({
+			label: "Backdoor (iv–bVII)",
+			id: "backdoor",
+			checked: true,
+		}),
+		buildToggleRow({
+			label: "Borrowed bVII / bVI",
+			id: "borrowed",
+			checked: true,
+		}),
 	);
 };
 

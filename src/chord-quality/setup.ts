@@ -1,4 +1,5 @@
 import * as theory from "../core/theory.js";
+import { buildToggleRow } from "../ui/toggles.js";
 import { dom } from "./dom.js";
 import {
 	FIVE_NOTE_QUALITIES,
@@ -7,39 +8,10 @@ import {
 } from "./options.js";
 import type { Config, QualityId, VoicingId } from "./types.js";
 
-const buildToggleRow = (
-	label: string,
-	id: string,
-	checked: boolean,
-): HTMLDivElement => {
-	const row = document.createElement("div");
-	row.className = "mode2-row simple";
-	row.dataset.optionId = id;
-
-	const field = document.createElement("div");
-	field.className = "field";
-	const toggle = document.createElement("label");
-	toggle.className = "toggle";
-	const input = document.createElement("input");
-	input.type = "checkbox";
-	input.checked = checked;
-	input.dataset.optionId = id;
-	input.className = "option-toggle";
-	const track = document.createElement("span");
-	track.className = "toggle-track";
-	const text = document.createElement("span");
-	text.className = "toggle-label";
-	text.textContent = label;
-	toggle.append(input, track, text);
-	field.append(toggle);
-	row.append(field);
-	return row;
-};
-
 export const renderQualityOptions = (): void => {
 	dom.elQualityOptions.innerHTML = "";
 	QUALITY_OPTIONS.forEach((option) => {
-		const row = buildToggleRow(option.label, option.id, true);
+		const row = buildToggleRow({ label: option.label, id: option.id, checked: true });
 		dom.elQualityOptions.appendChild(row);
 	});
 };
@@ -47,7 +19,7 @@ export const renderQualityOptions = (): void => {
 export const renderVoicingOptions = (): void => {
 	dom.elVoicingOptions.innerHTML = "";
 	VOICING_OPTIONS.forEach((option) => {
-		const row = buildToggleRow(option.label, option.id, true);
+		const row = buildToggleRow({ label: option.label, id: option.id, checked: true });
 		dom.elVoicingOptions.appendChild(row);
 	});
 };
@@ -61,7 +33,11 @@ export const renderInversionOptions = (): void => {
 		{ id: "3", label: "3rd inversion", checked: false },
 	];
 	labels.forEach((option) => {
-		const row = buildToggleRow(option.label, option.id, option.checked);
+		const row = buildToggleRow({
+			label: option.label,
+			id: option.id,
+			checked: option.checked,
+		});
 		dom.elInversionOptions.appendChild(row);
 	});
 };

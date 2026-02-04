@@ -15,30 +15,10 @@ import type {
 	VoicingId,
 } from "./types.js";
 
-const loadHistory = <T>(key: string): T[] => {
-	try {
-		const raw = localStorage.getItem(key);
-		if (!raw) {
-			return [];
-		}
-		const parsed = JSON.parse(raw);
-		return Array.isArray(parsed) ? (parsed as T[]) : [];
-	} catch {
-		return [];
-	}
-};
-
-const saveHistory = <T>(key: string, records: T[]): void => {
-	localStorage.setItem(key, JSON.stringify(records));
-};
+import { loadList, prependManyWithLimit, prependWithLimit } from "../core/storage.js";
 
 export const addRecord = <T>(key: string, record: T, limit = 200): void => {
-	const records = loadHistory<T>(key);
-	records.unshift(record);
-	if (records.length > limit) {
-		records.length = limit;
-	}
-	saveHistory(key, records);
+	prependWithLimit(key, record, limit);
 };
 
 export const addRecords = <T>(
@@ -46,15 +26,7 @@ export const addRecords = <T>(
 	newRecords: T[],
 	limit = 200,
 ): void => {
-	if (!newRecords.length) {
-		return;
-	}
-	const records = loadHistory<T>(key);
-	const merged = [...newRecords, ...records];
-	if (merged.length > limit) {
-		merged.length = limit;
-	}
-	saveHistory(key, merged);
+	prependManyWithLimit(key, newRecords, limit);
 };
 
 const updateStatsToggle = (): void => {
@@ -76,8 +48,8 @@ const updateRecordsTabs = (): void => {
 };
 
 export const renderRecords = (): void => {
-	const tests = loadHistory<TestRecord>(STORAGE_KEYS.testHistory);
-	const questions = loadHistory<QuestionRecord>(STORAGE_KEYS.questionHistory);
+	const tests = loadList<TestRecord>(STORAGE_KEYS.testHistory);
+	const questions = loadList<QuestionRecord>(STORAGE_KEYS.questionHistory);
 
 	dom.elTestRecords.innerHTML = "";
 	dom.elStatsRecords.innerHTML = "";
