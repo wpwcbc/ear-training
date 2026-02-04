@@ -91,9 +91,9 @@
 					<span class="tag">Progression ID</span>
 					<h1>Hear the roadmap. Name each stop.</h1>
 					<p>
-						Listen to an eight-chord progression and identify each chord
-						degree and quality. Progressions include diatonic moves and
-						common substitutions.
+						Listen to a four-chord progression and identify the two middle
+						chords. Progressions include diatonic moves and common
+						substitutions.
 					</p>
 				</div>
 				<div class="panel">
@@ -102,7 +102,7 @@
 						<li>Choose key center and mode.</li>
 						<li>Select which substitutions to include.</li>
 						<li>Press Start Audio, then Start Test.</li>
-						<li>Pick degree + quality for each chord.</li>
+						<li>Pick degree + quality for the two middle chords.</li>
 					</ol>
 				</div>
 			</header>
@@ -112,7 +112,7 @@
 					<div>
 						<h2>Controls</h2>
 						<p class="note">
-							Progressions are fixed at 8 chords. Major uses I at both ends,
+							Progressions are fixed at 4 chords. Major uses I at both ends,
 							minor uses vi at both ends.
 						</p>
 					</div>
@@ -178,7 +178,7 @@
 						Key center: <span id="keyLabel">-</span>
 					</div>
 					<div class="stat-box">
-						Chord: <span id="chordLabel">-</span>
+						Progression: <span id="chordLabel">-</span>
 					</div>
 					<div class="stat-box">
 						Chord tonic: <span id="tonicLabel">-</span>
@@ -195,14 +195,28 @@
 				</div>
 
 				<div id="status" class="status">Configure a test and press Start.</div>
-				<div class="answer-form" id="answerForm">
-					<div class="field">
-						<label for="degreeSelect">Degree</label>
-						<select id="degreeSelect"></select>
+				<div class="answer-form answer-form--double" id="answerForm">
+					<div class="answer-block">
+						<h4>Middle chord 1</h4>
+						<div class="field">
+							<label for="degreeSelectA">Degree</label>
+							<select id="degreeSelectA"></select>
+						</div>
+						<div class="field">
+							<label for="qualitySelectA">Quality</label>
+							<select id="qualitySelectA"></select>
+						</div>
 					</div>
-					<div class="field">
-						<label for="qualitySelect">Quality</label>
-						<select id="qualitySelect"></select>
+					<div class="answer-block">
+						<h4>Middle chord 2</h4>
+						<div class="field">
+							<label for="degreeSelectB">Degree</label>
+							<select id="degreeSelectB"></select>
+						</div>
+						<div class="field">
+							<label for="qualitySelectB">Quality</label>
+							<select id="qualitySelectB"></select>
+						</div>
 					</div>
 					<div class="field">
 						<label>&nbsp;</label>
@@ -228,7 +242,7 @@
 					</div>
 					<div class="records-tabs" role="tablist">
 						<button
-							class="tab-pill active"
+							class="records-tab-button active"
 							data-records-tab="tests"
 							role="tab"
 							aria-selected="true"
@@ -236,7 +250,7 @@
 							Recent tests
 						</button>
 						<button
-							class="tab-pill"
+							class="records-tab-button"
 							data-records-tab="stats"
 							role="tab"
 							aria-selected="false"
@@ -245,11 +259,7 @@
 						</button>
 					</div>
 				</div>
-				<div class="records-panels">
-					<div
-						class="records-panel active"
-						data-records-panel="tests"
-					>
+				<div class="records-tab-panel active" data-records-panel="tests">
 						<div class="records-actions">
 							<div class="field">
 								<label for="testFilterSelect">Filter</label>
@@ -257,8 +267,8 @@
 							</div>
 						</div>
 						<div id="testRecords" class="tests-table"></div>
-					</div>
-					<div class="records-panel" data-records-panel="stats">
+				</div>
+				<div class="records-tab-panel" data-records-panel="stats">
 						<div class="records-actions">
 							<div class="field">
 								<label for="statsGroupSelect">Group by</label>
@@ -277,7 +287,6 @@
 							</div>
 						</div>
 						<div id="statsRecords" class="stats-table"></div>
-					</div>
 				</div>
 			</section>
 		</main>

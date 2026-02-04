@@ -1,62 +1,93 @@
 import type { ChordSpec, Config, ProgressionMode } from "./types.js";
 import type { ChordQuality } from "../core/constants.js";
 
-const MAJOR_POOL: ChordSpec[] = [
-	{ degree: "1", quality: "maj7" },
-	{ degree: "2", quality: "m7" },
-	{ degree: "3", quality: "m7" },
-	{ degree: "4", quality: "maj7" },
-	{ degree: "5", quality: "7" },
-	{ degree: "6", quality: "m7" },
-	{ degree: "7", quality: "m7b5" },
-];
+type CadenceId =
+	| "diatonic"
+	| "secondaryMajorIIV"
+	| "secondaryMinorIIVb9"
+	| "tritoneSubs"
+	| "backdoor"
+	| "borrowed";
 
-const MINOR_POOL: ChordSpec[] = [
-	{ degree: "6", quality: "m7" },
-	{ degree: "2", quality: "m7b5" },
-	{ degree: "b3", quality: "maj7" },
-	{ degree: "4", quality: "m7" },
-	{ degree: "5", quality: "7" },
-	{ degree: "b6", quality: "maj7" },
-	{ degree: "b7", quality: "7" },
-];
-
-const SECONDARY_DOMS: ChordSpec[] = [
-	{ degree: "2", quality: "7" },
-	{ degree: "3", quality: "7" },
-	{ degree: "4", quality: "7" },
-	{ degree: "5", quality: "7" },
-	{ degree: "6", quality: "7" },
-];
-
-const TRITONE_SUBS: ChordSpec[] = [{ degree: "b2", quality: "7" }];
-const BACKDOOR: ChordSpec[] = [
-	{ degree: "4", quality: "m7" },
-	{ degree: "b7", quality: "7" },
-];
-const BORROWED: ChordSpec[] = [
-	{ degree: "b7", quality: "7" },
-	{ degree: "b6", quality: "maj7" },
-];
+const CADENCES: Record<ProgressionMode, Record<CadenceId, ChordSpec[]>> = {
+	major: {
+		diatonic: [
+			{ degree: "2", quality: "m7" },
+			{ degree: "5", quality: "7" },
+		],
+		secondaryMajorIIV: [
+			{ degree: "2", quality: "m7" },
+			{ degree: "5", quality: "7" },
+		],
+		secondaryMinorIIVb9: [
+			{ degree: "2", quality: "m7b5" },
+			{ degree: "5", quality: "7b9" },
+		],
+		tritoneSubs: [
+			{ degree: "2", quality: "m7" },
+			{ degree: "b2", quality: "7" },
+		],
+		backdoor: [
+			{ degree: "4", quality: "m7" },
+			{ degree: "b7", quality: "7" },
+		],
+		borrowed: [
+			{ degree: "b6", quality: "maj7" },
+			{ degree: "b7", quality: "7" },
+		],
+	},
+	minor: {
+		diatonic: [
+			{ degree: "2", quality: "m7" },
+			{ degree: "5", quality: "7" },
+		],
+		secondaryMajorIIV: [
+			{ degree: "2", quality: "m7" },
+			{ degree: "5", quality: "7" },
+		],
+		secondaryMinorIIVb9: [
+			{ degree: "2", quality: "m7b5" },
+			{ degree: "5", quality: "7b9" },
+		],
+		tritoneSubs: [
+			{ degree: "2", quality: "m7" },
+			{ degree: "b2", quality: "7" },
+		],
+		backdoor: [
+			{ degree: "4", quality: "m7" },
+			{ degree: "b7", quality: "7" },
+		],
+		borrowed: [
+			{ degree: "b6", quality: "maj7" },
+			{ degree: "b7", quality: "7" },
+		],
+	},
+};
 
 const pickRandom = <T>(list: T[]): T =>
 	list[Math.floor(Math.random() * list.length)];
 
-const buildPool = (mode: ProgressionMode, config: Config): ChordSpec[] => {
-	const base = mode === "major" ? [...MAJOR_POOL] : [...MINOR_POOL];
-	if (config.substitutions.secondaryDominants) {
-		base.push(...SECONDARY_DOMS);
+const buildCadencePool = (config: Config): CadenceId[] => {
+	const pool: CadenceId[] = [];
+	if (config.substitutions.secondaryMajorIIV) {
+		pool.push("secondaryMajorIIV");
+	}
+	if (config.substitutions.secondaryMinorIIVb9) {
+		pool.push("secondaryMinorIIVb9");
 	}
 	if (config.substitutions.tritoneSubs) {
-		base.push(...TRITONE_SUBS);
+		pool.push("tritoneSubs");
 	}
 	if (config.substitutions.backdoor) {
-		base.push(...BACKDOOR);
+		pool.push("backdoor");
 	}
 	if (config.substitutions.borrowed) {
-		base.push(...BORROWED);
+		pool.push("borrowed");
 	}
-	return base;
+	if (!pool.length) {
+		pool.push("diatonic");
+	}
+	return pool;
 };
 
 const getTonic = (mode: ProgressionMode): ChordSpec =>
@@ -64,33 +95,12 @@ const getTonic = (mode: ProgressionMode): ChordSpec =>
 		? { degree: "1", quality: "maj7" }
 		: { degree: "6", quality: "m7" };
 
-const dedupeRepeat = (pool: ChordSpec[], last: ChordSpec): ChordSpec => {
-	if (pool.length < 2) {
-		return pickRandom(pool);
-	}
-	let candidate = pickRandom(pool);
-	let guard = 0;
-	while (
-		guard < 8 &&
-		candidate.degree === last.degree &&
-		candidate.quality === last.quality
-	) {
-		candidate = pickRandom(pool);
-		guard += 1;
-	}
-	return candidate;
-};
-
 export const buildProgression = (config: Config): ChordSpec[] => {
-	const pool = buildPool(config.mode, config);
+	const cadencePool = buildCadencePool(config);
+	const cadence = pickRandom(cadencePool);
 	const tonic = getTonic(config.mode);
-	const chords: ChordSpec[] = [tonic];
-	for (let i = 0; i < 6; i += 1) {
-		const next = dedupeRepeat(pool, chords[chords.length - 1]);
-		chords.push(next);
-	}
-	chords.push(tonic);
-	return chords;
+	const middle = CADENCES[config.mode][cadence] ?? CADENCES[config.mode].diatonic;
+	return [tonic, ...middle, tonic];
 };
 
 export const qualityLabel = (quality: ChordQuality): string => quality;

@@ -12,6 +12,8 @@ export const dom = {
 	elMinRootInput: getById<HTMLInputElement>("minRootInput"),
 	elQualityOptions: getById<HTMLDivElement>("qualityOptions"),
 	elVoicingOptions: getById<HTMLDivElement>("voicingOptions"),
+	elInversionOptions: getById<HTMLDivElement>("inversionOptions"),
+	elInversionWarning: getById<HTMLParagraphElement>("inversionWarning"),
 	elPlaybackRadios: Array.from(
 		document.querySelectorAll<HTMLInputElement>(
 			"input[name='playbackMode']",
@@ -23,6 +25,7 @@ export const dom = {
 	elStatus: getById<HTMLDivElement>("status"),
 	elAnswers: getById<HTMLDivElement>("answers"),
 	elCompletionPanel: getById<HTMLElement>("completionPanel"),
+	elCompletionStats: getById<HTMLDivElement>("completionStats"),
 	elCompletionSummary: getById<HTMLParagraphElement>("completionSummary"),
 	elRerunControls: getById<HTMLDivElement>("rerunControls"),
 	elLiveQuestionPanel: getById<HTMLElement>("liveQuestionPanel"),

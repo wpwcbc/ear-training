@@ -17,14 +17,18 @@ export const ensureAudioReady = async () => {
     chordSynth.volume.value = -8;
     audioReady = true;
 };
-export const schedulePlayback = (question) => {
+export const schedulePlayback = (chords) => {
     if (!chordSynth) {
         return;
     }
-    const now = Tone.now();
+    let time = Tone.now();
     const chordDuration = 1.05;
-    question.chordNotes.forEach((note, index) => {
-        const velocity = question.chordVelocities?.[index] ?? 0.8;
-        chordSynth?.triggerAttackRelease(note, chordDuration, now, velocity);
+    const gap = 0.08;
+    chords.forEach((chord) => {
+        chord.chordNotes.forEach((note, index) => {
+            const velocity = chord.chordVelocities?.[index] ?? 0.8;
+            chordSynth?.triggerAttackRelease(note, chordDuration, time, velocity);
+        });
+        time += chordDuration + gap;
     });
 };

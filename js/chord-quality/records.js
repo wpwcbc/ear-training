@@ -128,10 +128,10 @@ export const renderRecords = () => {
     const getQualityIndex = (quality) => qualityOrder.get(quality) ?? Number.MAX_SAFE_INTEGER;
     const getVoicingIndex = (voicing) => voicingOrder.get(voicing) ?? Number.MAX_SAFE_INTEGER;
     const compareByName = (a, b, grouping) => {
-        if (grouping === "quality") {
-            return getQualityIndex(a.key) - getQualityIndex(b.key);
+        if (grouping === "voicing") {
+            return getVoicingIndex(a.key) - getVoicingIndex(b.key);
         }
-        return getVoicingIndex(a.key) - getVoicingIndex(b.key);
+        return Number(a.key) - Number(b.key);
     };
     const compareByTime = (a, b, desc) => (desc ? b.avgTime - a.avgTime : a.avgTime - b.avgTime);
     if (!questions.length) {
@@ -150,33 +150,105 @@ export const renderRecords = () => {
     });
     const grouping = state.statsGrouping;
     const modeLabels = [
-        { id: "stacked", label: "Stacked chord" },
-        { id: "arpeggiated", label: "One by one" },
+        { id: "stacked", label: "Stacked" },
+        { id: "arpeggiated", label: "Arpeggiated" },
     ];
+    const qualityLabelMap = new Map(QUALITY_OPTIONS.map((quality) => [quality.id, quality.label]));
+    const voicingLabelMap = new Map(VOICING_OPTIONS.map((voicing) => [voicing.id, voicing.label]));
+    const formatQualityLabel = (quality) => qualityLabelMap.get(quality) ?? quality;
+    const formatVoicingLabel = (voicing) => voicingLabelMap.get(voicing) ?? voicing;
+    const formatInversionLabel = (value) => {
+        const numeric = Number(value);
+        if (!Number.isFinite(numeric)) {
+            return "Inversion ?";
+        }
+        if (numeric === 0) {
+            return "Root position";
+        }
+        const suffix = numeric % 10 === 1 && numeric % 100 !== 11
+            ? "st"
+            : numeric % 10 === 2 && numeric % 100 !== 12
+                ? "nd"
+                : numeric % 10 === 3 && numeric % 100 !== 13
+                    ? "rd"
+                    : "th";
+        return `${numeric}${suffix} inversion`;
+    };
     const buildStatsTable = (records) => {
-        const grouped = groupRecords(records, (record) => grouping === "quality" ? record.chordQuality : record.chordVoicing);
-        let groupedStats = Array.from(grouped.entries()).map(([key, items]) => {
+        const getInversionKey = (record) => {
+            const inversion = Number.isFinite(record.chordInversion)
+                ? record.chordInversion
+                : 0;
+            return String(inversion);
+        };
+        const groupedByQuality = groupRecords(records, (record) => record.chordQuality);
+        let qualityStats = Array.from(groupedByQuality.entries()).map(([key, items]) => {
             const stats = calculateStats(items);
-            return { key, ...stats };
+            return { key, items, ...stats };
         });
         if (state.statsOrder === "name") {
-            groupedStats = groupedStats.sort((a, b) => compareByName(a, b, grouping));
+            qualityStats = qualityStats.sort((a, b) => getQualityIndex(a.key) - getQualityIndex(b.key));
         }
         else {
             const desc = state.statsOrder === "time-desc";
-            groupedStats = groupedStats.sort((a, b) => compareByTime(a, b, desc));
+            qualityStats = qualityStats.sort((a, b) => compareByTime(a, b, desc));
         }
         const table = document.createElement("div");
         table.className = "stats-table";
         const header = document.createElement("div");
         header.className = "stats-row stats-header";
-        header.append(buildCell(grouping === "quality" ? "Quality" : "Voicing", "stats-cell stats-label"), buildCell("Avg time"), buildCell("Avg attempts"), buildCell("Questions"));
+        header.append(buildCell("Quality", "stats-cell stats-label"), buildCell("Avg time"), buildCell("Avg attempts"), buildCell("Questions"));
         table.appendChild(header);
-        groupedStats.forEach((group) => {
+        qualityStats.forEach((group) => {
             const row = document.createElement("div");
-            row.className = "stats-row";
-            row.append(buildCell(group.key, "stats-cell stats-label"), buildCell(`${group.avgTime}s`), buildCell(String(group.avgAttempts)), buildCell(String(group.count)));
+            row.className = "stats-row stats-row--group";
+            row.append(buildCell(formatQualityLabel(group.key), "stats-cell stats-label"), buildCell(`${group.avgTime}s`), buildCell(String(group.avgAttempts)), buildCell(String(group.count)));
             table.appendChild(row);
+            const primaryGrouped = groupRecords(group.items, (record) => grouping === "voicing" ? record.chordVoicing : getInversionKey(record));
+            let primaryStats = Array.from(primaryGrouped.entries()).map(([key, items]) => {
+                const stats = calculateStats(items);
+                return { key, items, ...stats };
+            });
+            if (state.statsOrder === "name") {
+                primaryStats = primaryStats.sort((a, b) => compareByName(a, b, grouping));
+            }
+            else {
+                const desc = state.statsOrder === "time-desc";
+                primaryStats = primaryStats.sort((a, b) => compareByTime(a, b, desc));
+            }
+            const secondaryGrouping = grouping === "voicing" ? "inversion" : "voicing";
+            primaryStats.forEach((primary) => {
+                const primaryRow = document.createElement("div");
+                primaryRow.className = "stats-row stats-row--sub";
+                const primaryLabel = grouping === "voicing"
+                    ? formatVoicingLabel(primary.key)
+                    : formatInversionLabel(primary.key);
+                primaryRow.append(buildCell(`↳ ${primaryLabel}`, "stats-cell stats-label"), buildCell(`${primary.avgTime}s`), buildCell(String(primary.avgAttempts)), buildCell(String(primary.count)));
+                table.appendChild(primaryRow);
+                const secondaryGrouped = groupRecords(primary.items, (record) => secondaryGrouping === "voicing"
+                    ? record.chordVoicing
+                    : getInversionKey(record));
+                let secondaryStats = Array.from(secondaryGrouped.entries()).map(([key, items]) => {
+                    const stats = calculateStats(items);
+                    return { key, ...stats };
+                });
+                if (state.statsOrder === "name") {
+                    secondaryStats = secondaryStats.sort((a, b) => compareByName(a, b, secondaryGrouping));
+                }
+                else {
+                    const desc = state.statsOrder === "time-desc";
+                    secondaryStats = secondaryStats.sort((a, b) => compareByTime(a, b, desc));
+                }
+                secondaryStats.forEach((secondary) => {
+                    const secondaryRow = document.createElement("div");
+                    secondaryRow.className = "stats-row stats-row--sub stats-row--sub2";
+                    const secondaryLabel = secondaryGrouping === "voicing"
+                        ? formatVoicingLabel(secondary.key)
+                        : formatInversionLabel(secondary.key);
+                    secondaryRow.append(buildCell(`↳↳ ${secondaryLabel}`, "stats-cell stats-label"), buildCell(`${secondary.avgTime}s`), buildCell(String(secondary.avgAttempts)), buildCell(String(secondary.count)));
+                    table.appendChild(secondaryRow);
+                });
+            });
         });
         return table;
     };
@@ -201,8 +273,7 @@ export const initRecords = () => {
     updateRecordsTabs();
     renderRecords();
     dom.elStatsGroupSelect.addEventListener("change", () => {
-        state.statsGrouping = dom.elStatsGroupSelect
-            .value;
+        state.statsGrouping = dom.elStatsGroupSelect.value;
         renderRecords();
     });
     dom.elStatsOrderSelect.addEventListener("change", () => {

@@ -1,7 +1,7 @@
 import * as audio from "./audio.js";
 import { dom } from "./dom.js";
 import { initRecords } from "./records.js";
-import { renderQualityOptions, renderVoicingOptions, readConfig } from "./setup.js";
+import { initChordQualityControls, readConfig } from "./setup.js";
 import { resetLiveDisplay, setStatus, startTest, stopTest, replayCurrent } from "./test.js";
 import { state } from "./state.js";
 
@@ -40,7 +40,6 @@ dom.btnReplay.addEventListener("click", () => {
 	replayCurrent();
 });
 
-renderQualityOptions();
-renderVoicingOptions();
+initChordQualityControls();
 resetLiveDisplay();
 initRecords();

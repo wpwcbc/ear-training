@@ -5,7 +5,8 @@ export type StatsGrouping = "quality" | "degree";
 export type StatsOrder = "name" | "time-asc" | "time-desc";
 
 export interface SubstitutionSettings {
-	secondaryDominants: boolean;
+	secondaryMajorIIV: boolean;
+	secondaryMinorIIVb9: boolean;
 	tritoneSubs: boolean;
 	backdoor: boolean;
 	borrowed: boolean;
@@ -29,11 +30,10 @@ export interface Question {
 	total: number;
 	keyCenter: string;
 	mode: ProgressionMode;
-	chord: ChordSpec;
-	chordRootMidi: number;
-	chordTonicName: string;
-	chordNotes: string[];
-	chordVelocities: number[];
+	progression: ChordSpec[];
+	chordTonicNames: string[];
+	chordNotes: string[][];
+	chordVelocities: number[][];
 }
 
 export interface QuestionRecord {

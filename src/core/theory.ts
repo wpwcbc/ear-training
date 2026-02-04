@@ -101,6 +101,8 @@ export function buildChordIntervals(quality: ChordQuality): number[] {
 			return [0, 3, 7, 10];
 		case "7":
 			return [0, 4, 7, 10];
+		case "7b9":
+			return [0, 4, 7, 10, 13];
 		case "m7b5":
 			return [0, 3, 6, 10];
 		case "dim7":
@@ -118,6 +120,20 @@ export function buildChordVoicing(
 	rootMidi: number,
 	intervals: number[],
 ): number[] {
+	if (intervals.length >= 5) {
+		const third: number = intervals[1];
+		const fifth: number = intervals[2];
+		const seventh: number = intervals[3];
+		const tension: number = intervals[4];
+		const voiced: number[] = [
+			rootMidi,
+			rootMidi + fifth,
+			rootMidi + seventh,
+			rootMidi + third + 12,
+			rootMidi + tension + 12,
+		];
+		return voiced.sort((a, b) => a - b);
+	}
 	const third: number = intervals[1];
 	const fifth: number = intervals[2];
 	const seventh: number = intervals[3];

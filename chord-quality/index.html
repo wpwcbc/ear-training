@@ -16,7 +16,11 @@
 		<nav class="site-nav" aria-label="Primary">
 			<div class="nav-inner">
 				<a class="nav-brand" href="../">
-					<svg class="nav-logo" viewBox="0 0 48 48" aria-hidden="true">
+					<svg
+						class="nav-logo"
+						viewBox="0 0 48 48"
+						aria-hidden="true"
+					>
 						<path
 							d="M8 32c0-9 7-16 16-16s16 7 16 16"
 							fill="none"
@@ -49,7 +53,9 @@
 				<div class="nav-links">
 					<a class="nav-link nav-back" href="../">← Back to home</a>
 					<details class="nav-dropdown">
-						<summary class="nav-link nav-link--dropdown">Tools</summary>
+						<summary class="nav-link nav-link--dropdown">
+							Tools
+						</summary>
 						<div class="nav-dropdown-menu">
 							<a class="nav-link" href="../drone/?mode=ambience"
 								>Progression Drone Ambience</a
@@ -60,7 +66,9 @@
 						</div>
 					</details>
 					<details class="nav-dropdown">
-						<summary class="nav-link nav-link--dropdown">Trainings</summary>
+						<summary class="nav-link nav-link--dropdown">
+							Trainings
+						</summary>
 						<div class="nav-dropdown-menu">
 							<a class="nav-link" href="../degree-trainer/"
 								>Scale Degree Trainer</a
@@ -75,7 +83,9 @@
 						</div>
 					</details>
 					<details class="nav-dropdown">
-						<summary class="nav-link nav-link--dropdown">Insights</summary>
+						<summary class="nav-link nav-link--dropdown">
+							Insights
+						</summary>
 						<div class="nav-dropdown-menu">
 							<a class="nav-link" href="../heatmap/"
 								>Weakness Heatmap</a
@@ -91,8 +101,8 @@
 					<span class="tag">Chord Quality</span>
 					<h1>Hear the color. Name the chord.</h1>
 					<p>
-						Identify chord qualities across a range of voicings. Focus
-						on the color of each harmony and answer quickly.
+						Identify chord qualities across a range of voicings.
+						Focus on the color of each harmony and answer quickly.
 					</p>
 				</div>
 				<div class="panel">
@@ -125,7 +135,7 @@
 				<div class="config-grid" style="margin-bottom: 12px">
 					<div class="field">
 						<label>Playback</label>
-						<div class="mode-toggle">
+						<div class="mode-toggle mode-toggle--plain">
 							<label class="mode-pill">
 								<input
 									type="radio"
@@ -133,7 +143,7 @@
 									value="stacked"
 									checked
 								/>
-								Stacked chord
+								Stacked
 							</label>
 							<label class="mode-pill">
 								<input
@@ -141,7 +151,7 @@
 									name="playbackMode"
 									value="arpeggiated"
 								/>
-								One by one
+								Arpeggiated
 							</label>
 						</div>
 					</div>
@@ -155,19 +165,36 @@
 						/>
 					</div>
 					<div class="field">
-						<label for="minRootInput">Lowest chord root (min)</label>
+						<label for="minRootInput"
+							>Lowest chord root (min)</label
+						>
 						<input id="minRootInput" value="G2" placeholder="G2" />
 					</div>
 				</div>
 
 				<div class="progression">
 					<h3>Chord qualities</h3>
-					<div id="qualityOptions" class="mode2-rows option-grid"></div>
+					<div
+						id="qualityOptions"
+						class="mode2-rows option-grid"
+					></div>
 				</div>
 
 				<div class="progression" style="margin-top: 18px">
 					<h3>Voicings to include</h3>
-					<div id="voicingOptions" class="mode2-rows option-grid"></div>
+					<div
+						id="voicingOptions"
+						class="mode2-rows option-grid"
+					></div>
+				</div>
+
+				<div class="progression" style="margin-top: 18px">
+					<h3>Inversions</h3>
+					<p class="note" id="inversionWarning"></p>
+					<div
+						id="inversionOptions"
+						class="mode2-rows option-grid"
+					></div>
 				</div>
 			</section>
 
@@ -178,7 +205,9 @@
 						<p class="note">Replay does not reset the timer.</p>
 					</div>
 					<div class="controls">
-						<button id="btnReplay" class="ghost" disabled>Replay</button>
+						<button id="btnReplay" class="ghost" disabled>
+							Replay
+						</button>
 						<button id="btnStopTest" class="ghost">Stop</button>
 					</div>
 				</div>
@@ -195,7 +224,9 @@
 					</div>
 				</div>
 
-				<div id="status" class="status">Configure a test and press Start.</div>
+				<div id="status" class="status">
+					Configure a test and press Start.
+				</div>
 				<div id="answers" class="answers"></div>
 			</section>
 
@@ -203,6 +234,7 @@
 				<div class="panel-header">
 					<h2>Test complete</h2>
 				</div>
+				<div id="completionStats" class="completion-stats"></div>
 				<p id="completionSummary" class="note"></p>
 				<div id="rerunControls" class="controls"></div>
 			</section>
@@ -235,7 +267,10 @@
 						Stats
 					</button>
 				</div>
-				<div class="records-tab-panel active" data-records-panel="tests">
+				<div
+					class="records-tab-panel active"
+					data-records-panel="tests"
+				>
 					<div class="records-block">
 						<div class="records-header">
 							<h3>Recent tests</h3>
@@ -255,18 +290,28 @@
 							<h3>Stats</h3>
 							<div class="records-actions">
 								<div class="records-select">
-									<label for="statsGroupSelect">Group by</label>
+									<label for="statsGroupSelect"
+										>Subgroup by</label
+									>
 									<select id="statsGroupSelect">
-										<option value="quality">By quality</option>
-										<option value="voicing">By voicing</option>
+										<option value="voicing">
+											By voicing
+										</option>
+										<option value="inversion">
+											By inversion
+										</option>
 									</select>
 								</div>
 								<div class="records-select">
-									<label for="statsOrderSelect">Order by</label>
+									<label for="statsOrderSelect"
+										>Order by</label
+									>
 									<select id="statsOrderSelect">
 										<option value="name">Name</option>
 										<option value="time-asc">Time ↑</option>
-										<option value="time-desc">Time ↓</option>
+										<option value="time-desc">
+											Time ↓
+										</option>
 									</select>
 								</div>
 							</div>

@@ -74,7 +74,7 @@ const KEY_ORDER = [
 const QUALITY_ORDER = [
 	...CHORD_QUALITIES,
 	...QUALITY_OPTIONS.map((option) => option.id).filter((id) =>
-		["maj6", "m6", "sus2", "sus4", "7b9", "7#9", "7alt"].includes(id),
+		["maj6", "m6", "sus4", "7b9", "7#9", "7alt"].includes(id),
 	),
 ];
 

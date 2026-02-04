@@ -125,7 +125,9 @@ body {
 	padding: 8px 12px;
 	border-radius: 999px;
 	border: 1px solid transparent;
-	transition: background 0.2s ease, border-color 0.2s ease;
+	transition:
+		background 0.2s ease,
+		border-color 0.2s ease;
 }
 
 .nav-link:hover {
@@ -378,6 +380,14 @@ button.ghost {
 	gap: 12px;
 	flex-wrap: wrap;
 	margin-bottom: 12px;
+}
+
+.mode-toggle--plain {
+	margin-bottom: 0;
+	padding: 0;
+	border: none;
+	background: transparent;
+	box-shadow: none;
 }
 
 .mode-pill {
@@ -965,6 +975,24 @@ textarea {
 	margin-top: 12px;
 }
 
+.answer-form--double {
+	grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+	align-items: end;
+}
+
+.answer-block {
+	display: grid;
+	gap: 10px;
+}
+
+.answer-block h4 {
+	margin: 0;
+	font-size: 13px;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	color: var(--muted);
+}
+
 .answer-form .field {
 	gap: 6px;
 }
@@ -1276,7 +1304,7 @@ textarea {
 .stats-table {
 	display: grid;
 	gap: 0;
-	border: 1px solid var(--line);
+	border: none;
 	border-radius: 14px;
 	overflow-x: auto;
 	background: #ffffff;
@@ -1332,6 +1360,11 @@ textarea {
 .stats-row--sub .stats-label {
 	padding-left: 22px;
 	color: var(--indigo);
+}
+
+.stats-row--sub2 .stats-label {
+	padding-left: 38px;
+	color: var(--muted);
 }
 
 .tests-table .stats-row {

@@ -34,7 +34,8 @@ const buildToggleRow = (
 export const renderSubstitutionOptions = (): void => {
 	dom.elSubstitutionOptions.innerHTML = "";
 	dom.elSubstitutionOptions.append(
-		buildToggleRow("Secondary dominants", "secondaryDominants", true),
+		buildToggleRow("Secondary maj ii-V", "secondaryMajorIIV", true),
+		buildToggleRow("Secondary minor iiø-Vb9", "secondaryMinorIIVb9", false),
 		buildToggleRow("Tritone substitutions", "tritoneSubs", true),
 		buildToggleRow("Backdoor (iv–bVII)", "backdoor", true),
 		buildToggleRow("Borrowed bVII / bVI", "borrowed", true),
@@ -61,7 +62,8 @@ const readSubstitutionSettings = (): SubstitutionSettings => {
 		toggles.find((toggle) => toggle.dataset.optionId === id)?.checked ??
 		false;
 	return {
-		secondaryDominants: setting("secondaryDominants"),
+		secondaryMajorIIV: setting("secondaryMajorIIV"),
+		secondaryMinorIIVb9: setting("secondaryMinorIIVb9"),
 		tritoneSubs: setting("tritoneSubs"),
 		backdoor: setting("backdoor"),
 		borrowed: setting("borrowed"),

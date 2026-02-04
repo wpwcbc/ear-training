@@ -17,6 +17,7 @@ const velocityMap: ChordToneVelocity = {
 	third: CHORD_VOICE_VELOCITIES.third,
 	fifth: CHORD_VOICE_VELOCITIES.fifth,
 	seventh: CHORD_VOICE_VELOCITIES.seventh,
+	tension: 0.5,
 };
 
 export const getVelocityForTone = (tone: keyof ChordToneVelocity): number =>

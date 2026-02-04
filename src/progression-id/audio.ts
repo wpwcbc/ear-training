@@ -28,14 +28,18 @@ export const ensureAudioReady = async (): Promise<void> => {
 	audioReady = true;
 };
 
-export const schedulePlayback = (question: PlaybackQuestion): void => {
+export const schedulePlayback = (chords: PlaybackQuestion[]): void => {
 	if (!chordSynth) {
 		return;
 	}
-	const now = Tone.now();
+	let time = Tone.now();
 	const chordDuration = 1.05;
-	question.chordNotes.forEach((note, index) => {
-		const velocity = question.chordVelocities?.[index] ?? 0.8;
-		chordSynth?.triggerAttackRelease(note, chordDuration, now, velocity);
+	const gap = 0.08;
+	chords.forEach((chord) => {
+		chord.chordNotes.forEach((note, index) => {
+			const velocity = chord.chordVelocities?.[index] ?? 0.8;
+			chordSynth?.triggerAttackRelease(note, chordDuration, time, velocity);
+		});
+		time += chordDuration + gap;
 	});
 };

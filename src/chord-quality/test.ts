@@ -1,36 +1,110 @@
 import * as audio from "./audio.js";
 import { dom } from "./dom.js";
-import { QUALITY_OPTIONS, getQualityOption, getVoicingOption } from "./options.js";
+import {
+	FIVE_NOTE_QUALITIES,
+	QUALITY_OPTIONS,
+	getQualityOption,
+	getVoicingOption,
+} from "./options.js";
 import { addRecord, addRecords, renderRecords } from "./records.js";
 import { state, STORAGE_KEYS, DEFAULT_TEST_NAME } from "./state.js";
 import type { Config, Question, QualityId, VoicingId } from "./types.js";
 import * as theory from "../core/theory.js";
 import { RANDOM_ROOTS } from "../core/constants.js";
 
-const TONE_LABELS: Array<"root" | "third" | "fifth" | "seventh"> = [
+const BASE_TONE_LABELS = ["root", "third", "fifth", "seventh"] as const;
+const EXTENDED_TONE_LABELS = [
 	"root",
 	"third",
 	"fifth",
 	"seventh",
-];
+	"tension",
+] as const;
+type ToneLabel = (typeof EXTENDED_TONE_LABELS)[number];
+
+const applyInversion = (
+	intervals: number[],
+	labels: ToneLabel[],
+	inversion: number,
+): { intervals: number[]; labels: ToneLabel[] } => {
+	const count = intervals.length;
+	if (!count) {
+		return { intervals, labels };
+	}
+	const shift = ((inversion % count) + count) % count;
+	if (!shift) {
+		return { intervals, labels };
+	}
+	const headIntervals = intervals
+		.slice(0, shift)
+		.map((interval) => interval + 12);
+	const headLabels = labels.slice(0, shift);
+	return {
+		intervals: [...intervals.slice(shift), ...headIntervals],
+		labels: [...labels.slice(shift), ...headLabels],
+	};
+};
 
 const buildVoicing = (
 	rootMidi: number,
 	intervals: number[],
 	voicingId: string,
-): { midis: number[]; tones: Array<"root" | "third" | "fifth" | "seventh"> } => {
+	inversion: number,
+): { midis: number[]; tones: ToneLabel[] } => {
 	const voicing = getVoicingOption(voicingId as VoicingId);
-	if (!voicing) {
+	const isFiveTone = intervals.length === 5;
+	const baseLabels = (
+		isFiveTone ? [...EXTENDED_TONE_LABELS] : [...BASE_TONE_LABELS]
+	) as ToneLabel[];
+	const { intervals: invertedIntervals, labels: invertedLabels } =
+		applyInversion(
+			intervals,
+			baseLabels.slice(0, intervals.length),
+			inversion,
+		);
+
+	if (!voicing || voicingId === "closed") {
 		return {
-			midis: intervals.map((interval) => rootMidi + interval),
-			tones: TONE_LABELS,
+			midis: invertedIntervals.map((interval) => rootMidi + interval),
+			tones: invertedLabels,
 		};
 	}
+
+	if (isFiveTone) {
+		const rootIndex = invertedLabels.indexOf("root");
+		const rootInterval =
+			rootIndex >= 0 ? invertedIntervals[rootIndex] : invertedIntervals[0];
+		const rootMidiNote = rootMidi + rootInterval;
+		const upperIntervals = invertedIntervals.filter(
+			(_, index) => index !== rootIndex,
+		);
+		const upperLabels = invertedLabels.filter(
+			(_, index) => index !== rootIndex,
+		);
+		const midis = [
+			rootMidiNote,
+			...voicing.order.map(
+				(toneIndex, index) =>
+					rootMidi +
+					upperIntervals[toneIndex] +
+					voicing.octaves[index],
+			),
+		];
+		const tones: ToneLabel[] = [
+			"root",
+			...voicing.order.map(
+				(toneIndex) => upperLabels[toneIndex] as ToneLabel,
+			),
+		];
+		return { midis, tones };
+	}
+
 	const midis = voicing.order.map(
-		(toneIndex, index) => rootMidi + intervals[toneIndex] + voicing.octaves[index],
+		(toneIndex, index) =>
+			rootMidi + invertedIntervals[toneIndex] + voicing.octaves[index],
 	);
-	const tones = voicing.order.map(
-		(toneIndex) => TONE_LABELS[toneIndex] || "root",
+	const tones: ToneLabel[] = voicing.order.map(
+		(toneIndex) => invertedLabels[toneIndex] || "root",
 	);
 	return { midis, tones };
 };
@@ -40,11 +114,13 @@ const buildQueue = (config: Config): Question[] => {
 	for (let i = 0; i < config.totalQuestions; i += 1) {
 		const quality = theory.pickRandom(config.enabledQualities);
 		const voicing = theory.pickRandom(config.enabledVoicings);
+		const inversion = theory.pickRandom(config.enabledInversions);
 		queue.push({
 			index: i,
 			total: config.totalQuestions,
 			quality,
 			voicing,
+			inversion,
 			playbackMode: config.playbackMode,
 			chordRootMidi: 0,
 			chordTonicName: "",
@@ -58,19 +134,29 @@ const buildQueue = (config: Config): Question[] => {
 const buildQuestion = (question: Question, config: Config): Question => {
 	const chordRootName = theory.pickRandom(RANDOM_ROOTS);
 	let chordRootMidi = theory.computeChordRootMidiFromNote(chordRootName, 1);
-	chordRootMidi = theory.clampRootMidiToMin(chordRootMidi, config.minRootMidi);
+	chordRootMidi = theory.clampRootMidiToMin(
+		chordRootMidi,
+		config.minRootMidi,
+	);
 	const chordTonicName = chordRootName.replace("b", "b");
 	const qualityOption = getQualityOption(question.quality);
-	const intervals = qualityOption?.intervals ?? [0, 4, 7, 11];
+	const intervalSets = qualityOption?.intervalSets ?? [[0, 4, 7, 11]];
+	const intervals = theory.pickRandom(intervalSets);
+	const effectiveInversion =
+		intervals.length === 5 && FIVE_NOTE_QUALITIES.includes(question.quality)
+			? 0
+			: question.inversion;
 	const { midis, tones } = buildVoicing(
 		chordRootMidi,
 		intervals,
 		question.voicing,
+		effectiveInversion,
 	);
 	const chordVelocities = tones.map((tone) => audio.getVelocityForTone(tone));
 
 	return {
 		...question,
+		inversion: effectiveInversion,
 		chordRootMidi,
 		chordTonicName,
 		chordNotes: midis.map(theory.midiToNoteNameSharp),
@@ -113,6 +199,7 @@ export const resetLiveDisplay = (): void => {
 	setStatus("Configure a test and press Start.");
 	dom.btnReplay.disabled = true;
 	dom.elCompletionPanel.classList.add("hidden");
+	dom.elCompletionStats.innerHTML = "";
 	dom.elRerunControls.innerHTML = "";
 };
 
@@ -143,11 +230,11 @@ const handleAnswer = (selectedQuality: QualityId): void => {
 	dom.elAttemptsLabel.textContent = String(state.attempts);
 
 	if (selectedQuality === state.currentQuestion.quality) {
-		const elapsedSeconds =
-			(performance.now() - state.startPerfMs) / 1000;
+		const elapsedSeconds = (performance.now() - state.startPerfMs) / 1000;
 		state.currentQuestionRecords.push({
 			chordQuality: state.currentQuestion.quality,
 			chordVoicing: state.currentQuestion.voicing,
+			chordInversion: state.currentQuestion.inversion,
 			timeSeconds: Number(elapsedSeconds.toFixed(3)),
 			attempts: state.attempts,
 			playbackMode: state.currentQuestion.playbackMode,
@@ -175,16 +262,20 @@ const finishTest = (): void => {
 
 	const questionCount = state.currentQuestionRecords.length || 1;
 	const avgTime =
-		state.currentQuestionRecords.reduce((sum, rec) => sum + rec.timeSeconds, 0) /
-		questionCount;
+		state.currentQuestionRecords.reduce(
+			(sum, rec) => sum + rec.timeSeconds,
+			0,
+		) / questionCount;
 	const avgAttempts =
-		state.currentQuestionRecords.reduce((sum, rec) => sum + rec.attempts, 0) /
-		questionCount;
+		state.currentQuestionRecords.reduce(
+			(sum, rec) => sum + rec.attempts,
+			0,
+		) / questionCount;
 
 	const modeLabel =
 		state.lastConfig?.playbackMode === "arpeggiated"
-			? "One by one"
-			: "Stacked chord";
+			? "Arpeggiated"
+			: "Stacked";
 	addRecord(STORAGE_KEYS.testHistory, {
 		progressionName: `${DEFAULT_TEST_NAME} — ${modeLabel}`,
 		avgTimeSeconds: Number(avgTime.toFixed(3)),
@@ -192,13 +283,31 @@ const finishTest = (): void => {
 		datetime: new Date().toISOString(),
 	});
 	addRecords(STORAGE_KEYS.questionHistory, state.currentQuestionRecords);
+	renderRecords();
 
 	state.currentQuestionRecords = [];
 	setStatus("Test complete. Run again when ready.", "ok");
 	dom.elCompletionPanel.classList.remove("hidden");
-	dom.elCompletionSummary.textContent = `Avg time: ${avgTime.toFixed(
-		3,
-	)}s · Avg attempts: ${avgAttempts.toFixed(2)}`;
+	dom.elCompletionStats.innerHTML = "";
+	const completionItems = [
+		{ label: "Playback", value: modeLabel },
+		{ label: "Avg time", value: `${avgTime.toFixed(3)}s` },
+		{ label: "Avg attempts", value: avgAttempts.toFixed(2) },
+	];
+	completionItems.forEach((item) => {
+		const card = document.createElement("div");
+		card.className = "completion-stat";
+		const label = document.createElement("div");
+		label.className = "label";
+		label.textContent = item.label;
+		const value = document.createElement("div");
+		value.className = "value";
+		value.textContent = item.value;
+		card.append(label, value);
+		dom.elCompletionStats.appendChild(card);
+	});
+	dom.elCompletionSummary.textContent =
+		"Run again when you are ready for another set.";
 	dom.elRerunControls.innerHTML = "";
 
 	const btnAgain = document.createElement("button");
@@ -209,7 +318,6 @@ const finishTest = (): void => {
 		}
 	});
 	dom.elRerunControls.append(btnAgain);
-	renderRecords();
 };
 
 const loadQuestion = (): void => {
@@ -232,6 +340,7 @@ export const startTest = (config: Config): void => {
 	state.lastConfig = config;
 	state.enabledQualities = config.enabledQualities;
 	state.enabledVoicings = config.enabledVoicings;
+	state.enabledInversions = config.enabledInversions;
 	state.questionQueue = buildQueue(config);
 	state.questionIndex = 0;
 	dom.elCompletionPanel.classList.add("hidden");

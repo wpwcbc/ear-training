@@ -3,7 +3,7 @@ import { dom } from "./dom.js";
 import { addRecord, addRecords, renderRecords } from "./records.js";
 import { state, STORAGE_KEYS } from "./state.js";
 import { buildProgression } from "./progression.js";
-import { CHORD_VOICE_VELOCITIES, CHORD_QUALITIES } from "../core/constants.js";
+import { CHORD_VOICE_VELOCITIES } from "../core/constants.js";
 import * as theory from "../core/theory.js";
 const DEGREE_OPTIONS = [
     "1",
@@ -20,7 +20,14 @@ const DEGREE_OPTIONS = [
     "b6",
     "b7",
 ];
-const ANSWER_QUALITIES = CHORD_QUALITIES.filter((quality) => ["maj7", "m7", "7", "m7b5", "dim7"].includes(quality));
+const ANSWER_QUALITIES = [
+    "maj7",
+    "m7",
+    "7",
+    "7b9",
+    "m7b5",
+    "dim7",
+];
 const startTimer = () => {
     state.startPerfMs = performance.now();
     if (state.timerHandle) {
@@ -60,93 +67,137 @@ export const resetLiveDisplay = () => {
     dom.elRerunControls.innerHTML = "";
 };
 const populateAnswerSelects = () => {
-    dom.elDegreeSelect.innerHTML = "";
-    DEGREE_OPTIONS.forEach((degree) => {
-        const option = document.createElement("option");
-        option.value = degree;
-        option.textContent = degree;
-        dom.elDegreeSelect.appendChild(option);
-    });
-    dom.elQualitySelect.innerHTML = "";
-    ANSWER_QUALITIES.forEach((quality) => {
-        const option = document.createElement("option");
-        option.value = quality;
-        option.textContent = quality;
-        dom.elQualitySelect.appendChild(option);
-    });
+    const fillDegree = (select) => {
+        select.innerHTML = "";
+        DEGREE_OPTIONS.forEach((degree) => {
+            const option = document.createElement("option");
+            option.value = degree;
+            option.textContent = degree;
+            select.appendChild(option);
+        });
+    };
+    const fillQuality = (select) => {
+        select.innerHTML = "";
+        ANSWER_QUALITIES.forEach((quality) => {
+            const option = document.createElement("option");
+            option.value = quality;
+            option.textContent =
+                quality === "m7b5" ? "m7b5 (ø)" : quality === "7b9" ? "7♭9" : quality;
+            select.appendChild(option);
+        });
+    };
+    fillDegree(dom.elDegreeSelectA);
+    fillDegree(dom.elDegreeSelectB);
+    fillQuality(dom.elQualitySelectA);
+    fillQuality(dom.elQualitySelectB);
 };
 const buildQueue = (config) => {
     const progression = buildProgression(config);
-    return progression.map((chord, index) => ({
-        index,
-        total: progression.length,
-        keyCenter: config.keyCenter,
-        mode: config.mode,
-        chord,
-        chordRootMidi: 0,
-        chordTonicName: "",
-        chordNotes: [],
-        chordVelocities: [],
-    }));
+    return [
+        {
+            index: 0,
+            total: 1,
+            keyCenter: config.keyCenter,
+            mode: config.mode,
+            progression,
+            chordTonicNames: [],
+            chordNotes: [],
+            chordVelocities: [],
+        },
+    ];
 };
 const buildQuestion = (question, config) => {
-    let chordRootMidi = theory.computeChordRootMidiFromKey(config.keyCenter, question.chord.degree, 1);
-    chordRootMidi = theory.clampRootMidiToMin(chordRootMidi, config.minRootMidi);
+    const chordTonicNames = [];
+    const chordNotes = [];
+    const chordVelocities = [];
     const keyPc = theory.noteNameToPitchClassSemitones(config.keyCenter);
-    const offset = theory.parseDegreeToSemitones(question.chord.degree);
-    const chordTonicName = theory.pcToNameSharp(keyPc + offset);
-    const chordIntervals = theory.buildChordIntervals(question.chord.quality);
-    const chordMidis = theory.buildChordVoicing(chordRootMidi, chordIntervals);
-    const chordVelocities = chordMidis.map((_, index) => {
-        if (index === 0)
-            return CHORD_VOICE_VELOCITIES.root;
-        if (index === 1)
-            return CHORD_VOICE_VELOCITIES.fifth;
-        if (index === 2)
-            return CHORD_VOICE_VELOCITIES.seventh;
-        return CHORD_VOICE_VELOCITIES.third;
+    question.progression.forEach((chord) => {
+        let chordRootMidi = theory.computeChordRootMidiFromKey(config.keyCenter, chord.degree, 1);
+        chordRootMidi = theory.clampRootMidiToMin(chordRootMidi, config.minRootMidi);
+        const offset = theory.parseDegreeToSemitones(chord.degree);
+        const chordTonicName = theory.pcToNameSharp(keyPc + offset);
+        const chordIntervals = theory.buildChordIntervals(chord.quality);
+        const chordMidis = theory.buildChordVoicing(chordRootMidi, chordIntervals);
+        const velocities = chordMidis.map((_, index) => {
+            if (index === 0)
+                return CHORD_VOICE_VELOCITIES.root;
+            if (index === 1)
+                return CHORD_VOICE_VELOCITIES.fifth;
+            if (index === 2)
+                return CHORD_VOICE_VELOCITIES.seventh;
+            if (index === 3)
+                return CHORD_VOICE_VELOCITIES.third;
+            return 0.5;
+        });
+        chordTonicNames.push(chordTonicName);
+        chordNotes.push(chordMidis.map(theory.midiToNoteNameSharp));
+        chordVelocities.push(velocities);
     });
     return {
         ...question,
-        chordRootMidi,
-        chordTonicName,
-        chordNotes: chordMidis.map(theory.midiToNoteNameSharp),
+        chordTonicNames,
+        chordNotes,
         chordVelocities,
     };
+};
+const formatProgressionLabel = (progression) => {
+    if (!progression.length) {
+        return "-";
+    }
+    const first = progression[0];
+    const last = progression[progression.length - 1];
+    return `${first.degree} ${first.quality} → ? → ? → ${last.degree} ${last.quality}`;
 };
 const renderQuestion = (question) => {
     const total = state.questionQueue.length;
     const position = state.questionIndex + 1;
     dom.elKeyLabel.textContent = question.keyCenter;
-    dom.elChordLabel.textContent = `${question.chord.degree} ${question.chord.quality}`;
-    dom.elTonicLabel.textContent = question.chordTonicName;
+    dom.elChordLabel.textContent = formatProgressionLabel(question.progression);
+    dom.elTonicLabel.textContent = question.chordTonicNames[0] || "-";
     dom.elQuestionLabel.textContent = `${position} / ${total}`;
     state.attempts = 0;
     dom.elAttemptsLabel.textContent = "0";
-    setStatus("Select degree and quality.");
-    dom.elDegreeSelect.value = DEGREE_OPTIONS[0];
-    dom.elQualitySelect.value = ANSWER_QUALITIES[0];
+    setStatus("Select degree and quality for the two middle chords.");
+    dom.elDegreeSelectA.value = DEGREE_OPTIONS[0];
+    dom.elQualitySelectA.value = ANSWER_QUALITIES[0];
+    dom.elDegreeSelectB.value = DEGREE_OPTIONS[0];
+    dom.elQualitySelectB.value = ANSWER_QUALITIES[0];
 };
 const handleAnswer = () => {
     if (!state.currentQuestion) {
         return;
     }
-    const selectedDegree = dom.elDegreeSelect.value;
-    const selectedQuality = dom.elQualitySelect.value;
+    const selectedDegreeA = dom.elDegreeSelectA.value;
+    const selectedQualityA = dom.elQualitySelectA.value;
+    const selectedDegreeB = dom.elDegreeSelectB.value;
+    const selectedQualityB = dom.elQualitySelectB.value;
     state.attempts += 1;
     dom.elAttemptsLabel.textContent = String(state.attempts);
-    if (selectedDegree === state.currentQuestion.chord.degree &&
-        selectedQuality === state.currentQuestion.chord.quality) {
+    const targetA = state.currentQuestion.progression[1];
+    const targetB = state.currentQuestion.progression[2];
+    if (targetA &&
+        targetB &&
+        selectedDegreeA === targetA.degree &&
+        selectedQualityA === targetA.quality &&
+        selectedDegreeB === targetB.degree &&
+        selectedQualityB === targetB.quality) {
         const elapsedSeconds = (performance.now() - state.startPerfMs) / 1000;
-        state.currentQuestionRecords.push({
+        const baseRecord = {
             keyCenter: state.currentQuestion.keyCenter,
-            chordDegree: state.currentQuestion.chord.degree,
-            chordQuality: state.currentQuestion.chord.quality,
             timeSeconds: Number(elapsedSeconds.toFixed(3)),
             attempts: state.attempts,
+        };
+        state.currentQuestionRecords.push({
+            ...baseRecord,
+            chordDegree: targetA.degree,
+            chordQuality: targetA.quality,
+        }, {
+            ...baseRecord,
+            chordDegree: targetB.degree,
+            chordQuality: targetB.quality,
         });
         stopTimer();
-        setStatus("Correct. Moving to the next chord...", "ok");
+        setStatus("Correct. Great work!", "ok");
         dom.btnReplay.disabled = true;
         dom.btnSubmitAnswer.disabled = true;
         window.setTimeout(() => {
@@ -204,7 +255,11 @@ const loadQuestion = () => {
     startTimer();
     dom.btnReplay.disabled = false;
     dom.btnSubmitAnswer.disabled = false;
-    audio.schedulePlayback(state.currentQuestion);
+    const playbackChords = state.currentQuestion.chordNotes.map((notes, index) => ({
+        chordNotes: notes,
+        chordVelocities: state.currentQuestion?.chordVelocities[index] ?? [],
+    }));
+    audio.schedulePlayback(playbackChords);
 };
 export const startTest = (config) => {
     state.lastConfig = config;
@@ -225,7 +280,11 @@ export const replayCurrent = () => {
     if (!state.currentQuestion) {
         return;
     }
-    audio.schedulePlayback(state.currentQuestion);
+    const playbackChords = state.currentQuestion.chordNotes.map((notes, index) => ({
+        chordNotes: notes,
+        chordVelocities: state.currentQuestion?.chordVelocities[index] ?? [],
+    }));
+    audio.schedulePlayback(playbackChords);
 };
 export const initAnswers = () => {
     populateAnswerSelects();

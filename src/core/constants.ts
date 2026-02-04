@@ -2,6 +2,7 @@ export type ChordQuality =
 	| "maj7"
 	| "m7"
 	| "7"
+	| "7b9"
 	| "m7b5"
 	| "dim7"
 	| "mmaj7"
