@@ -139,26 +139,34 @@ const renderHeatmap = () => {
     }
     const xValues = uniqueAxisValues(records, xAxis);
     const yValues = uniqueAxisValues(records, yAxis);
+    const totals = new Map();
+    // Single pass aggregation: O(n) instead of filtering records per cell.
+    records.forEach((record) => {
+        const x = getAxisValue(record, xAxis);
+        const y = getAxisValue(record, yAxis);
+        const key = `${y}::${x}`;
+        const current = totals.get(key) ?? {
+            totalTime: 0,
+            totalAttempts: 0,
+            count: 0,
+        };
+        current.totalTime += record.time;
+        current.totalAttempts += record.attempts;
+        current.count += 1;
+        totals.set(key, current);
+    });
     const cellStats = new Map();
     let maxTime = 0;
-    yValues.forEach((y) => {
-        xValues.forEach((x) => {
-            const cellRecords = records.filter((record) => getAxisValue(record, xAxis) === x && getAxisValue(record, yAxis) === y);
-            if (!cellRecords.length) {
-                return;
-            }
-            const totalTime = cellRecords.reduce((sum, rec) => sum + rec.time, 0);
-            const totalAttempts = cellRecords.reduce((sum, rec) => sum + rec.attempts, 0);
-            const avgTime = totalTime / cellRecords.length;
-            const avgAttempts = totalAttempts / cellRecords.length;
-            cellStats.set(`${y}::${x}`, {
-                avgTime,
-                avgAttempts,
-                count: cellRecords.length,
-            });
-            maxTime = Math.max(maxTime, avgTime);
+    for (const [key, value] of totals.entries()) {
+        const avgTime = value.totalTime / value.count;
+        const avgAttempts = value.totalAttempts / value.count;
+        cellStats.set(key, {
+            avgTime,
+            avgAttempts,
+            count: value.count,
         });
-    });
+        maxTime = Math.max(maxTime, avgTime);
+    }
     const grid = document.createElement("div");
     grid.className = "heatmap-grid";
     grid.style.gridTemplateColumns = `minmax(120px, 0.9fr) repeat(${xValues.length}, minmax(80px, 1fr))`;
