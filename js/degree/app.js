@@ -1,5 +1,6 @@
 import { PROGRESSION_PRESETS } from "../core/progressions.js";
 import * as audio from "./audio.js";
+import { initFullscreenLive } from "../core/fullscreen.js";
 import { dom } from "./dom.js";
 import { state } from "./state.js";
 import { initVelocityControls } from "./velocity.js";
@@ -41,10 +42,13 @@ dom.btnStartTest.addEventListener("click", async () => {
             state.lastMode2Config = config;
             window.setTimeout(() => startTest(config, "mode2"), 200);
         }
-        dom.elLiveQuestionPanel.scrollIntoView({
-            behavior: "smooth",
-            block: "start",
-        });
+        const fs = document.getElementById("fullscreenToggle");
+        if (!fs?.checked) {
+            dom.elLiveQuestionPanel.scrollIntoView({
+                behavior: "smooth",
+                block: "start",
+            });
+        }
     }
     catch (err) {
         setStatus(err.message || "Unable to start.", "warn");
@@ -76,3 +80,11 @@ updateModeUI();
 resetLiveDisplay();
 setTestRunning(false);
 initRecords();
+initFullscreenLive({
+    panelId: "liveQuestionPanel",
+    toggleId: "fullscreenToggle",
+    startButtonId: "btnStartTest",
+    stopButtonId: "btnStopTest",
+    completionPanelId: "completionPanel",
+    closeOnStop: true,
+});

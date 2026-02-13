@@ -1,4 +1,5 @@
 import { RANDOM_ROOTS } from "../core/constants.js";
+import { closeFullscreenIfEnabled } from "../core/fullscreen.js";
 import * as theory from "../core/theory.js";
 import { dom } from "./dom.js";
 import { state } from "./state.js";
@@ -458,6 +459,7 @@ export const endLive = () => {
     setStatus("Live ended.", "ok");
     setDroneRunning(false);
     updateNextChordButton();
+    closeFullscreenIfEnabled("fullscreenToggle");
 };
 export const setDroneRunning = (running) => {
     state.isDroneRunning = running;
@@ -554,6 +556,7 @@ export const stopDrone = () => {
     state.loopBaseConfig = null;
     setDroneRunning(false);
     resetExerciseDisplay();
+    closeFullscreenIfEnabled("fullscreenToggle");
 };
 export const readBpm = () => {
     const bpm = Number(dom.elBpmInput.value || 80);

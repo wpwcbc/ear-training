@@ -1,4 +1,5 @@
 import * as audio from "./audio.js";
+import { initFullscreenLive } from "../core/fullscreen.js";
 import { dom } from "./dom.js";
 import { initRecords } from "./records.js";
 import { initChordQualityControls, readConfig } from "./setup.js";
@@ -22,10 +23,13 @@ dom.btnStartTest.addEventListener("click", async () => {
         const config = readConfig();
         state.lastConfig = config;
         window.setTimeout(() => startTest(config), 200);
-        dom.elLiveQuestionPanel.scrollIntoView({
-            behavior: "smooth",
-            block: "start",
-        });
+        const fs = document.getElementById("fullscreenToggle");
+        if (!fs?.checked) {
+            dom.elLiveQuestionPanel.scrollIntoView({
+                behavior: "smooth",
+                block: "start",
+            });
+        }
     }
     catch (err) {
         setStatus(err.message || "Unable to start.", "warn");
@@ -40,3 +44,11 @@ dom.btnReplay.addEventListener("click", () => {
 initChordQualityControls();
 resetLiveDisplay();
 initRecords();
+initFullscreenLive({
+    panelId: "liveQuestionPanel",
+    toggleId: "fullscreenToggle",
+    startButtonId: "btnStartTest",
+    stopButtonId: "btnStopTest",
+    completionPanelId: "completionPanel",
+    closeOnStop: true,
+});

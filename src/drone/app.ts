@@ -1,4 +1,5 @@
 import { PROGRESSION_PRESETS } from "../core/progressions.js";
+import { initFullscreenLive } from "../core/fullscreen.js";
 import * as audio from "./audio.js";
 import { dom } from "./dom.js";
 import { state } from "./state.js";
@@ -207,7 +208,15 @@ dom.btnStartDrone.addEventListener("click", async () => {
 	} catch (err) {
 		setStatus((err as Error).message || "Unable to start.", "warn");
 	} finally {
-		dom.elExercisePanel.scrollIntoView({ behavior: "smooth", block: "start" });
+		const fs = document.getElementById(
+			"fullscreenToggle",
+		) as HTMLInputElement | null;
+		if (!fs?.checked) {
+			dom.elExercisePanel.scrollIntoView({
+				behavior: "smooth",
+				block: "start",
+			});
+		}
 	}
 });
 
@@ -359,6 +368,13 @@ const init = (): void => {
 	resetExerciseDisplay();
 	setDroneRunning(false);
 	updateModeConfigFromLast();
+	initFullscreenLive({
+		panelId: "exercisePanel",
+		toggleId: "fullscreenToggle",
+		startButtonId: "btnStartDrone",
+		stopButtonId: "btnStopDrone",
+		closeOnStop: true,
+	});
 };
 
 try {

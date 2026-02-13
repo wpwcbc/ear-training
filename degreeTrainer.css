@@ -1477,3 +1477,122 @@ textarea {
 		grid-template-columns: 1fr;
 	}
 }
+/* Fullscreen live overlay */
+
+body.fullscreen-open {
+	overflow: hidden;
+}
+
+.fullscreen-overlay {
+	position: fixed;
+	inset: 0;
+	z-index: 1000;
+	display: grid;
+	place-items: stretch;
+}
+
+.fullscreen-overlay.hidden {
+	display: none;
+}
+
+.fullscreen-backdrop {
+	position: absolute;
+	inset: 0;
+	background: rgba(20, 18, 22, 0.55);
+	backdrop-filter: blur(10px);
+}
+
+.fullscreen-sheet {
+	position: relative;
+	z-index: 1;
+	height: 100%;
+	width: 100%;
+	display: grid;
+	grid-template-rows: auto 1fr;
+	background: rgba(255, 255, 255, 0.92);
+}
+
+.fullscreen-topbar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 14px 16px;
+	border-bottom: 1px solid rgba(226, 214, 204, 0.6);
+	background: rgba(255, 255, 255, 0.85);
+	backdrop-filter: blur(10px);
+}
+
+.fullscreen-title {
+	font-weight: 800;
+	font-family: "Fraunces", "Times New Roman", serif;
+	font-size: 18px;
+	color: var(--ink);
+}
+
+.fullscreen-actions {
+	display: flex;
+	gap: 10px;
+	align-items: center;
+}
+
+.fullscreen-body {
+	overflow: auto;
+	padding: 18px;
+	display: grid;
+	place-items: center;
+}
+
+/* Keep the panel readable + consistent */
+.fullscreen-body .panel {
+	width: min(1100px, 100%);
+	box-shadow: var(--shadow);
+}
+
+/* Fullscreen-specific UX scaling */
+.fullscreen-live .controls button {
+	padding: 14px 18px;
+	font-size: 16px;
+}
+
+.fullscreen-live .stats {
+	gap: 10px;
+}
+
+/* Make choice buttons larger */
+.fullscreen-live .answers button,
+.fullscreen-live .answers .answer,
+.fullscreen-live .answers .answer-button {
+	min-height: 56px;
+	font-size: 16px;
+}
+
+/* Drone progression list gets more room */
+.fullscreen-live .chord-sequence-panel {
+	margin-top: 14px;
+}
+
+/* Responsive tweaks */
+@media (max-width: 900px) {
+	.fullscreen-body {
+		padding: 14px;
+	}
+	.fullscreen-live .controls button {
+		padding: 14px 16px;
+	}
+}
+
+@media (max-width: 520px) {
+	.fullscreen-topbar {
+		padding: 12px 12px;
+	}
+	.fullscreen-body {
+		padding: 12px;
+	}
+	.fullscreen-live .controls {
+		flex-wrap: wrap;
+	}
+	.fullscreen-live .controls button {
+		width: 100%;
+	}
+}
