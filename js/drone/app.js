@@ -66,6 +66,9 @@ const applyPlaybackParam = () => {
 const updatePlaybackState = () => {
     state.playbackMode = getPlaybackMode();
     state.ambienceMode = getAmbienceMode();
+    if (state.playbackMode === "metronome") {
+        state.metronomeAdvanceMode = getMetronomeAdvanceMode();
+    }
     updatePlaybackUI();
 };
 const updateModeUI = () => {
@@ -89,6 +92,10 @@ const getActiveConfig = () => {
     return state.activeMode === "mode1"
         ? state.lastMode1Config
         : state.lastMode2Config;
+};
+const getMetronomeAdvanceMode = () => {
+    const selected = document.querySelector("input[name='metronomeAdvanceMode']:checked");
+    return selected?.value === "manual" ? "manual" : "auto";
 };
 const syncLoopForeverUI = () => {
     const isInfinite = dom.elLoopForeverToggle.checked;
@@ -142,6 +149,8 @@ dom.btnStartDrone.addEventListener("click", async () => {
         if (state.playbackMode === "metronome") {
             readBpm();
             readBeatsPerBar();
+            state.metronomeAdvanceMode = getMetronomeAdvanceMode();
+            state.metronomeQueuedNext = false;
         }
         else {
             syncAutoAdvanceState(true);
@@ -172,15 +181,20 @@ dom.btnNextChord.addEventListener("click", () => {
     if (!state.questionQueue.length) {
         return;
     }
-    if (state.playbackMode !== "ambience") {
-        return;
-    }
     const modeConfig = state.activeMode === "mode1" ? state.lastMode1Config : state.lastMode2Config;
     if (!modeConfig) {
         return;
     }
-    nextChord(modeConfig.minRootMidi);
-    updateNextChordButton();
+    if (state.playbackMode === "ambience") {
+        nextChord(modeConfig.minRootMidi);
+        updateNextChordButton();
+        return;
+    }
+    if (state.playbackMode === "metronome" &&
+        state.metronomeAdvanceMode === "manual") {
+        state.metronomeQueuedNext = true;
+        updateNextChordButton();
+    }
 });
 dom.elNextChordKeyInput.addEventListener("keydown", (event) => {
     if (event.key === "Tab") {
@@ -245,6 +259,14 @@ playbackRadios.forEach((radio) => {
         updatePlaybackState();
     });
 });
+const metronomeAdvanceRadios = document.querySelectorAll("input[name='metronomeAdvanceMode']");
+metronomeAdvanceRadios.forEach((radio) => {
+    radio.addEventListener("change", () => {
+        state.metronomeAdvanceMode = getMetronomeAdvanceMode();
+        state.metronomeQueuedNext = false;
+        updateNextChordButton();
+    });
+});
 const ambienceRadios = document.querySelectorAll("input[name='ambienceMode']");
 ambienceRadios.forEach((radio) => {
     radio.addEventListener("change", () => {
@@ -258,6 +280,8 @@ const defaultPreset = PROGRESSION_PRESETS.find((preset) => preset.id === "major-
     PROGRESSION_PRESETS.find((preset) => preset.name === "Major ii–V–I");
 const init = () => {
     setNextChordKey("Space");
+    state.metronomeAdvanceMode = getMetronomeAdvanceMode();
+    state.metronomeQueuedNext = false;
     syncLoopForeverUI();
     syncAutoAdvanceState();
     loadDefaultProgression(defaultPreset);

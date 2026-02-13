@@ -36,6 +36,7 @@ export const dom = {
     elPlaybackModeToggle: getById("playbackModeToggle"),
     elAmbienceModeToggle: getById("ambienceModeToggle"),
     elMetronomeControls: getById("metronomeControls"),
+    elMetronomeAdvanceToggle: getById("metronomeAdvanceToggle"),
     elBpmInput: getById("bpmInput"),
     elBpbInput: getById("bpbInput"),
     elDroneKeyLabel: getById("droneKeyLabel"),

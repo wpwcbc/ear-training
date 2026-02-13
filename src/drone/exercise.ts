@@ -310,6 +310,10 @@ const computeBeatsFromDuration = (
 	event: DroneQueueEvent,
 	bpb: number,
 ): { beats: number; rounded: boolean } => {
+	if (state.metronomeAdvanceMode === "manual") {
+		return { beats: 1, rounded: false };
+	}
+
 	const mode = event.durationMode || "x";
 	const value = Math.max(1, event.durationValue || 1);
 	const raw = mode === "/" ? bpb / value : value * bpb;
@@ -356,7 +360,12 @@ const runMetronomeBeat = (minRootMidi: number): void => {
 				"warn",
 			);
 		} else {
-			setStatus("Metronome running. Chords advance automatically.", "ok");
+			setStatus(
+				state.metronomeAdvanceMode === "manual"
+					? "Metronome running. Press Next chord to switch on the next beat."
+					: "Metronome running. Chords advance automatically.",
+				"ok",
+			);
 		}
 	}
 
@@ -396,10 +405,19 @@ const runMetronomeBeat = (minRootMidi: number): void => {
 			resetExerciseDisplay();
 			return;
 		}
-		if (state.metronomeBeatIndex >= state.metronomeBeatTotal) {
+		if (state.metronomeAdvanceMode === "manual") {
+			state.metronomeBeatIndex = 0;
+			state.metronomeBeatTotal = 1;
+
+			if (state.metronomeQueuedNext) {
+				state.metronomeQueuedNext = false;
+				state.questionIndex += 1;
+			}
+		} else if (state.metronomeBeatIndex >= state.metronomeBeatTotal) {
 			state.questionIndex += 1;
 			state.metronomeBeatIndex = 0;
 		}
+
 		runMetronomeBeat(minRootMidi);
 	}, state.metronomeBeatMs);
 };
@@ -407,6 +425,8 @@ const runMetronomeBeat = (minRootMidi: number): void => {
 const startMetronome = (minRootMidi: number): void => {
 	state.stopRequested = false;
 	state.metronomeBeatIndex = 0;
+	state.metronomeBeatTotal = 0;
+	state.metronomeQueuedNext = false;
 	state.metronomeTimer && window.clearTimeout(state.metronomeTimer);
 	state.metronomeTimer = null;
 	runMetronomeBeat(minRootMidi);
@@ -479,6 +499,10 @@ export const updatePlaybackUI = (): void => {
 		"hidden",
 		state.playbackMode !== "metronome",
 	);
+	dom.elMetronomeAdvanceToggle.classList.toggle(
+		"hidden",
+		state.playbackMode !== "metronome",
+	);
 	dom.elAmbienceModeToggle.classList.toggle(
 		"hidden",
 		state.playbackMode !== "ambience",
@@ -506,19 +530,30 @@ const startNextLoop = (minRootMidi: number): boolean => {
 };
 
 export const updateNextChordButton = (): void => {
-	if (
-		state.playbackMode !== "ambience" ||
-		!state.isDroneRunning ||
-		!state.questionQueue.length
-	) {
+	if (!state.isDroneRunning || !state.questionQueue.length) {
 		dom.btnNextChord.disabled = true;
 		dom.btnNextChord.textContent = "Next chord";
 		return;
 	}
+
+	const canManuallyAdvanceInMetronome =
+		state.playbackMode === "metronome" && state.metronomeAdvanceMode === "manual";
+	const canAdvance = state.playbackMode === "ambience" || canManuallyAdvanceInMetronome;
+
+	if (!canAdvance) {
+		dom.btnNextChord.disabled = true;
+		dom.btnNextChord.textContent = "Next chord";
+		return;
+	}
+
 	const hasNext =
 		state.loopForeverActive || state.questionIndex + 1 < state.questionQueue.length;
 	dom.btnNextChord.disabled = false;
-	dom.btnNextChord.textContent = hasNext ? "Next chord" : "End live";
+	if (state.playbackMode === "ambience") {
+		dom.btnNextChord.textContent = hasNext ? "Next chord" : "End live";
+	} else {
+		dom.btnNextChord.textContent = hasNext ? "Next chord" : "End";
+	}
 };
 
 export const endLive = (): void => {
@@ -549,6 +584,11 @@ export const setDroneRunning = (running: boolean): void => {
 		});
 	document
 		.querySelectorAll<HTMLInputElement>("input[name='ambienceMode']")
+		.forEach((input) => {
+			input.disabled = running;
+		});
+	document
+		.querySelectorAll<HTMLInputElement>("input[name='metronomeAdvanceMode']")
 		.forEach((input) => {
 			input.disabled = running;
 		});

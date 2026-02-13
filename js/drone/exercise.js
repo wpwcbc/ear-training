@@ -255,6 +255,9 @@ const stopMetronome = () => {
     state.metronomeBeatTotal = 0;
 };
 const computeBeatsFromDuration = (event, bpb) => {
+    if (state.metronomeAdvanceMode === "manual") {
+        return { beats: 1, rounded: false };
+    }
     const mode = event.durationMode || "x";
     const value = Math.max(1, event.durationValue || 1);
     const raw = mode === "/" ? bpb / value : value * bpb;
@@ -294,7 +297,9 @@ const runMetronomeBeat = (minRootMidi) => {
             setStatus("Metronome running. Non-integer beat counts were rounded; playback might sound unexpected.", "warn");
         }
         else {
-            setStatus("Metronome running. Chords advance automatically.", "ok");
+            setStatus(state.metronomeAdvanceMode === "manual"
+                ? "Metronome running. Press Next chord to switch on the next beat."
+                : "Metronome running. Chords advance automatically.", "ok");
         }
     }
     state.currentBarOffset =
@@ -323,7 +328,15 @@ const runMetronomeBeat = (minRootMidi) => {
             resetExerciseDisplay();
             return;
         }
-        if (state.metronomeBeatIndex >= state.metronomeBeatTotal) {
+        if (state.metronomeAdvanceMode === "manual") {
+            state.metronomeBeatIndex = 0;
+            state.metronomeBeatTotal = 1;
+            if (state.metronomeQueuedNext) {
+                state.metronomeQueuedNext = false;
+                state.questionIndex += 1;
+            }
+        }
+        else if (state.metronomeBeatIndex >= state.metronomeBeatTotal) {
             state.questionIndex += 1;
             state.metronomeBeatIndex = 0;
         }
@@ -333,6 +346,8 @@ const runMetronomeBeat = (minRootMidi) => {
 const startMetronome = (minRootMidi) => {
     state.stopRequested = false;
     state.metronomeBeatIndex = 0;
+    state.metronomeBeatTotal = 0;
+    state.metronomeQueuedNext = false;
     state.metronomeTimer && window.clearTimeout(state.metronomeTimer);
     state.metronomeTimer = null;
     runMetronomeBeat(minRootMidi);
@@ -383,6 +398,7 @@ const buildMode2Queue = (config) => {
 };
 export const updatePlaybackUI = () => {
     dom.elMetronomeControls.classList.toggle("hidden", state.playbackMode !== "metronome");
+    dom.elMetronomeAdvanceToggle.classList.toggle("hidden", state.playbackMode !== "metronome");
     dom.elAmbienceModeToggle.classList.toggle("hidden", state.playbackMode !== "ambience");
     if (state.playbackMode === "metronome") {
         stopMetronome();
@@ -405,16 +421,26 @@ const startNextLoop = (minRootMidi) => {
     return true;
 };
 export const updateNextChordButton = () => {
-    if (state.playbackMode !== "ambience" ||
-        !state.isDroneRunning ||
-        !state.questionQueue.length) {
+    if (!state.isDroneRunning || !state.questionQueue.length) {
+        dom.btnNextChord.disabled = true;
+        dom.btnNextChord.textContent = "Next chord";
+        return;
+    }
+    const canManuallyAdvanceInMetronome = state.playbackMode === "metronome" && state.metronomeAdvanceMode === "manual";
+    const canAdvance = state.playbackMode === "ambience" || canManuallyAdvanceInMetronome;
+    if (!canAdvance) {
         dom.btnNextChord.disabled = true;
         dom.btnNextChord.textContent = "Next chord";
         return;
     }
     const hasNext = state.loopForeverActive || state.questionIndex + 1 < state.questionQueue.length;
     dom.btnNextChord.disabled = false;
-    dom.btnNextChord.textContent = hasNext ? "Next chord" : "End live";
+    if (state.playbackMode === "ambience") {
+        dom.btnNextChord.textContent = hasNext ? "Next chord" : "End live";
+    }
+    else {
+        dom.btnNextChord.textContent = hasNext ? "Next chord" : "End";
+    }
 };
 export const endLive = () => {
     audio.stopAmbient();
@@ -443,6 +469,11 @@ export const setDroneRunning = (running) => {
     });
     document
         .querySelectorAll("input[name='ambienceMode']")
+        .forEach((input) => {
+        input.disabled = running;
+    });
+    document
+        .querySelectorAll("input[name='metronomeAdvanceMode']")
         .forEach((input) => {
         input.disabled = running;
     });

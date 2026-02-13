@@ -97,6 +97,9 @@ const applyPlaybackParam = (): void => {
 const updatePlaybackState = (): void => {
 	state.playbackMode = getPlaybackMode();
 	state.ambienceMode = getAmbienceMode();
+	if (state.playbackMode === "metronome") {
+		state.metronomeAdvanceMode = getMetronomeAdvanceMode();
+	}
 	updatePlaybackUI();
 };
 
@@ -122,6 +125,13 @@ const getActiveConfig = () => {
 	return state.activeMode === "mode1"
 		? state.lastMode1Config
 		: state.lastMode2Config;
+};
+
+const getMetronomeAdvanceMode = (): "auto" | "manual" => {
+	const selected = document.querySelector<HTMLInputElement>(
+		"input[name='metronomeAdvanceMode']:checked",
+	);
+	return selected?.value === "manual" ? "manual" : "auto";
 };
 
 const syncLoopForeverUI = (): void => {
@@ -179,6 +189,8 @@ dom.btnStartDrone.addEventListener("click", async () => {
 		if (state.playbackMode === "metronome") {
 			readBpm();
 			readBeatsPerBar();
+			state.metronomeAdvanceMode = getMetronomeAdvanceMode();
+			state.metronomeQueuedNext = false;
 		} else {
 			syncAutoAdvanceState(true);
 		}
@@ -207,16 +219,26 @@ dom.btnNextChord.addEventListener("click", () => {
 	if (!state.questionQueue.length) {
 		return;
 	}
-	if (state.playbackMode !== "ambience") {
-		return;
-	}
+
 	const modeConfig =
 		state.activeMode === "mode1" ? state.lastMode1Config : state.lastMode2Config;
 	if (!modeConfig) {
 		return;
 	}
-	nextChord(modeConfig.minRootMidi);
-	updateNextChordButton();
+
+	if (state.playbackMode === "ambience") {
+		nextChord(modeConfig.minRootMidi);
+		updateNextChordButton();
+		return;
+	}
+
+	if (
+		state.playbackMode === "metronome" &&
+		state.metronomeAdvanceMode === "manual"
+	) {
+		state.metronomeQueuedNext = true;
+		updateNextChordButton();
+	}
 });
 
 dom.elNextChordKeyInput.addEventListener("keydown", (event) => {
@@ -294,6 +316,17 @@ playbackRadios.forEach((radio) => {
 	});
 });
 
+const metronomeAdvanceRadios = document.querySelectorAll<HTMLInputElement>(
+	"input[name='metronomeAdvanceMode']",
+);
+metronomeAdvanceRadios.forEach((radio) => {
+	radio.addEventListener("change", () => {
+		state.metronomeAdvanceMode = getMetronomeAdvanceMode();
+		state.metronomeQueuedNext = false;
+		updateNextChordButton();
+	});
+});
+
 const ambienceRadios = document.querySelectorAll<HTMLInputElement>(
 	"input[name='ambienceMode']",
 );
@@ -312,6 +345,8 @@ const defaultPreset =
 
 const init = (): void => {
 	setNextChordKey("Space");
+	state.metronomeAdvanceMode = getMetronomeAdvanceMode();
+	state.metronomeQueuedNext = false;
 	syncLoopForeverUI();
 	syncAutoAdvanceState();
 	loadDefaultProgression(defaultPreset);
