@@ -2266,12 +2266,3 @@ html {
 		grid-template-columns: repeat(2, minmax(0, 1fr));
 	}
 }
-
-/* ---- Fullscreen: hard overrides to prevent centering/viewport bugs ---- */
-.fullscreen-sheet { height: 100dvh !important; height: 100vh !important; }
-.fullscreen-body {
-	display: block !important;
-	place-items: initial !important;
-	align-content: initial !important;
-	min-height: 0 !important;
-}

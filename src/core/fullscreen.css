@@ -31,9 +31,7 @@ html {
 .fullscreen-sheet {
 	position: relative;
 	z-index: 1;
-	/* Mobile browsers: prefer dynamic viewport when available */
 	height: 100vh;
-	height: 100dvh;
 	width: 100%;
 	display: grid;
 	grid-template-rows: 1fr;
@@ -70,15 +68,9 @@ html {
 }
 
 .fullscreen-body {
-	/* Ensure we don't inherit old grid-centering styles from earlier CSS bundles */
-	display: block;
-	place-items: initial;
-	align-content: initial;
-
 	overflow: auto;
 	-webkit-overflow-scrolling: touch;
 	padding: 18px;
-	min-height: 0;
 }
 
 .fullscreen-close {
