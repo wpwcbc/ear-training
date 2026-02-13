@@ -149,8 +149,14 @@ export const initFullscreenLive = (opts) => {
             window.setTimeout(() => openFullscreen(panel, title), 0);
         }
     }, { capture: true });
-    // Toggle can open/close while running
+    // Toggle behavior:
+    // - When NOT running: it's a preference for "open on start" (do not open immediately).
+    // - When running: allow open/close without stopping the test.
     toggle.addEventListener("change", () => {
+        const isRunning = !!startBtn.disabled;
+        if (!isRunning) {
+            return;
+        }
         if (toggle.checked) {
             openFullscreen(panel, title);
         }
