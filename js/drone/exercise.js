@@ -397,8 +397,7 @@ const buildMode2Queue = (config) => {
     return queue;
 };
 export const updatePlaybackUI = () => {
-    dom.elMetronomeControls.classList.toggle("hidden", state.playbackMode !== "metronome");
-    dom.elMetronomeAdvanceToggle.classList.toggle("hidden", state.playbackMode !== "metronome");
+    dom.elMetronomeModeBox.classList.toggle("hidden", state.playbackMode !== "metronome");
     dom.elAmbienceModeToggle.classList.toggle("hidden", state.playbackMode !== "ambience");
     if (state.playbackMode === "metronome") {
         stopMetronome();

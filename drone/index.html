@@ -349,47 +349,51 @@
 					</div>
 				</div>
 
-				<div class="config-grid hidden" id="metronomeControls">
-					<div class="field">
-						<label for="bpmInput">BPM</label>
-						<input
-							id="bpmInput"
-							type="number"
-							min="30"
-							max="300"
-							value="80"
-						/>
-					</div>
-					<div class="field">
-						<label for="bpbInput">Beats per bar</label>
-						<input
-							id="bpbInput"
-							type="number"
-							min="1"
-							max="12"
-							value="4"
-						/>
-					</div>
-				</div>
+				<div class="ambience-submode hidden" id="metronomeModeBox">
+					<div class="ambience-submode__title">Metronome mode</div>
 
-				<div class="mode-toggle hidden" id="metronomeAdvanceToggle">
-					<label class="mode-pill">
-						<input
-							type="radio"
-							name="metronomeAdvanceMode"
-							value="auto"
-							checked
-						/>
-						Auto-advance chords
-					</label>
-					<label class="mode-pill">
-						<input
-							type="radio"
-							name="metronomeAdvanceMode"
-							value="manual"
-						/>
-						Manual: Next chord on next beat
-					</label>
+					<div class="config-grid" id="metronomeControls">
+						<div class="field">
+							<label for="bpmInput">BPM</label>
+							<input
+								id="bpmInput"
+								type="number"
+								min="30"
+								max="300"
+								value="80"
+							/>
+						</div>
+						<div class="field">
+							<label for="bpbInput">Beats per bar</label>
+							<input
+								id="bpbInput"
+								type="number"
+								min="1"
+								max="12"
+								value="4"
+							/>
+						</div>
+					</div>
+
+					<div class="mode-toggle ambience-submode__toggle" id="metronomeAdvanceToggle">
+						<label class="mode-pill">
+							<input
+								type="radio"
+								name="metronomeAdvanceMode"
+								value="auto"
+								checked
+							/>
+							Auto-advance chords
+						</label>
+						<label class="mode-pill">
+							<input
+								type="radio"
+								name="metronomeAdvanceMode"
+								value="manual"
+							/>
+							Manual: Next chord on next beat
+						</label>
+					</div>
 				</div>
 
 				<div class="velocity-panel">

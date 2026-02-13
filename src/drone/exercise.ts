@@ -495,11 +495,7 @@ const buildMode2Queue = (config: Mode2Config): DroneQueueEvent[] => {
 };
 
 export const updatePlaybackUI = (): void => {
-	dom.elMetronomeControls.classList.toggle(
-		"hidden",
-		state.playbackMode !== "metronome",
-	);
-	dom.elMetronomeAdvanceToggle.classList.toggle(
+	dom.elMetronomeModeBox.classList.toggle(
 		"hidden",
 		state.playbackMode !== "metronome",
 	);
