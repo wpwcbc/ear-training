@@ -2074,3 +2074,10 @@ body.fullscreen-open {
 		grid-template-columns: repeat(2, minmax(0, 1fr));
 	}
 }
+
+/* ---- Fullscreen: dock should NOT look like a blocking bar (override) ---- */
+.fullscreen-dock {
+	border-top: none !important;
+	background: transparent !important;
+	backdrop-filter: none !important;
+}
