@@ -62,6 +62,18 @@ body.fullscreen-open {
 	background: #ffffff;
 }
 
+/* Tables / wide grids: keep horizontal scroll inside the table container */
+.fullscreen-live .stats-table {
+	overflow-x: auto;
+	overflow-y: hidden;
+	max-width: 100%;
+	-webkit-overflow-scrolling: touch;
+}
+
+.fullscreen-live .stats-row {
+	min-width: max-content;
+}
+
 .fullscreen-close {
 	position: absolute;
 	top: calc(10px + env(safe-area-inset-top));
