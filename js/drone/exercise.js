@@ -1,5 +1,5 @@
 import { RANDOM_ROOTS } from "../core/constants.js";
-import { closeFullscreenIfEnabled } from "../core/fullscreen.js";
+import { closeFullscreenIfEnabled, isFullscreenOpen } from "../core/fullscreen.js";
 import * as theory from "../core/theory.js";
 import { dom } from "./dom.js";
 import { state } from "./state.js";
@@ -127,7 +127,6 @@ const buildBars = (minRootMidi) => {
     return bars;
 };
 const updateChordHighlight = (index) => {
-    const currentEvent = state.questionQueue[index];
     const barIndices = state.eventBarMap.get(index) ?? [];
     const activeBarIndex = barIndices[Math.min(state.currentBarOffset, barIndices.length - 1)];
     dom.elDroneChordList
@@ -143,6 +142,11 @@ const updateChordHighlight = (index) => {
             Number(segment.dataset.barIndex) === activeBarIndex;
         segment.classList.toggle("is-active", match);
     });
+    if (isFullscreenOpen()) {
+        const active = dom.elDroneChordList.querySelector(".chord-segment.is-active") ||
+            dom.elDroneChordList.querySelector(".chord-pill.is-active");
+        active?.scrollIntoView({ block: "center" });
+    }
 };
 export const renderChordSequence = (minRootMidi) => {
     dom.elDroneChordList.innerHTML = "";

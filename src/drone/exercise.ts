@@ -1,5 +1,5 @@
 import { RANDOM_ROOTS, type ChordQuality } from "../core/constants.js";
-import { closeFullscreenIfEnabled } from "../core/fullscreen.js";
+import { closeFullscreenIfEnabled, isFullscreenOpen } from "../core/fullscreen.js";
 import * as theory from "../core/theory.js";
 import { dom } from "./dom.js";
 import { state } from "./state.js";
@@ -163,7 +163,6 @@ const buildBars = (minRootMidi: number): BarSegment[][] => {
 };
 
 const updateChordHighlight = (index: number): void => {
-	const currentEvent = state.questionQueue[index];
 	const barIndices = state.eventBarMap.get(index) ?? [];
 	const activeBarIndex =
 		barIndices[Math.min(state.currentBarOffset, barIndices.length - 1)];
@@ -183,6 +182,15 @@ const updateChordHighlight = (index: number): void => {
 				Number(segment.dataset.barIndex) === activeBarIndex;
 			segment.classList.toggle("is-active", match);
 		});
+
+	if (isFullscreenOpen()) {
+		const active =
+			dom.elDroneChordList.querySelector<HTMLElement>(
+				".chord-segment.is-active",
+			) ||
+			dom.elDroneChordList.querySelector<HTMLElement>(".chord-pill.is-active");
+		active?.scrollIntoView({ block: "center" });
+	}
 };
 
 export const renderChordSequence = (minRootMidi: number): void => {

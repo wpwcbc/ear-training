@@ -117,9 +117,22 @@ body.fullscreen-open {
 	font-size: 16px;
 }
 
+/* Hide redundant in-panel titles when fullscreen (top bar already has title) */
+.fullscreen-live .panel-header h2 {
+	display: none;
+}
+
 /* Drone progression list gets more room */
 .fullscreen-live .chord-sequence-panel {
 	margin-top: 14px;
+}
+
+/* Make the progression panel scrollable inside fullscreen */
+.fullscreen-live .chord-sequence-grid {
+	max-height: min(46vh, 520px);
+	overflow: auto;
+	padding-right: 6px;
+	scroll-behavior: smooth;
 }
 
 /* Responsive tweaks */
