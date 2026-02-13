@@ -19,6 +19,7 @@ const ensureOverlay = () => {
 				</div>
 			</div>
 			<div class="fullscreen-body" id="fullscreenBody"></div>
+			<div class="fullscreen-dock" id="fullscreenDock"></div>
 		</div>
 	`;
     document.body.appendChild(overlay);
@@ -40,6 +41,7 @@ const ensureOverlay = () => {
     return overlay;
 };
 let mounted = null;
+let docked = null;
 export const isFullscreenOpen = () => {
     const overlay = document.getElementById(OVERLAY_ID);
     return !!overlay && !overlay.classList.contains("hidden");
@@ -47,8 +49,9 @@ export const isFullscreenOpen = () => {
 export const openFullscreen = (panel, title = "Live") => {
     const overlay = ensureOverlay();
     const body = overlay.querySelector("#fullscreenBody");
+    const dock = overlay.querySelector("#fullscreenDock");
     const titleEl = overlay.querySelector("#fullscreenTitle");
-    if (!body || !titleEl) {
+    if (!body || !dock || !titleEl) {
         return;
     }
     if (mounted?.panel === panel && isFullscreenOpen()) {
@@ -68,6 +71,25 @@ export const openFullscreen = (panel, title = "Live") => {
     mounted.parent.insertBefore(mounted.placeholder, panel);
     panel.classList.add("fullscreen-live");
     body.appendChild(panel);
+    // Optional UX: if a panel has a big "Next" button, dock it to bottom center.
+    const nextBtn = panel.querySelector("#btnNextChord");
+    if (nextBtn) {
+        docked = {
+            el: nextBtn,
+            placeholder: document.createComment("fullscreen-dock-placeholder"),
+            parent: nextBtn.parentNode,
+            nextSibling: nextBtn.nextSibling,
+        };
+        docked.parent.insertBefore(docked.placeholder, nextBtn);
+        nextBtn.classList.add("fullscreen-primary-action");
+        dock.innerHTML = "";
+        dock.appendChild(nextBtn);
+        dock.classList.add("is-active");
+    }
+    else {
+        dock.classList.remove("is-active");
+        dock.innerHTML = "";
+    }
     overlay.classList.remove("hidden");
     document.body.classList.add("fullscreen-open");
 };
@@ -75,6 +97,23 @@ export const closeFullscreen = () => {
     const overlay = document.getElementById(OVERLAY_ID);
     if (!overlay) {
         return;
+    }
+    const dock = overlay.querySelector("#fullscreenDock");
+    if (docked) {
+        const { el, placeholder, parent, nextSibling } = docked;
+        el.classList.remove("fullscreen-primary-action");
+        if (nextSibling) {
+            parent.insertBefore(el, nextSibling);
+        }
+        else {
+            parent.appendChild(el);
+        }
+        placeholder.remove();
+        docked = null;
+    }
+    if (dock) {
+        dock.classList.remove("is-active");
+        dock.innerHTML = "";
     }
     if (mounted) {
         const { panel, placeholder, parent, nextSibling } = mounted;
