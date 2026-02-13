@@ -35,14 +35,9 @@ const ensureOverlay = (): HTMLElement => {
 	overlay.innerHTML = `
 		<div class="fullscreen-backdrop" data-fs-close></div>
 		<div class="fullscreen-sheet" role="dialog" aria-modal="true">
-			<div class="fullscreen-topbar">
-				<div class="fullscreen-title" id="fullscreenTitle">Live</div>
-				<div class="fullscreen-actions">
-					<button type="button" class="ghost fullscreen-close" data-fs-close>
-						Close
-					</button>
-				</div>
-			</div>
+			<button type="button" class="ghost fullscreen-close" data-fs-close>
+				Close
+			</button>
 			<div class="fullscreen-body" id="fullscreenBody"></div>
 		</div>
 	`;
@@ -71,7 +66,7 @@ const ensureOverlay = (): HTMLElement => {
 
 let mounted: MountedPanel | null = null;
 let docked: DockedElement | null = null;
-let dockedTopAction: DockedElement | null = null;
+// dockedTopAction removed (no top bar actions)
 
 export const isFullscreenOpen = (): boolean => {
 	const overlay = document.getElementById(OVERLAY_ID);
@@ -81,8 +76,7 @@ export const isFullscreenOpen = (): boolean => {
 export const openFullscreen = (panel: HTMLElement, title = "Live"): void => {
 	const overlay = ensureOverlay();
 	const body = overlay.querySelector<HTMLElement>("#fullscreenBody");
-	const titleEl = overlay.querySelector<HTMLElement>("#fullscreenTitle");
-	if (!body || !titleEl) {
+	if (!body) {
 		return;
 	}
 
@@ -95,7 +89,7 @@ export const openFullscreen = (panel: HTMLElement, title = "Live"): void => {
 		closeFullscreen();
 	}
 
-	titleEl.textContent = title;
+	// title is shown inside the panel; overlay has no top bar
 
 	mounted = {
 		panel,
@@ -130,23 +124,7 @@ export const openFullscreen = (panel: HTMLElement, title = "Live"): void => {
 		slot.appendChild(nextBtn);
 	}
 
-	// Also: if there's a Stop button, dock it into the top bar (easy reach on phones).
-	const stopBtn =
-		panel.querySelector<HTMLElement>("#btnStopDrone") ||
-		panel.querySelector<HTMLElement>("#btnStopTest");
-	const actions = overlay.querySelector<HTMLElement>(".fullscreen-actions");
-	const closeBtn = overlay.querySelector<HTMLElement>(".fullscreen-close");
-	if (stopBtn && actions && closeBtn) {
-		dockedTopAction = {
-			el: stopBtn,
-			placeholder: document.createComment("fullscreen-topaction-placeholder"),
-			parent: stopBtn.parentNode as Node,
-			nextSibling: stopBtn.nextSibling,
-		};
-		dockedTopAction.parent.insertBefore(dockedTopAction.placeholder, stopBtn);
-		stopBtn.classList.add("fullscreen-top-action");
-		actions.insertBefore(stopBtn, closeBtn);
-	}
+	// Stop button stays inside the panel in fullscreen (no top bar actions).
 
 	overlay.classList.remove("hidden");
 	document.body.classList.add("fullscreen-open");
@@ -168,17 +146,7 @@ export const closeFullscreen = (): void => {
 		placeholder.remove();
 		docked = null;
 	}
-	if (dockedTopAction) {
-		const { el, placeholder, parent, nextSibling } = dockedTopAction;
-		el.classList.remove("fullscreen-top-action");
-		if (nextSibling) {
-			parent.insertBefore(el, nextSibling);
-		} else {
-			parent.appendChild(el);
-		}
-		placeholder.remove();
-		dockedTopAction = null;
-	}
+	// no top-bar actions to restore
 	if (mounted) {
 		const { panel, placeholder, parent, nextSibling } = mounted;
 		panel.classList.remove("fullscreen-live");
