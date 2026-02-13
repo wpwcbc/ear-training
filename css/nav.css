@@ -1,0 +1,140 @@
+.site-nav {
+	position: sticky;
+	top: 0;
+	z-index: 30;
+	background: rgba(255, 255, 255, 0.82);
+	backdrop-filter: blur(12px);
+	border-bottom: 1px solid rgba(226, 214, 204, 0.6);
+}
+
+.nav-inner {
+	max-width: 1100px;
+	margin: 0 auto;
+	padding: 12px 18px;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
+	position: relative;
+}
+
+.nav-brand {
+	display: inline-flex;
+	align-items: center;
+	gap: 10px;
+	text-decoration: none;
+	color: var(--ink);
+	font-weight: 700;
+	font-family: "Fraunces", "Times New Roman", serif;
+	font-size: 20px;
+}
+
+.nav-logo {
+	width: 30px;
+	height: 30px;
+	color: var(--indigo);
+}
+
+.nav-links {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
+
+.nav-dropdown {
+	position: relative;
+}
+
+.nav-dropdown summary {
+	list-style: none;
+	cursor: pointer;
+}
+
+.nav-dropdown summary::-webkit-details-marker {
+	display: none;
+}
+
+.nav-link--dropdown {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.nav-link--dropdown::after {
+	content: "▾";
+	font-size: 12px;
+	opacity: 0.7;
+	transition: transform 0.2s ease;
+}
+
+.nav-dropdown[open] .nav-link--dropdown::after {
+	transform: rotate(180deg);
+}
+
+.nav-dropdown-menu {
+	display: none;
+	position: absolute;
+	top: calc(100% + 10px);
+	left: 0;
+	min-width: 220px;
+	padding: 10px;
+	border-radius: 14px;
+	border: 1px solid var(--line);
+	background: #ffffff;
+	box-shadow: var(--shadow);
+	gap: 6px;
+	z-index: 20;
+}
+
+.nav-dropdown[open] .nav-dropdown-menu {
+	display: grid;
+}
+
+.nav-link {
+	text-decoration: none;
+	color: var(--indigo);
+	font-weight: 600;
+	padding: 8px 12px;
+	border-radius: 999px;
+	border: 1px solid transparent;
+	transition:
+		background 0.2s ease,
+		border-color 0.2s ease;
+}
+
+.nav-link:hover {
+	background: rgba(61, 64, 91, 0.08);
+	border-color: rgba(61, 64, 91, 0.2);
+}
+
+.nav-link.nav-back {
+	background: rgba(224, 122, 95, 0.12);
+	border-color: rgba(224, 122, 95, 0.3);
+	color: var(--accent-dark);
+}
+
+.nav-toggle {
+	display: none;
+}
+
+.nav-toggle-btn {
+	display: none;
+	width: 40px;
+	height: 40px;
+	border-radius: 12px;
+	border: 1px solid var(--line);
+	background: #fff;
+	align-items: center;
+	justify-content: center;
+	gap: 4px;
+	flex-direction: column;
+	cursor: pointer;
+}
+
+.nav-toggle-btn span {
+	display: block;
+	width: 18px;
+	height: 2px;
+	background: var(--indigo);
+	border-radius: 999px;
+}
