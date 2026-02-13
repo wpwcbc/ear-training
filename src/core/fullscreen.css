@@ -57,11 +57,15 @@ body.fullscreen-open {
 	align-items: center;
 }
 
+.fullscreen-top-action {
+	padding: 10px 14px;
+	border-radius: 999px;
+}
+
 .fullscreen-body {
 	overflow: auto;
 	padding: 18px;
-	display: grid;
-	place-items: center;
+	padding-bottom: calc(18px + 96px + env(safe-area-inset-bottom));
 }
 
 /* Keep the panel readable + consistent */
@@ -129,16 +133,24 @@ body.fullscreen-open {
 }
 
 @media (max-width: 520px) {
+	.fullscreen-title {
+		font-size: 16px;
+	}
 	.fullscreen-topbar {
-		padding: 12px 12px;
+		padding: 10px 12px;
 	}
 	.fullscreen-body {
 		padding: 12px;
+		padding-bottom: calc(12px + 96px + env(safe-area-inset-bottom));
 	}
 	.fullscreen-live .controls {
 		flex-wrap: wrap;
 	}
 	.fullscreen-live .controls button {
 		width: 100%;
+	}
+	/* Stats: 2 items per row on phones */
+	.fullscreen-live .stats {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
 	}
 }

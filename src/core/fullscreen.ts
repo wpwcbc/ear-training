@@ -72,6 +72,7 @@ const ensureOverlay = (): HTMLElement => {
 
 let mounted: MountedPanel | null = null;
 let docked: DockedElement | null = null;
+let dockedTopAction: DockedElement | null = null;
 
 export const isFullscreenOpen = (): boolean => {
 	const overlay = document.getElementById(OVERLAY_ID);
@@ -128,6 +129,24 @@ export const openFullscreen = (panel: HTMLElement, title = "Live"): void => {
 		dock.innerHTML = "";
 	}
 
+	// Also: if there's a Stop button, dock it into the top bar (easy reach on phones).
+	const stopBtn =
+		panel.querySelector<HTMLElement>("#btnStopDrone") ||
+		panel.querySelector<HTMLElement>("#btnStopTest");
+	const actions = overlay.querySelector<HTMLElement>(".fullscreen-actions");
+	const closeBtn = overlay.querySelector<HTMLElement>(".fullscreen-close");
+	if (stopBtn && actions && closeBtn) {
+		dockedTopAction = {
+			el: stopBtn,
+			placeholder: document.createComment("fullscreen-topaction-placeholder"),
+			parent: stopBtn.parentNode as Node,
+			nextSibling: stopBtn.nextSibling,
+		};
+		dockedTopAction.parent.insertBefore(dockedTopAction.placeholder, stopBtn);
+		stopBtn.classList.add("fullscreen-top-action");
+		actions.insertBefore(stopBtn, closeBtn);
+	}
+
 	overlay.classList.remove("hidden");
 	document.body.classList.add("fullscreen-open");
 };
@@ -149,6 +168,17 @@ export const closeFullscreen = (): void => {
 		}
 		placeholder.remove();
 		docked = null;
+	}
+	if (dockedTopAction) {
+		const { el, placeholder, parent, nextSibling } = dockedTopAction;
+		el.classList.remove("fullscreen-top-action");
+		if (nextSibling) {
+			parent.insertBefore(el, nextSibling);
+		} else {
+			parent.appendChild(el);
+		}
+		placeholder.remove();
+		dockedTopAction = null;
 	}
 	if (dock) {
 		dock.classList.remove("is-active");
