@@ -870,15 +870,18 @@ textarea {
 
 .records-tab-panel {
 	display: none;
+	min-width: 0;
 }
 
 .records-tab-panel.active {
 	display: block;
+	min-width: 0;
 }
 
 .records-block {
 	display: grid;
 	gap: 10px;
+	min-width: 0;
 }
 
 .records-header {
@@ -1050,6 +1053,17 @@ textarea {
 	overflow-x: auto;
 	background: #ffffff;
 	max-width: 100%;
+	min-width: 0;
+}
+
+.tests-table {
+	display: block;
+	overflow-x: auto;
+	max-width: 100%;
+	min-width: 0;
+	border-radius: 14px;
+	background: #ffffff;
+	-webkit-overflow-scrolling: touch;
 }
 
 .stats-row {
