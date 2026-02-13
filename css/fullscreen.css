@@ -1,0 +1,149 @@
+/* Fullscreen live overlay (isolated stylesheet)
+   Keep ALL fullscreen-only styles here to avoid polluting degreeTrainer.css.
+*/
+
+html {
+	height: 100%;
+}
+
+body.fullscreen-open {
+	overflow: hidden;
+	height: 100%;
+}
+
+.fullscreen-overlay {
+	position: fixed;
+	inset: 0;
+	z-index: 1000;
+	display: grid;
+	place-items: stretch;
+	/* Prevent accidental horizontal page scrolling on mobile */
+	overflow: hidden;
+	max-width: 100vw;
+}
+
+.fullscreen-overlay.hidden {
+	display: none;
+}
+
+.fullscreen-backdrop {
+	position: absolute;
+	inset: 0;
+	background: rgba(20, 18, 22, 0.55);
+	backdrop-filter: blur(10px);
+}
+
+.fullscreen-sheet {
+	position: relative;
+	z-index: 1;
+	/* Mobile browsers: prefer dynamic viewport when available */
+	height: 100vh;
+	height: 100dvh;
+	width: 100%;
+	display: grid;
+	grid-template-rows: 1fr;
+	background: #ffffff;
+}
+
+.fullscreen-body {
+	display: block;
+	place-items: initial;
+	align-content: initial;
+
+	overflow: auto;
+	overflow-x: hidden;
+	-webkit-overflow-scrolling: touch;
+	padding: 18px;
+	max-width: 100vw;
+	min-height: 0;
+	background: #ffffff;
+}
+
+.fullscreen-close {
+	position: absolute;
+	top: calc(10px + env(safe-area-inset-top));
+	right: 12px;
+	z-index: 3;
+}
+
+/* Keep the panel readable + consistent */
+.fullscreen-body .panel {
+	width: 100%;
+	max-width: 1100px;
+	margin: 0 auto;
+	overflow-x: hidden;
+}
+
+/* Bottom action (normal flow element inside the panel) */
+.fullscreen-bottom-action {
+	margin-top: 14px;
+	display: flex;
+	justify-content: center;
+	padding-bottom: calc(8px + env(safe-area-inset-bottom));
+}
+
+.fullscreen-primary-action {
+	width: min(560px, 100%);
+	min-height: 64px;
+	border-radius: 16px;
+	font-size: 18px;
+	font-weight: 700;
+}
+
+/* Fullscreen-specific UX scaling */
+.fullscreen-live .controls button {
+	padding: 14px 18px;
+	font-size: 16px;
+}
+
+/* Make choice buttons larger */
+.fullscreen-live .answers button,
+.fullscreen-live .answers .answer,
+.fullscreen-live .answers .answer-button {
+	min-height: 56px;
+	font-size: 16px;
+}
+
+/* Hide redundant in-panel titles when fullscreen */
+.fullscreen-live .panel-header h2 {
+	display: none;
+}
+
+/* Drone progression list gets more room */
+.fullscreen-live .chord-sequence-panel {
+	margin-top: 14px;
+}
+
+/* Make the progression panel scrollable inside fullscreen */
+.fullscreen-live .chord-sequence-grid {
+	max-height: min(46vh, 520px);
+	overflow: auto;
+	padding-right: 6px;
+	scroll-behavior: smooth;
+}
+
+@media (max-width: 900px) {
+	.fullscreen-body {
+		padding: 14px;
+	}
+	.fullscreen-live .controls button {
+		padding: 14px 16px;
+	}
+}
+
+@media (max-width: 520px) {
+	.fullscreen-body {
+		padding: 12px;
+		padding-top: calc(52px + env(safe-area-inset-top));
+	}
+	/* Stats: 2 items per row on phones */
+	.fullscreen-live .stats {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+	.fullscreen-live .controls {
+		flex-wrap: wrap;
+	}
+	.fullscreen-live .controls button {
+		width: 100%;
+	}
+}
