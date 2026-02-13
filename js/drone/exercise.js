@@ -308,6 +308,12 @@ const runMetronomeBeat = (minRootMidi) => {
             : 0;
     updateChordHighlight(state.questionIndex);
     const chord = buildChordNotes(event, minRootMidi);
+    const chordSymbol = getChordSymbol(event, minRootMidi);
+    if (state.metronomeLastChordSymbol !== chordSymbol) {
+        // Prevent long release tails from the previous chord from masking the change.
+        audio.stopChord();
+        state.metronomeLastChordSymbol = chordSymbol;
+    }
     const velocities = collectVelocitySettings();
     audio.playChordBeat(chord.notes, [
         velocities.root,
@@ -348,6 +354,7 @@ const startMetronome = (minRootMidi) => {
     state.metronomeBeatIndex = 0;
     state.metronomeBeatTotal = 0;
     state.metronomeQueuedNext = false;
+    state.metronomeLastChordSymbol = null;
     state.metronomeTimer && window.clearTimeout(state.metronomeTimer);
     state.metronomeTimer = null;
     runMetronomeBeat(minRootMidi);

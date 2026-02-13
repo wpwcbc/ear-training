@@ -73,6 +73,7 @@ export const state = {
     metronomeBpm: 80,
     metronomeAdvanceMode: "auto",
     metronomeQueuedNext: false,
+    metronomeLastChordSymbol: null,
     ambientTimer: null,
     currentRootNote: null,
 };
