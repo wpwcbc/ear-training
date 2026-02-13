@@ -352,6 +352,26 @@
 				<div class="ambience-submode hidden" id="metronomeModeBox">
 					<div class="ambience-submode__title">Metronome mode</div>
 
+					<div class="mode-toggle ambience-submode__toggle" id="metronomeAdvanceToggle">
+						<label class="mode-pill">
+							<input
+								type="radio"
+								name="metronomeAdvanceMode"
+								value="auto"
+								checked
+							/>
+							Auto-advance chords
+						</label>
+						<label class="mode-pill">
+							<input
+								type="radio"
+								name="metronomeAdvanceMode"
+								value="manual"
+							/>
+							Manual: Next chord on next beat
+						</label>
+					</div>
+
 					<div class="config-grid" id="metronomeControls">
 						<div class="field">
 							<label for="bpmInput">BPM</label>
@@ -373,26 +393,6 @@
 								value="4"
 							/>
 						</div>
-					</div>
-
-					<div class="mode-toggle ambience-submode__toggle" id="metronomeAdvanceToggle">
-						<label class="mode-pill">
-							<input
-								type="radio"
-								name="metronomeAdvanceMode"
-								value="auto"
-								checked
-							/>
-							Auto-advance chords
-						</label>
-						<label class="mode-pill">
-							<input
-								type="radio"
-								name="metronomeAdvanceMode"
-								value="manual"
-							/>
-							Manual: Next chord on next beat
-						</label>
 					</div>
 				</div>
 
