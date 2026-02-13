@@ -2081,3 +2081,10 @@ body.fullscreen-open {
 	background: transparent !important;
 	backdrop-filter: none !important;
 }
+
+/* ---- Fullscreen: integrated footer dock (single-page feel) ---- */
+.fullscreen-dock {
+	border-top: 1px solid rgba(226, 214, 204, 0.8) !important;
+	background: rgba(255, 255, 255, 0.92) !important;
+	backdrop-filter: none !important;
+}
