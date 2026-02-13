@@ -55,6 +55,11 @@ export const stopChord = () => {
     if (!audioState.audioReady || !audioState.chordSynth) {
         return;
     }
+    // In metronome mode we triggerAttackRelease each beat without tracking per-note state,
+    // so prefer a hard release-all to avoid tails masking chord changes.
+    if (typeof audioState.chordSynth.releaseAll === "function") {
+        audioState.chordSynth.releaseAll();
+    }
     if (audioState.activeNotes.length) {
         audioState.chordSynth.triggerRelease(audioState.activeNotes);
         audioState.activeNotes = [];
