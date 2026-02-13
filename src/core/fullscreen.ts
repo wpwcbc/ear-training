@@ -44,7 +44,6 @@ const ensureOverlay = (): HTMLElement => {
 				</div>
 			</div>
 			<div class="fullscreen-body" id="fullscreenBody"></div>
-			<div class="fullscreen-dock" id="fullscreenDock"></div>
 		</div>
 	`;
 
@@ -82,9 +81,8 @@ export const isFullscreenOpen = (): boolean => {
 export const openFullscreen = (panel: HTMLElement, title = "Live"): void => {
 	const overlay = ensureOverlay();
 	const body = overlay.querySelector<HTMLElement>("#fullscreenBody");
-	const dock = overlay.querySelector<HTMLElement>("#fullscreenDock");
 	const titleEl = overlay.querySelector<HTMLElement>("#fullscreenTitle");
-	if (!body || !dock || !titleEl) {
+	if (!body || !titleEl) {
 		return;
 	}
 
@@ -110,7 +108,8 @@ export const openFullscreen = (panel: HTMLElement, title = "Live"): void => {
 	panel.classList.add("fullscreen-live");
 	body.appendChild(panel);
 
-	// Optional UX: if a panel has a big "Next" button, dock it to bottom center.
+	// Optional UX (fullscreen only): if a panel has a "Next chord" button,
+	// move it to the bottom of the panel as a normal flow element.
 	const nextBtn = panel.querySelector<HTMLElement>("#btnNextChord");
 	if (nextBtn) {
 		docked = {
@@ -121,12 +120,14 @@ export const openFullscreen = (panel: HTMLElement, title = "Live"): void => {
 		};
 		docked.parent.insertBefore(docked.placeholder, nextBtn);
 		nextBtn.classList.add("fullscreen-primary-action");
-		dock.innerHTML = "";
-		dock.appendChild(nextBtn);
-		dock.classList.add("is-active");
-	} else {
-		dock.classList.remove("is-active");
-		dock.innerHTML = "";
+
+		let slot = panel.querySelector<HTMLElement>(".fullscreen-bottom-action");
+		if (!slot) {
+			slot = document.createElement("div");
+			slot.className = "fullscreen-bottom-action";
+			panel.appendChild(slot);
+		}
+		slot.appendChild(nextBtn);
 	}
 
 	// Also: if there's a Stop button, dock it into the top bar (easy reach on phones).
@@ -156,8 +157,6 @@ export const closeFullscreen = (): void => {
 	if (!overlay) {
 		return;
 	}
-	const dock = overlay.querySelector<HTMLElement>("#fullscreenDock");
-
 	if (docked) {
 		const { el, placeholder, parent, nextSibling } = docked;
 		el.classList.remove("fullscreen-primary-action");
@@ -180,11 +179,6 @@ export const closeFullscreen = (): void => {
 		placeholder.remove();
 		dockedTopAction = null;
 	}
-	if (dock) {
-		dock.classList.remove("is-active");
-		dock.innerHTML = "";
-	}
-
 	if (mounted) {
 		const { panel, placeholder, parent, nextSibling } = mounted;
 		panel.classList.remove("fullscreen-live");

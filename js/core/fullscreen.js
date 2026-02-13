@@ -19,7 +19,6 @@ const ensureOverlay = () => {
 				</div>
 			</div>
 			<div class="fullscreen-body" id="fullscreenBody"></div>
-			<div class="fullscreen-dock" id="fullscreenDock"></div>
 		</div>
 	`;
     document.body.appendChild(overlay);
@@ -50,9 +49,8 @@ export const isFullscreenOpen = () => {
 export const openFullscreen = (panel, title = "Live") => {
     const overlay = ensureOverlay();
     const body = overlay.querySelector("#fullscreenBody");
-    const dock = overlay.querySelector("#fullscreenDock");
     const titleEl = overlay.querySelector("#fullscreenTitle");
-    if (!body || !dock || !titleEl) {
+    if (!body || !titleEl) {
         return;
     }
     if (mounted?.panel === panel && isFullscreenOpen()) {
@@ -72,7 +70,8 @@ export const openFullscreen = (panel, title = "Live") => {
     mounted.parent.insertBefore(mounted.placeholder, panel);
     panel.classList.add("fullscreen-live");
     body.appendChild(panel);
-    // Optional UX: if a panel has a big "Next" button, dock it to bottom center.
+    // Optional UX (fullscreen only): if a panel has a "Next chord" button,
+    // move it to the bottom of the panel as a normal flow element.
     const nextBtn = panel.querySelector("#btnNextChord");
     if (nextBtn) {
         docked = {
@@ -83,13 +82,13 @@ export const openFullscreen = (panel, title = "Live") => {
         };
         docked.parent.insertBefore(docked.placeholder, nextBtn);
         nextBtn.classList.add("fullscreen-primary-action");
-        dock.innerHTML = "";
-        dock.appendChild(nextBtn);
-        dock.classList.add("is-active");
-    }
-    else {
-        dock.classList.remove("is-active");
-        dock.innerHTML = "";
+        let slot = panel.querySelector(".fullscreen-bottom-action");
+        if (!slot) {
+            slot = document.createElement("div");
+            slot.className = "fullscreen-bottom-action";
+            panel.appendChild(slot);
+        }
+        slot.appendChild(nextBtn);
     }
     // Also: if there's a Stop button, dock it into the top bar (easy reach on phones).
     const stopBtn = panel.querySelector("#btnStopDrone") ||
@@ -115,7 +114,6 @@ export const closeFullscreen = () => {
     if (!overlay) {
         return;
     }
-    const dock = overlay.querySelector("#fullscreenDock");
     if (docked) {
         const { el, placeholder, parent, nextSibling } = docked;
         el.classList.remove("fullscreen-primary-action");
@@ -139,10 +137,6 @@ export const closeFullscreen = () => {
         }
         placeholder.remove();
         dockedTopAction = null;
-    }
-    if (dock) {
-        dock.classList.remove("is-active");
-        dock.innerHTML = "";
     }
     if (mounted) {
         const { panel, placeholder, parent, nextSibling } = mounted;

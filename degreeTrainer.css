@@ -2088,3 +2088,12 @@ body.fullscreen-open {
 	background: rgba(255, 255, 255, 0.92) !important;
 	backdrop-filter: none !important;
 }
+
+/* ---- Fullscreen: Next chord as normal bottom element (override older dock styles) ---- */
+.fullscreen-dock { display: none !important; }
+.fullscreen-bottom-action {
+	margin-top: 14px;
+	display: flex;
+	justify-content: center;
+	padding-bottom: calc(8px + env(safe-area-inset-bottom));
+}
