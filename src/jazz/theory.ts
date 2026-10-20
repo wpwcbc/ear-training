@@ -53,7 +53,8 @@ export function parseChord(symbol: string): Chord {
   return { root: match[1], quality: match[2] as Quality, symbol: match[0] };
 }
 export function targetPc(chord: Chord, degree: string): number {
-  if (!(degree in offsets)) throw new Error("Unsupported degree: " + degree);
+  if (!Object.prototype.hasOwnProperty.call(offsets, degree))
+    throw new Error("Unsupported degree: " + degree);
   return (pitchClass(chord.root) + offsets[degree]) % 12;
 }
 export function spellTarget(chord: Chord, degree: string): string {
@@ -81,6 +82,11 @@ export function degreeForPc(chord: Chord, pc: number): string {
     "maj7",
   ];
   return names[distance];
+}
+export function recognitionDegrees(chord: Chord): string[] {
+  return Array.from({ length: 12 }, (_, pc) =>
+    degreeForPc(chord, (pitchClass(chord.root) + pc) % 12),
+  );
 }
 export function inRange(
   pc: number,

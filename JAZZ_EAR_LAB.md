@@ -1,5 +1,7 @@
 # Jazz Ear Lab: first delivery
 
+This document describes the original delivery. See [Release 3 implementation notes](JAZZ_EAR_LAB_RELEASE3.md) for the current features, verification and remaining scope.
+
 Run `npm run build`, then `npm run dev`. Open http://127.0.0.1:4173/jazz-ear-lab/.
 
 The original trainers, their storage keys, and the existing non-repeating degree questions are preserved. The homepage links to the new lab. This delivery covers Release 1 and the core Release 2 exercises; later modes remain future work.

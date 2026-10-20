@@ -160,6 +160,43 @@ body {
   color: #222;
   padding: 8px;
 }
+.lab textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 130px;
+  padding: 12px;
+  border: 1px solid #c3cfc9;
+  border-radius: 5px;
+  background: white;
+  color: #222;
+  font: inherit;
+}
+.table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 20px 0 30px;
+}
+.lab table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.lab th,
+.lab td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #cfd8d5;
+  white-space: nowrap;
+}
+.lab th {
+  color: #245c49;
+  font-size: 13px;
+}
+#countdown {
+  min-height: 20px;
+  margin: 8px 0;
+  font-variant-numeric: tabular-nums;
+}
 .lab input[type="range"] {
   padding: 0;
 }
@@ -210,6 +247,7 @@ body {
   }
   .lab-tabs {
     gap: 0;
+    flex-wrap: wrap;
   }
   .lab-tabs button {
     padding: 12px 8px;

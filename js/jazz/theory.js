@@ -46,7 +46,7 @@ export function parseChord(symbol) {
     return { root: match[1], quality: match[2], symbol: match[0] };
 }
 export function targetPc(chord, degree) {
-    if (!(degree in offsets))
+    if (!Object.prototype.hasOwnProperty.call(offsets, degree))
         throw new Error("Unsupported degree: " + degree);
     return (pitchClass(chord.root) + offsets[degree]) % 12;
 }
@@ -76,6 +76,9 @@ export function degreeForPc(chord, pc) {
         "maj7",
     ];
     return names[distance];
+}
+export function recognitionDegrees(chord) {
+    return Array.from({ length: 12 }, (_, pc) => degreeForPc(chord, (pitchClass(chord.root) + pc) % 12));
 }
 export function inRange(pc, low, high, near = (low + high) / 2) {
     const candidates = Array.from({ length: 128 }, (_, i) => i).filter((n) => n >= low && n <= high && n % 12 === pc);

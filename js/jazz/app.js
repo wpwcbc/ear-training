@@ -1,8 +1,11 @@
-import { degrees, progressions } from "./theory.js";
-import { defaults, generate, keys, loadSessions, saveSession, recommendation, } from "./model.js";
+import { degrees, recognitionDegrees } from "./theory.js";
+import { progressionBank, parseProgression } from "./progressions.js";
+import { skillStats, confusions } from "./insights.js";
+import { defaults, generate, keys, loadSessions, saveSession, recommendation, loadProgressions, validateConfig, isRecognition, isSequential, } from "./model.js";
 import { AudioEngine } from "./audio.js";
 const el = (id) => document.getElementById(id);
 const audio = new AudioEngine();
+let customs = loadProgressions(localStorage);
 let config = { ...defaults };
 try {
     const saved = JSON.parse(localStorage.getItem(keys.config) || "null");
@@ -14,8 +17,11 @@ let challenge = null, session = null;
 let step = 0, index = 0, replays = 0, started = 0, elapsed = 0;
 let revealed = false, graded = false, paused = false, busy = false;
 let phaseTimer = 0;
+let predictionTimer = 0, visualFrame = 0, predictionDeadline = 0, predictionRemaining = 0;
+let contextPending = false, operation = 0;
 let selected = [];
 let completedQuestions = new Set();
+let referenceSeen = false, referenceAssisted = false;
 const status = (text) => {
     el("status").textContent = text;
 };
@@ -26,6 +32,47 @@ function stopAudio() {
     audio.stop();
     window.clearTimeout(phaseTimer);
     phaseTimer = 0;
+    window.clearInterval(predictionTimer);
+    predictionTimer = 0;
+    window.cancelAnimationFrame(visualFrame);
+    visualFrame = 0;
+    el("countdown").textContent = "";
+}
+function armPrediction(seconds = config.mode === "m5"
+    ? (config.gapBeats * 60) / config.bpm
+    : config.predictionSeconds) {
+    if (!challenge ||
+        revealed ||
+        paused ||
+        !isSequential(config) ||
+        config.revealMode !== "timed")
+        return;
+    predictionRemaining = seconds;
+    predictionDeadline = performance.now() + seconds * 1000;
+    const update = () => {
+        predictionRemaining = Math.max(0, (predictionDeadline - performance.now()) / 1000);
+        el("countdown").textContent =
+            `Next chord in ${predictionRemaining.toFixed(1)}s`;
+        if (predictionRemaining <= 0) {
+            window.clearInterval(predictionTimer);
+            predictionTimer = 0;
+            safe(reveal)();
+        }
+    };
+    predictionTimer = window.setInterval(update, 50);
+    update();
+}
+function followAudio(offset = 0) {
+    const update = () => {
+        const position = audio.position;
+        const event = audio.plan.events.find((e) => position >= e.start && position < e.start + e.duration);
+        el("chart")
+            .querySelectorAll("span")
+            .forEach((span, i) => span.classList.toggle("active", !!event && i === event.index + offset));
+        if (position < audio.plan.duration)
+            visualFrame = requestAnimationFrame(update);
+    };
+    visualFrame = requestAnimationFrame(update);
 }
 function store() {
     try {
@@ -38,7 +85,7 @@ function store() {
     }
 }
 function updateViews(view = "free") {
-    for (const name of ["free", "path", "history"]) {
+    for (const name of ["free", "path", "history", "insights"]) {
         el(name + "-view").hidden = name !== view;
         el(name + "-tab").setAttribute("aria-selected", String(name === view));
     }
@@ -48,7 +95,7 @@ function updateViews(view = "free") {
 }
 function populate() {
     el("degree").replaceChildren(...degrees.map((degree) => new Option(degree, degree)));
-    el("progression").replaceChildren(...progressions.map((p) => new Option(p.name, p.id)));
+    el("progression").replaceChildren(...[...progressionBank, ...customs].map((p) => new Option(p.name, p.id)));
     for (const key of Object.keys(defaults)) {
         const input = el(key);
         if (key === "showChords")
@@ -57,11 +104,21 @@ function populate() {
             input.value = String(config[key]);
     }
     modeUI();
+    editorUI();
 }
 function modeUI() {
-    el("single-settings").hidden = config.mode !== "m1";
-    el("progression-settings").hidden = config.mode === "m1";
-    el("path-setting").hidden = config.mode !== "m4";
+    const single = config.mode === "m1" || config.mode === "m2";
+    el("single-settings").hidden = !single;
+    el("degree-setting").hidden = config.mode !== "m1";
+    el("recognition-setting").hidden = config.mode !== "m2";
+    el("progression-settings").hidden = single;
+    el("sequence-settings").hidden = single;
+    el("path-setting").hidden = !isSequential(config);
+    el("common-mode-setting").hidden = config.mode !== "m3";
+    el("reveal-mode-setting").hidden = !isSequential(config);
+    el("prediction-setting").hidden = config.mode !== "m4";
+    el("gap-setting").hidden = config.mode !== "m5";
+    el("custom-editor").hidden = single;
     el("recognize").hidden = config.mode !== "m1";
     el("context").disabled = config.mode === "m3";
 }
@@ -76,23 +133,7 @@ function readConfig() {
                 : input.value;
         next[key] = value;
     }
-    if (next.low > next.high || next.high - next.low < 11)
-        throw new Error("Choose a target range of at least 12 semitones.");
-    if (next.bpm < 30 ||
-        next.bpm > 240 ||
-        next.beats < 1 ||
-        next.beats > 8 ||
-        !Number.isFinite(next.bpm) ||
-        !Number.isFinite(next.beats))
-        throw new Error("Tempo must be 30-240 and beats must be 1-8.");
-    if (![0, 5, 10, 20].includes(next.count))
-        throw new Error("Select a question count.");
-    if (!next.showChords && next.context !== "full")
-        throw new Error("Root and shell contexts need visible chord symbols. Enable symbols or choose Full chord.");
-    if (next.mode === "m3")
-        next.context = "full";
-    generate(next, 0);
-    return next;
+    return validateConfig(next, customs);
 }
 function render() {
     const active = !!challenge;
@@ -105,16 +146,16 @@ function render() {
     button("reveal", active && !paused && !revealed && !phaseTimer);
     button("next", active && !paused && graded);
     el("grading").hidden =
-        !active || !revealed || graded || paused || config.mode === "m3";
-    el("choices").hidden = !active || paused || config.mode !== "m3" || revealed;
+        !active || !revealed || graded || paused || isRecognition(config);
+    el("choices").hidden =
+        !active || paused || !isRecognition(config) || revealed;
     el("answer").hidden = !active || !revealed || paused;
     el("pause").textContent = paused ? "Resume" : "Pause";
-    el("reveal").textContent =
-        config.mode === "m4"
-            ? "Hear next chord"
-            : config.mode === "m3"
-                ? "Check answers"
-                : "Reveal";
+    el("reveal").textContent = isSequential(config)
+        ? "Hear next chord"
+        : isRecognition(config)
+            ? "Check answers"
+            : "Reveal";
     if (!challenge)
         return;
     const targets = challenge.targets;
@@ -135,26 +176,36 @@ function render() {
         el("prompt").textContent = "Practice paused";
         return;
     }
-    el("phase").textContent = revealed
-        ? graded
-            ? "GRADED"
-            : "REFERENCE"
-        : config.mode === "m4"
-            ? "ANTICIPATE"
-            : config.mode === "m3"
-                ? "RECOGNIZE"
-                : "AUDIATE";
+    el("phase").textContent = contextPending
+        ? "ESTABLISH CONTEXT"
+        : revealed
+            ? graded
+                ? "GRADED"
+                : "REFERENCE"
+            : isSequential(config)
+                ? "ANTICIPATE"
+                : isRecognition(config)
+                    ? "RECOGNIZE"
+                    : "AUDIATE";
     if (config.mode === "m1") {
         el("prompt").textContent = `Sing the ${targets[0].degree}`;
         el("instruction").textContent =
             "Imagine it, sing or play it, then reveal the reference.";
     }
     if (config.mode === "m3") {
-        el("prompt").textContent = "One pitch. What changes?";
-        el("instruction").textContent =
-            "Choose the role of the same melody note over each chord.";
+        el("prompt").textContent = isRecognition(config)
+            ? "One pitch. What changes?"
+            : "Keep the same pitch through the changes";
+        el("instruction").textContent = isRecognition(config)
+            ? "Choose the role of the same melody note over each chord."
+            : "Hear the starting pitch once, then hold it yourself over the chords. Reveal to compare.";
     }
-    if (config.mode === "m4") {
+    if (config.mode === "m2") {
+        el("prompt").textContent = "Name the note's chord degree";
+        el("instruction").textContent =
+            "Listen to the chord and melody. Choose the melody's role in this chord.";
+    }
+    if (isSequential(config)) {
         el("prompt").textContent =
             `${config.showChords ? targets[step].chord.symbol : "Next chord"}: sing the ${targets[step].degree}`;
         el("instruction").textContent =
@@ -172,26 +223,34 @@ function render() {
 function playContext() {
     if (!challenge)
         return;
+    if (!revealed && !contextPending)
+        elapsed += Math.max(0, performance.now() - started) / 1000;
     stopAudio();
-    if (config.mode === "m4")
-        audio.play([challenge.targets[step - 1]], config, true);
-    else
-        audio.play(challenge.targets, config, config.mode === "m3");
-    const duration = (60 / config.bpm) *
-        config.beats *
-        (config.mode === "m3" ? challenge.targets.length : 1);
+    contextPending = true;
+    const targets = isSequential(config)
+        ? [challenge.targets[step - 1]]
+        : challenge.targets;
+    const duration = audio.play(targets, config, isSequential(config) || isRecognition(config), false, {
+        countIn: config.countIn,
+        repeats: config.mode === "m3" ? config.repeats : 1,
+        seed: config.mode === "m3" && !isRecognition(config),
+    });
     phaseTimer = window.setTimeout(() => {
         phaseTimer = 0;
+        contextPending = false;
+        started = performance.now();
         render();
+        armPrediction();
     }, duration * 1000);
     render();
+    followAudio(isSequential(config) ? step - 1 : 0);
     el("phase").textContent = "ESTABLISH CONTEXT";
 }
 function renderChoices() {
     const holder = el("choices");
     holder.replaceChildren();
     selected = [];
-    if (!challenge || config.mode !== "m3")
+    if (!challenge || !isRecognition(config))
         return;
     challenge.targets.forEach((target, i) => {
         const label = document.createElement("label");
@@ -200,7 +259,7 @@ function renderChoices() {
             : `Chord ${i + 1}`;
         const select = document.createElement("select");
         select.setAttribute("aria-label", `Role over chord ${i + 1}`);
-        select.append(new Option("Choose degree", ""), ...degrees.filter((d) => d !== "#9").map((d) => new Option(d, d)));
+        select.append(new Option("Choose degree", ""), ...recognitionDegrees(target.chord).map((d) => new Option(d, d)));
         select.addEventListener("change", () => {
             selected[i] = select.value;
         });
@@ -210,23 +269,23 @@ function renderChoices() {
 }
 function newQuestion() {
     stopAudio();
-    challenge = generate(config, index);
-    step = config.mode === "m4" ? 1 : 0;
+    challenge = generate(config, index, customs);
+    step = isSequential(config) ? 1 : 0;
     revealed = false;
     graded = false;
     paused = false;
     replays = 0;
     elapsed = 0;
+    referenceSeen = false;
+    referenceAssisted = false;
+    contextPending = true;
+    started = performance.now();
     renderChoices();
     render();
     playContext();
-    const duration = (60 / config.bpm) *
-        config.beats *
-        (config.mode === "m3" ? challenge.targets.length : 1);
-    started = performance.now() + duration * 1000;
     el("phase").textContent = "ESTABLISH CONTEXT";
     button("reveal", false);
-    status(config.mode === "m4"
+    status(isSequential(config)
         ? "The next chord is held until you request it."
         : "Listen, then respond when ready.");
 }
@@ -237,7 +296,10 @@ async function start() {
     button("start", false);
     try {
         const next = readConfig();
+        const currentOperation = ++operation;
         await audio.ready();
+        if (currentOperation !== operation)
+            return;
         config = next;
         index = 0;
         completedQuestions = new Set();
@@ -265,7 +327,9 @@ async function start() {
 function record(grade, source) {
     if (!challenge || !session || graded)
         return;
-    const targets = config.mode === "m4" ? [challenge.targets[step]] : challenge.targets;
+    const targets = isSequential(config)
+        ? [challenge.targets[step]]
+        : challenge.targets;
     const latency = elapsed + (revealed ? 0 : Math.max(0, performance.now() - started) / 1000);
     session.records.push({
         timestamp: new Date().toISOString(),
@@ -279,12 +343,14 @@ function record(grade, source) {
         gradingSource: source,
         grade,
         replayCount: replays,
+        ...(source === "automatic" ? { selectedDegrees: [...selected] } : {}),
+        referenceAssisted,
     });
     session.totalTime += latency;
     graded = true;
     if (grade !== "skipped" &&
         !completedQuestions.has(index) &&
-        (config.mode !== "m4" || step === challenge.targets.length - 1)) {
+        (!isSequential(config) || step === challenge.targets.length - 1)) {
         session.completedCount++;
         completedQuestions.add(index);
     }
@@ -292,25 +358,30 @@ function record(grade, source) {
     render();
     status(source === "automatic"
         ? grade === "correct"
-            ? "Correct. Each chord changes the role of this pitch."
+            ? "Correct. Compare the target with its harmonic context."
             : "Compare your answers with the reference, then retry or continue."
         : `Self-assessment saved: ${grade}.`);
 }
 async function reveal() {
     if (!challenge || revealed || paused || phaseTimer)
         return;
-    if (config.mode === "m3" && challenge.targets.some((_, i) => !selected[i])) {
+    if (isRecognition(config) && challenge.targets.some((_, i) => !selected[i])) {
         status("Choose one degree for each chord first.");
         return;
     }
+    const currentChallenge = challenge;
     await audio.ready();
+    if (challenge !== currentChallenge || paused || revealed)
+        return;
     stopAudio();
     elapsed += Math.max(0, performance.now() - started) / 1000;
     started = performance.now();
     revealed = true;
+    referenceSeen = true;
     audio.play(config.mode === "m3" ? challenge.targets : [challenge.targets[step]], config, true);
     render();
-    if (config.mode === "m3")
+    followAudio(config.mode === "m3" ? 0 : step);
+    if (isRecognition(config))
         record(challenge.targets.every((t, i) => t.degree === selected[i])
             ? "correct"
             : "missed", "automatic");
@@ -320,16 +391,19 @@ async function reveal() {
 function next() {
     if (!challenge || !graded)
         return;
-    if (config.mode === "m4" && step < challenge.targets.length - 1) {
+    if (isSequential(config) && step < challenge.targets.length - 1) {
         stopAudio();
         step++;
         revealed = false;
         graded = false;
         replays = 0;
         elapsed = 0;
+        referenceSeen = false;
+        referenceAssisted = false;
         started = performance.now();
         render();
         status("Sing the next target; its chord has not played yet.");
+        armPrediction();
         return;
     }
     index++;
@@ -354,14 +428,20 @@ function togglePause() {
     if (!challenge)
         return;
     if (!paused) {
-        if (!revealed)
+        if (!revealed && !contextPending)
             elapsed += Math.max(0, performance.now() - started) / 1000;
+        if (predictionTimer)
+            predictionRemaining = Math.max(0, (predictionDeadline - performance.now()) / 1000);
         stopAudio();
         paused = true;
     }
     else {
         paused = false;
         started = performance.now();
+        if (contextPending)
+            playContext();
+        else if (!revealed)
+            armPrediction(predictionRemaining);
     }
     render();
     status(paused
@@ -369,12 +449,15 @@ function togglePause() {
         : "Resumed. Replay context when ready.");
 }
 function resetChallenge() {
+    operation++;
     stopAudio();
     challenge = null;
     session = null;
     revealed = false;
     graded = false;
     paused = false;
+    contextPending = false;
+    predictionRemaining = 0;
     el("chart").replaceChildren();
     el("choices").replaceChildren();
     el("answer").hidden = true;
@@ -385,9 +468,13 @@ function resetChallenge() {
 }
 function renderHistory() {
     const sessions = loadSessions(localStorage), records = sessions.flatMap((s) => s.records);
-    const self = records.filter((r) => r.gradingSource === "self" && r.grade !== "skipped"), automatic = records.filter((r) => r.gradingSource === "automatic" && r.grade !== "skipped");
+    const self = records.filter((r) => r.gradingSource === "self" &&
+        r.grade !== "skipped" &&
+        !r.referenceAssisted), automatic = records.filter((r) => r.gradingSource === "automatic" &&
+        r.grade !== "skipped" &&
+        !r.referenceAssisted);
     el("history-summary").textContent =
-        `${sessions.length} sessions. Self-assessment: ${self.filter((r) => r.grade === "correct").length} correct / ${self.length} ratings. Recognition accuracy: ${automatic.length ? Math.round((100 * automatic.filter((r) => r.grade === "correct").length) / automatic.length) + "%" : "no results"}.`;
+        `${sessions.length} sessions. Self-assessment: ${self.filter((r) => r.grade === "correct").length} correct / ${self.length} ratings. Recognition question accuracy: ${automatic.length ? Math.round((100 * automatic.filter((r) => r.grade === "correct").length) / automatic.length) + "%" : "no results"}. Reference-assisted retries: ${records.filter((r) => r.referenceAssisted).length}.`;
     const list = el("history-list");
     list.replaceChildren();
     sessions
@@ -404,10 +491,82 @@ function renderHistory() {
         list.append(row);
     });
     el("recommendation").textContent = recommendation(sessions).text;
+    renderInsights(sessions);
 }
-function usePreset(mode, degree = "3") {
+function renderInsights(sessions) {
+    const grouping = el("insight-group").value;
+    const stats = skillStats(sessions, grouping);
+    const name = (id) => [...progressionBank, ...customs].find((p) => p.id === id)?.name ?? id;
+    renderTable("skill-stats", [
+        "Skill",
+        "Assessment",
+        "Results",
+        "Mean question response",
+        "Mean replays",
+    ], stats.map((s) => [
+        grouping === "progression" ? name(s.label) : s.label,
+        s.source === "self" ? "Self-assessment" : "Recognition",
+        s.source === "self"
+            ? `${s.correct} correct / ${s.close} close / ${s.missed} missed`
+            : `${s.correct}/${s.count} (${Math.round((s.correct / s.count) * 100)}%)`,
+        `${(s.time / s.count).toFixed(2)}s`,
+        (s.replays / s.count).toFixed(1),
+    ]));
+    renderTable("confusions", ["Expected", "Selected", "Count"], confusions(sessions.flatMap((s) => s.records)).map((row) => [
+        row.expected,
+        row.selected,
+        String(row.count),
+    ]));
+}
+function renderTable(id, headers, rows) {
+    const holder = el(id);
+    holder.replaceChildren();
+    if (!rows.length) {
+        const p = document.createElement("p");
+        p.textContent = "No results yet.";
+        holder.append(p);
+        return;
+    }
+    const table = document.createElement("table"), head = document.createElement("thead"), tr = document.createElement("tr");
+    headers.forEach((text) => {
+        const th = document.createElement("th");
+        th.scope = "col";
+        th.textContent = text;
+        tr.append(th);
+    });
+    head.append(tr);
+    table.append(head);
+    const body = document.createElement("tbody");
+    rows.forEach((row) => {
+        const tr = document.createElement("tr");
+        row.forEach((text) => {
+            const td = document.createElement("td");
+            td.textContent = text;
+            tr.append(td);
+        });
+        body.append(tr);
+    });
+    table.append(body);
+    holder.append(table);
+}
+function editorUI() {
+    const progression = customs.find((p) => p.id === config.progression);
+    button("custom-delete", !!progression);
+    el("custom-save").textContent = progression
+        ? "Update progression"
+        : "Save progression";
+    if (progression) {
+        el("custom-name").value = progression.name;
+        el("custom-score").value = progression.chords
+            .map((chord, i) => `${chord} ${progression.beats?.[i] ?? 4}`)
+            .join("\n");
+    }
+}
+function usePreset(mode, degree = "3", preset = {}) {
     resetChallenge();
-    config = { ...config, mode, degree };
+    config = { ...defaults, ...preset, mode, degree };
+    if (![...progressionBank, ...customs].some((p) => p.id === config.progression))
+        config.progression = defaults.progression;
     populate();
     store();
     updateViews();
@@ -417,8 +576,18 @@ const paths = [
     ["A. Chord landmarks", "Produce 3rds and 7ths across roots.", "m1", "3"],
     ["B. Common tones", "Keep one pitch while the harmony changes.", "m3", "3"],
     ["C. Guided ii-V-I", "Anticipate each next target.", "m4", "3"],
-    ["D. Harmonic movement", "Explore the existing progression tools.", null, ""],
-    ["E. Modulation", "Further progression training is planned.", null, ""],
+    [
+        "D. Harmonic movement",
+        "Anticipate a continuous progression with clear harmonic rhythm.",
+        "m5",
+        "3",
+    ],
+    [
+        "E. Modulation",
+        "Hear local targets across three tonal centers.",
+        "m5",
+        "3",
+    ],
     ["F. Jazz language", "Phrase and bass mapping modes are planned.", null, ""],
 ];
 paths.forEach(([title, description, mode, degree]) => {
@@ -432,7 +601,9 @@ paths.forEach(([title, description, mode, degree]) => {
     if (mode) {
         const action = document.createElement("button");
         action.textContent = "Practice";
-        action.onclick = () => usePreset(mode, degree);
+        action.onclick = () => usePreset(mode, degree, title.startsWith("E")
+            ? { progression: "giant-centers", path: "nearest" }
+            : {});
         row.append(action);
     }
     else if (title.startsWith("D")) {
@@ -457,11 +628,15 @@ function safe(action) {
 el("start").onclick = safe(start);
 el("reveal").onclick = safe(reveal);
 el("replay").onclick = safe(async () => {
+    const currentChallenge = challenge;
     await audio.ready();
+    if (challenge !== currentChallenge || paused || !challenge)
+        return;
     replays++;
     if (revealed && challenge) {
         stopAudio();
         audio.play(config.mode === "m3" ? challenge.targets : [challenge.targets[step]], config, true);
+        followAudio(config.mode === "m3" ? 0 : step);
     }
     else
         playContext();
@@ -469,18 +644,21 @@ el("replay").onclick = safe(async () => {
 el("pause").onclick = togglePause;
 el("next").onclick = safe(next);
 el("skip").onclick = safe(() => {
-    record("skipped", config.mode === "m3" ? "automatic" : "self");
+    record("skipped", isRecognition(config) ? "automatic" : "self");
     next();
 });
 el("retry").onclick = safe(() => {
     if (!challenge)
         return;
     stopAudio();
+    if (referenceSeen)
+        referenceAssisted = true;
     revealed = false;
     graded = false;
     replays++;
     elapsed = 0;
     started = performance.now();
+    contextPending = true;
     renderChoices();
     render();
     playContext();
@@ -488,11 +666,60 @@ el("retry").onclick = safe(() => {
 document.querySelectorAll("[data-grade]").forEach((btn) => {
     btn.onclick = () => record(btn.dataset.grade, "self");
 });
-for (const view of ["free", "path", "history"])
+for (const view of ["free", "path", "history", "insights"])
     el(view + "-tab").onclick = () => updateViews(view);
 el("recommended-start").onclick = () => {
     const rec = recommendation(loadSessions(localStorage));
-    usePreset(rec.mode, rec.degree);
+    usePreset(rec.mode, rec.degree, rec.config);
+};
+el("insight-group").onchange = () => renderInsights(loadSessions(localStorage));
+el("custom-form").onsubmit = (event) => {
+    event.preventDefault();
+    try {
+        const existing = customs.find((p) => p.id === config.progression);
+        const progression = parseProgression(el("custom-score").value, el("custom-name").value, existing?.id ?? "custom-" + crypto.randomUUID());
+        const updated = [
+            ...customs.filter((p) => p.id !== progression.id),
+            progression,
+        ];
+        localStorage.setItem(keys.progressions, JSON.stringify(updated));
+        resetChallenge();
+        customs = updated;
+        config.progression = progression.id;
+        config.path = "nearest";
+        config.span = 0;
+        populate();
+        store();
+        el("custom-status").textContent = "Progression saved.";
+    }
+    catch (error) {
+        el("custom-status").textContent = error.message;
+    }
+};
+el("custom-new").onclick = () => {
+    resetChallenge();
+    config.progression = defaults.progression;
+    populate();
+    store();
+    el("custom-name").value = "My progression";
+    el("custom-score").value = "Dm7 4\nG7 4\nCmaj7 8";
+    el("custom-status").textContent = "New progression ready to edit.";
+};
+el("custom-delete").onclick = () => {
+    try {
+        const updated = customs.filter((p) => p.id !== config.progression);
+        localStorage.setItem(keys.progressions, JSON.stringify(updated));
+        resetChallenge();
+        customs = updated;
+        config.progression = defaults.progression;
+        populate();
+        store();
+        el("custom-status").textContent =
+            "Progression deleted. Saved session results are preserved.";
+    }
+    catch (error) {
+        el("custom-status").textContent = error.message;
+    }
 };
 el("settings").onchange = () => {
     resetChallenge();
@@ -500,6 +727,7 @@ el("settings").onchange = () => {
         const next = readConfig();
         config = next;
         modeUI();
+        editorUI();
         store();
         status("Settings saved. Press Start for a new session.");
     }

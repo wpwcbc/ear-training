@@ -46,14 +46,24 @@
         >
           Sessions
         </button>
+        <button
+          id="insights-tab"
+          role="tab"
+          aria-selected="false"
+          aria-controls="insights-view"
+        >
+          Insights
+        </button>
       </div>
       <section id="free-view" role="tabpanel" aria-labelledby="free-tab">
         <div class="mode-bar">
           <label
             >Practice<select id="mode">
               <option value="m1">M1 / Chord Degree Audiation</option>
+              <option value="m2">M2 / Harmonic Role Recognition</option>
               <option value="m3">M3 / Common Tone</option>
               <option value="m4">M4 / Anticipatory Audiation</option>
+              <option value="m5">M5 / Changing Tonal Centers</option>
             </select></label
           ><a id="recognize" href="../degree-trainer/"
             >Recognize a degree instead</a
@@ -68,6 +78,7 @@
           </p>
           <div id="answer" class="answer" hidden></div>
           <div id="choices" class="choices"></div>
+          <p id="countdown" role="timer"></p>
           <div class="actions">
             <button id="start">Start</button
             ><button id="replay" class="secondary" disabled>
@@ -88,7 +99,7 @@
             Ready when you are.
           </p>
         </section>
-        <details class="settings" open>
+        <details class="settings">
           <summary>Practice settings</summary>
           <form id="settings">
             <div id="single-settings" class="settings-grid">
@@ -116,7 +127,14 @@
                   <option value="m7b5">m7b5</option>
                 </select></label
               >
-              <label>Target degree<select id="degree"></select></label>
+              <label id="degree-setting"
+                >Target degree<select id="degree"></select
+              ></label>
+              <label id="recognition-setting" class="wide" hidden
+                >Recognition degrees<input
+                  id="recognitionPool"
+                  value="1 b3 3 5 b7 maj7 9 11 13"
+              /></label>
               <label
                 >Root order<select id="rootOrder">
                   <option value="fixed">Fixed</option>
@@ -136,8 +154,59 @@
                 >Target path<select id="path">
                   <option value="guided">Guided target</option>
                   <option value="nearest">Nearest 3rd / 7th</option>
+                  <option value="common">Common tone</option>
+                  <option value="stepwise">Stepwise (0-2 semitones)</option>
+                  <option value="leap">Leap (3+ semitones)</option>
                 </select></label
               >
+            </div>
+            <div class="settings-grid" id="sequence-settings" hidden>
+              <label
+                >Length<select id="span">
+                  <option value="0">Full progression</option>
+                  <option value="2">First 2 chords</option>
+                  <option value="3">First 3 chords</option>
+                  <option value="4">First 4 chords</option>
+                  <option value="5">First 5 chords</option>
+                </select></label
+              >
+              <label id="common-mode-setting"
+                >Common tone task<select id="commonMode">
+                  <option value="recognize">Recognize each role</option>
+                  <option value="produce">Hold the pitch yourself</option>
+                </select></label
+              >
+              <label id="reveal-mode-setting"
+                >Next chord<select id="revealMode">
+                  <option value="manual">Wait for me</option>
+                  <option value="timed">Reveal after prediction window</option>
+                </select></label
+              >
+              <label id="prediction-setting"
+                >Prediction window (seconds)<input
+                  id="predictionSeconds"
+                  type="number"
+                  min="0.5"
+                  max="30"
+                  step="0.5"
+                  value="4"
+              /></label>
+              <label
+                >Progression repeats<input
+                  id="repeats"
+                  type="number"
+                  min="1"
+                  max="8"
+                  value="1"
+              /></label>
+              <label id="gap-setting"
+                >Prediction gap (beats)<input
+                  id="gapBeats"
+                  type="number"
+                  min="0"
+                  max="4"
+                  value="2"
+              /></label>
             </div>
             <div class="settings-grid">
               <label
@@ -169,6 +238,13 @@
             <details>
               <summary>Audio and display</summary>
               <div class="settings-grid">
+                <label
+                  >Count-in<select id="countIn">
+                    <option value="0">None</option>
+                    <option value="4">4 beats</option>
+                    <option value="8">8 beats</option>
+                  </select></label
+                >
                 <label
                   >Tempo<input
                     id="bpm"
@@ -213,6 +289,64 @@
             </details>
           </form>
         </details>
+        <details id="custom-editor" class="settings" hidden>
+          <summary>Custom progression</summary>
+          <form id="custom-form">
+            <div class="settings-grid">
+              <label class="wide"
+                >Name<input
+                  id="custom-name"
+                  maxlength="80"
+                  value="My progression"
+                  required
+              /></label>
+            </div>
+            <label
+              >Chords and beats<textarea
+                id="custom-score"
+                rows="6"
+                spellcheck="false"
+                aria-describedby="custom-format"
+              >
+Dm7 4&#10;G7 4&#10;Cmaj7 8</textarea>
+            </label>
+            <p id="custom-format">
+              One chord and its beat duration per line. Example: Dm7 4
+            </p>
+            <div class="actions">
+              <button type="submit" id="custom-save">Save progression</button
+              ><button type="button" class="secondary" id="custom-new">
+                New progression</button
+              ><button
+                type="button"
+                class="secondary"
+                id="custom-delete"
+                disabled
+              >
+                Delete progression
+              </button>
+            </div>
+            <p id="custom-status" role="status"></p>
+          </form>
+        </details>
+      </section>
+      <section
+        id="insights-view"
+        role="tabpanel"
+        aria-labelledby="insights-tab"
+        hidden
+      >
+        <h2>Skills and weak spots</h2>
+        <label
+          >Group by<select id="insight-group">
+            <option value="degree">Degree</option>
+            <option value="quality">Chord quality</option>
+            <option value="progression">Progression</option>
+          </select></label
+        >
+        <div id="skill-stats" class="table-scroll"></div>
+        <h3>Recognition confusions</h3>
+        <div id="confusions" class="table-scroll"></div>
       </section>
       <section id="path-view" role="tabpanel" aria-labelledby="path-tab" hidden>
         <h2>Suggested next practice</h2>

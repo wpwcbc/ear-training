@@ -1,5 +1,4 @@
 import assert from "node:assert/strict";
-import { pathToFileURL } from "node:url";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 const { chromium } = await import(
@@ -25,6 +24,7 @@ try {
       return original.call(this, targets, ...rest);
     };
   });
+  await page.getByText("Practice settings", { exact: true }).click();
   await page.getByText("Audio and display", { exact: true }).click();
   await page.locator("#bpm").fill("240");
   await page.locator("#bpm").dispatchEvent("change");
@@ -101,7 +101,7 @@ try {
   await page.locator("#path-tab").click();
   assert.equal(
     await page.locator("#path-list button:not([disabled])").count(),
-    3,
+    5,
   );
   assert.deepEqual(errors, []);
   console.log(

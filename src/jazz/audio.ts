@@ -1,10 +1,55 @@
 import { chordNotes } from "./theory.js";
 import type { Config, Target } from "./model.js";
 
+export interface PlaybackOptions {
+  countIn?: number;
+  repeats?: number;
+  gapBeats?: number;
+  seed?: boolean;
+}
+export interface PlaybackEvent {
+  index: number;
+  start: number;
+  duration: number;
+}
+export function playbackPlan(
+  targets: Target[],
+  config: Config,
+  options: PlaybackOptions = {},
+): {
+  events: PlaybackEvent[];
+  duration: number;
+  countIn: number;
+  seedStart: number;
+} {
+  const beat = 60 / config.bpm,
+    countIn = (options.countIn ?? 0) * beat;
+  let cursor = countIn + (options.seed ? beat : 0);
+  const events: PlaybackEvent[] = [];
+  for (let repeat = 0; repeat < (options.repeats ?? 1); repeat++)
+    targets.forEach((target, index) => {
+      if (index > 0 || repeat > 0) cursor += (options.gapBeats ?? 0) * beat;
+      const duration = (target.beats ?? config.beats) * beat;
+      events.push({ index, start: cursor, duration });
+      cursor += duration;
+    });
+  return { events, duration: cursor + 0.04, countIn, seedStart: countIn };
+}
+
 // Every voice belongs to this engine, including voices scheduled in the future.
 export class AudioEngine {
   private context: AudioContext | null = null;
-  private voices = new Set<OscillatorNode>();
+  private voices = new Set<AudioScheduledSourceNode>();
+  private playbackStart = 0;
+  plan: ReturnType<typeof playbackPlan> = {
+    events: [],
+    duration: 0,
+    countIn: 0,
+    seedStart: 0,
+  };
+  get position(): number {
+    return this.context ? this.context.currentTime - this.playbackStart : 0;
+  }
   async ready(): Promise<void> {
     this.context ??= new AudioContext();
     await this.context.resume();
@@ -49,19 +94,61 @@ export class AudioEngine {
     oscillator.start(start);
     oscillator.stop(start + duration + 0.02);
   }
+  private click(start: number, volume: number): void {
+    const ctx = this.context!;
+    const source = ctx.createBufferSource(),
+      gain = ctx.createGain();
+    const buffer = ctx.createBuffer(
+      1,
+      Math.ceil(ctx.sampleRate * 0.035),
+      ctx.sampleRate,
+    );
+    const samples = buffer.getChannelData(0);
+    for (let i = 0; i < samples.length; i++)
+      samples[i] = (Math.random() * 2 - 1) * (1 - i / samples.length);
+    source.buffer = buffer;
+    gain.gain.setValueAtTime(volume, start);
+    source.connect(gain);
+    gain.connect(ctx.destination);
+    this.voices.add(source);
+    source.onended = () => {
+      this.voices.delete(source);
+      source.disconnect();
+      gain.disconnect();
+    };
+    source.start(start);
+    source.stop(start + 0.04);
+  }
   play(
     targets: Target[],
     config: Config,
     melody: boolean,
     melodyOnly = false,
+    options: PlaybackOptions = {},
   ): number {
     if (!this.context || this.context.state !== "running")
       throw new Error("Press Start to enable audio.");
     this.stop();
-    const duration = (60 / config.bpm) * config.beats;
     const now = this.context.currentTime + 0.04;
-    targets.forEach((target, index) => {
-      const start = now + index * duration;
+    this.playbackStart = now;
+    this.plan = playbackPlan(targets, config, options);
+    for (let i = 0; i < (options.countIn ?? 0); i++)
+      this.click(
+        now + (i * 60) / config.bpm,
+        config.volume * (i === 0 ? 0.22 : 0.14),
+      );
+    if (options.seed && targets.length)
+      this.tone(
+        targets[0].midi,
+        now + this.plan.seedStart,
+        (60 / config.bpm) * 0.85,
+        config.volume * 0.24,
+        false,
+      );
+    this.plan.events.forEach((event) => {
+      const target = targets[event.index];
+      const start = now + event.start,
+        duration = event.duration;
       if (!melodyOnly) {
         let notes = chordNotes(target.chord, config.inversion);
         if (config.context === "root") notes = [chordNotes(target.chord)[0]];
@@ -89,6 +176,6 @@ export class AudioEngine {
           false,
         );
     });
-    return duration * targets.length;
+    return this.plan.duration;
   }
 }
