@@ -209,6 +209,10 @@ export const readMode1Config = () => {
         if (!Number.isFinite(questions) || questions < 1) {
             throw new Error("Questions per chord must be at least 1.");
         }
+        const uniqueUpperNoteCount = new Set(allowedUpperDegrees.map((upperDegree) => theory.parseDegreeToSemitones(upperDegree))).size;
+        if (Math.floor(questions) > uniqueUpperNoteCount) {
+            throw new Error(`Chord ${degree} ${quality} asks for ${Math.floor(questions)} questions, but only has ${uniqueUpperNoteCount} unique upper notes.`);
+        }
         return {
             chordDegree: degree,
             quality,

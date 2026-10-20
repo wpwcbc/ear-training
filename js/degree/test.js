@@ -6,6 +6,25 @@ import { state, CUSTOM_PROGRESSION_NAME, STORAGE_KEYS } from "./state.js";
 import { collectVelocitySettings } from "./velocity.js";
 import { addRecord, addRecords, renderRecords } from "./records.js";
 let currentTestName = CUSTOM_PROGRESSION_NAME;
+const shuffle = (items) => {
+    const shuffled = [...items];
+    for (let i = shuffled.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+};
+const uniqueUpperDegreesByPitch = (degrees) => {
+    const seenSemitones = new Set();
+    return degrees.filter((degree) => {
+        const semitones = theory.parseDegreeToSemitones(degree);
+        if (seenSemitones.has(semitones)) {
+            return false;
+        }
+        seenSemitones.add(semitones);
+        return true;
+    });
+};
 export const startTimer = () => {
     state.startPerfMs = performance.now();
     if (state.timerHandle) {
@@ -43,6 +62,7 @@ const buildMode1Queue = (config) => {
             ? config.keyCenter
             : theory.transposeKeyCenter(config.keyCenter, config.loopKeyShift * loopIndex);
         config.progression.forEach((chord, chordIndex) => {
+            const upperDegreePool = shuffle(uniqueUpperDegreesByPitch(chord.allowedUpperDegrees));
             for (let i = 0; i < chord.questions; i += 1) {
                 queue.push({
                     mode: "mode1",
@@ -55,6 +75,7 @@ const buildMode1Queue = (config) => {
                     chordDegree: chord.chordDegree,
                     quality: chord.quality,
                     allowedUpperDegrees: chord.allowedUpperDegrees,
+                    correctUpperDegree: upperDegreePool[i],
                     playChord: i === 0,
                 });
             }
@@ -67,6 +88,7 @@ const buildMode2Queue = (config) => {
     for (let i = 0; i < config.totalQuestions; i += 1) {
         const quality = theory.pickRandom(config.enabledQualities);
         const chordRoot = theory.pickRandom(RANDOM_ROOTS);
+        const correctUpperDegree = theory.pickRandom(config.allowedByQuality[quality]);
         queue.push({
             mode: "mode2",
             keyCenter: null,
@@ -78,6 +100,7 @@ const buildMode2Queue = (config) => {
             chordRoot,
             quality,
             allowedUpperDegrees: config.allowedByQuality[quality],
+            correctUpperDegree,
             playChord: true,
         });
     }
@@ -112,8 +135,7 @@ const buildQuestion = (event) => {
     ];
     const leadVelocity = velocitySettings.lead;
     const topChordMidi = Math.max(...chordMidis);
-    const correctDegree = theory.pickRandom(event.allowedUpperDegrees);
-    const upperMidi = theory.chooseUpperMidi(chordRootMidi, correctDegree, topChordMidi);
+    const upperMidi = theory.chooseUpperMidi(chordRootMidi, event.correctUpperDegree, topChordMidi);
     return {
         ...event,
         chordRootMidi,
@@ -122,7 +144,6 @@ const buildQuestion = (event) => {
         leadVelocity,
         chordNotes: chordMidis.map(theory.midiToNoteNameSharp),
         upperNote: theory.midiToNoteNameSharp(upperMidi),
-        correctUpperDegree: correctDegree,
     };
 };
 export const resetLiveDisplay = () => {

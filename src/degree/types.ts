@@ -31,6 +31,7 @@ export interface BaseQueueEvent {
 	questionsPerChord: number;
 	quality: ChordQuality;
 	allowedUpperDegrees: string[];
+	correctUpperDegree: string;
 	playChord: boolean;
 }
 
@@ -55,7 +56,6 @@ export type Question = QueueEvent & {
 	chordVelocities: number[];
 	leadVelocity: number;
 	upperNote: string;
-	correctUpperDegree: string;
 };
 
 export interface QuestionRecord {

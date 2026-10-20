@@ -8,6 +8,8 @@
 	},
 	"scripts": {
 		"build": "tsc -p .",
+		"dev": "node scripts/serve.mjs",
+		"test": "npm run build && node --test tests/*.test.mjs",
 		"watch": "tsc -p . -w"
 	}
 }
