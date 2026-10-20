@@ -1,7 +1,35 @@
-import { noteNameToPitchClassSemitones as pitchClass } from "../core/theory.js";
+import { noteNameToPitchClassSemitones as corePitchClass } from "../core/theory.js";
 
-export { pitchClass };
-export const qualities = ["maj7", "m7", "7", "m7b5"] as const;
+export function pitchClass(name: string): number {
+  const match = /^([A-Ga-g])([#b]*)$/.exec(name.trim());
+  if (!match) throw new Error("Invalid note: " + name);
+  const accidental = [...match[2]].reduce(
+    (sum, ch) => sum + (ch === "#" ? 1 : -1),
+    0,
+  );
+  return (corePitchClass(match[1]) + accidental + 120) % 12;
+}
+export const qualities = [
+  "maj7",
+  "m7",
+  "7",
+  "m7b5",
+  "sus4",
+  "7sus4",
+  "dim7",
+  "7alt",
+  "7b9",
+  "7#9",
+  "mmaj7",
+  "maj6",
+  "m6",
+  "maj9",
+  "m9",
+  "9",
+  "13",
+  "maj",
+  "m",
+] as const;
 export type Quality = (typeof qualities)[number];
 export interface Chord {
   root: string;
@@ -13,6 +41,21 @@ const intervals: Record<Quality, number[]> = {
   m7: [0, 3, 7, 10],
   "7": [0, 4, 7, 10],
   m7b5: [0, 3, 6, 10],
+  sus4: [0, 5, 7],
+  "7sus4": [0, 5, 7, 10],
+  dim7: [0, 3, 6, 9],
+  "7alt": [0, 4, 6, 10, 13],
+  "7b9": [0, 4, 7, 10, 13],
+  "7#9": [0, 4, 7, 10, 15],
+  mmaj7: [0, 3, 7, 11],
+  maj6: [0, 4, 7, 9],
+  m6: [0, 3, 7, 9],
+  maj9: [0, 4, 7, 11, 14],
+  m9: [0, 3, 7, 10, 14],
+  "9": [0, 4, 7, 10, 14],
+  "13": [0, 4, 7, 10, 21],
+  maj: [0, 4, 7],
+  m: [0, 3, 7],
 };
 export const degrees = [
   "1",
@@ -29,6 +72,10 @@ export const degrees = [
   "13",
   "b7",
   "maj7",
+  "4",
+  "6",
+  "bb7",
+  "#5",
 ];
 const offsets: Record<string, number> = {
   "1": 0,
@@ -45,12 +92,17 @@ const offsets: Record<string, number> = {
   "13": 9,
   b7: 10,
   maj7: 11,
+  "4": 5,
+  "6": 9,
+  bb7: 9,
+  "#5": 8,
 };
 export function parseChord(symbol: string): Chord {
-  const match = /^([A-G](?:#|b)?)(maj7|m7b5|m7|7)$/.exec(symbol.trim());
-  if (!match)
+  const match = /^([A-G](?:#|b){0,2})(.*)$/.exec(symbol.trim());
+  if (!match || !(qualities as readonly string[]).includes(match[2] || "maj"))
     throw new Error("Use chord symbols such as Dm7, G7, Cmaj7 or Bm7b5.");
-  return { root: match[1], quality: match[2] as Quality, symbol: match[0] };
+  const quality = (match[2] || "maj") as Quality;
+  return { root: match[1], quality, symbol: match[1] + quality };
 }
 export function targetPc(chord: Chord, degree: string): number {
   if (!Object.prototype.hasOwnProperty.call(offsets, degree))
@@ -71,17 +123,41 @@ export function degreeForPc(chord: Chord, pc: number): string {
     "1",
     "b9",
     "9",
-    chord.quality === "7" ? "#9" : "b3",
+    ["7", "7alt", "7b9", "7#9", "9", "13"].includes(chord.quality)
+      ? "#9"
+      : "b3",
     "3",
-    "11",
-    chord.quality === "m7b5" ? "b5" : "#11",
+    ["sus4", "7sus4"].includes(chord.quality) ? "4" : "11",
+    ["m7b5", "dim7", "7alt"].includes(chord.quality) ? "b5" : "#11",
     "5",
     "b13",
-    "13",
+    chord.quality === "dim7"
+      ? "bb7"
+      : ["maj6", "m6"].includes(chord.quality)
+        ? "6"
+        : "13",
     "b7",
     "maj7",
   ];
   return names[distance];
+}
+export function chordToneDegrees(chord: Chord): string[] {
+  return intervals[chord.quality].map((offset) =>
+    degreeForPc(chord, (pitchClass(chord.root) + offset) % 12),
+  );
+}
+export function guides(chord: Chord): string[] {
+  const tones = chordToneDegrees(chord),
+    result = tones.filter((d) => ["b3", "3", "b7", "maj7", "bb7"].includes(d));
+  return result.length
+    ? result
+    : tones.filter((d) => ["1", "4", "5"].includes(d));
+}
+export function tensionDegrees(chord: Chord): string[] {
+  if (chord.quality === "7alt") return ["b9", "#9", "b5", "b13"];
+  if (chord.quality === "7b9") return ["b9", "11", "b13"];
+  if (chord.quality === "7#9") return ["#9", "#11", "b13"];
+  return ["9", chord.quality.startsWith("maj") ? "#11" : "11", "13"];
 }
 export function recognitionDegrees(chord: Chord): string[] {
   return Array.from({ length: 12 }, (_, pc) =>
@@ -118,10 +194,7 @@ export function nearestGuide(
   low: number,
   high: number,
 ): { degree: string; midi: number } {
-  const options = [
-    chord.quality === "m7" || chord.quality === "m7b5" ? "b3" : "3",
-    chord.quality === "maj7" ? "maj7" : "b7",
-  ];
+  const options = guides(chord);
   return options
     .map((degree) => ({
       degree,

@@ -176,6 +176,60 @@ body {
   overflow-x: auto;
   margin: 20px 0 30px;
 }
+.score-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 18px 0;
+}
+.score-scroll canvas {
+  display: block;
+  max-width: none;
+}
+.fretboard {
+  table-layout: fixed;
+  min-width: 650px;
+}
+.lab .fretboard td,
+.lab .fretboard th {
+  padding: 3px;
+}
+.lab button.fret {
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  background: #edf2ef;
+  color: #25382f;
+  border-color: #bccdc2;
+}
+.lab button.fret.target {
+  background: #23735b;
+  color: white;
+}
+.lab button.fret.picked {
+  outline: 3px solid #c29238;
+  outline-offset: -3px;
+}
+#phrase-marks button[aria-pressed="true"] {
+  background: #23735b;
+  color: white;
+}
+#phrase-credit {
+  font-size: 12px;
+  margin-top: 14px;
+}
+#run-reference {
+  max-height: 120px;
+  overflow-y: auto;
+}
+.lab .fretboard th:first-child {
+  position: sticky;
+  left: 0;
+  background: #f5f7f6;
+}
+.score-scroll summary {
+  padding: 12px 0;
+  cursor: pointer;
+}
 .lab table {
   width: 100%;
   border-collapse: collapse;

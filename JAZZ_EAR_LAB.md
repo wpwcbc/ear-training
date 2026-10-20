@@ -1,6 +1,6 @@
 # Jazz Ear Lab: first delivery
 
-This document describes the original delivery. See [Release 3 implementation notes](JAZZ_EAR_LAB_RELEASE3.md) for the current features, verification and remaining scope.
+This document describes the original delivery. See the [completed v1 specification audit](JAZZ_EAR_LAB_SPEC_AUDIT.md) for current functionality, verification and explicitly deferred work. [Release 3 notes](JAZZ_EAR_LAB_RELEASE3.md) describe the previous milestone.
 
 Run `npm run build`, then `npm run dev`. Open http://127.0.0.1:4173/jazz-ear-lab/.
 

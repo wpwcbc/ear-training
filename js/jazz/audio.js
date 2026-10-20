@@ -1,7 +1,8 @@
 import { chordNotes } from "./theory.js";
+import { parseChord, degreeForPc, spellTarget } from "./theory.js";
 export function playbackPlan(targets, config, options = {}) {
     const beat = 60 / config.bpm, countIn = (options.countIn ?? 0) * beat;
-    let cursor = countIn + (options.seed ? beat : 0);
+    let cursor = countIn + (options.seed || options.rootAnchor ? beat : 0);
     const events = [];
     for (let repeat = 0; repeat < (options.repeats ?? 1); repeat++)
         targets.forEach((target, index) => {
@@ -34,6 +35,10 @@ export class AudioEngine {
         await this.context.resume();
         if (this.context.state !== "running")
             throw new Error("Audio is suspended. Press Start or Replay to retry.");
+    }
+    async pause() {
+        if (this.context?.state === "running")
+            await this.context.suspend();
     }
     stop() {
         for (const voice of this.voices) {
@@ -95,6 +100,10 @@ export class AudioEngine {
             this.click(now + (i * 60) / config.bpm, config.volume * (i === 0 ? 0.22 : 0.14));
         if (options.seed && targets.length)
             this.tone(targets[0].midi, now + this.plan.seedStart, (60 / config.bpm) * 0.85, config.volume * 0.24, false);
+        if (options.rootAnchor && targets.length)
+            this.tone(chordNotes(targets[0].chord)[0], now + this.plan.seedStart, (60 / config.bpm) * 0.85, config.volume * 0.24, false);
+        if (options.cueAtEnd)
+            this.click(now + this.plan.duration - 0.04, config.volume * 0.2);
         this.plan.events.forEach((event) => {
             const target = targets[event.index];
             const start = now + event.start, duration = event.duration;
@@ -110,9 +119,38 @@ export class AudioEngine {
                 }
                 notes.forEach((n) => this.tone(n, start, duration * 0.92, config.volume * 0.09, config.timbre === "pad"));
             }
-            if (melody)
-                this.tone(target.midi, start + 0.08, duration * 0.85, config.volume * 0.24, false);
+            if (melody) {
+                const split = target.secondMidi !== undefined ? 2 : 1;
+                this.tone(target.midi, start + (split === 2 ? 0.01 : 0.08), (duration / split) * 0.85, config.volume * 0.24, false);
+                if (target.secondMidi !== undefined)
+                    this.tone(target.secondMidi, start + duration / 2, duration * 0.42, config.volume * 0.24, false);
+            }
         });
         return this.plan.duration;
+    }
+    playPhrase(phrase, config, firstChordOnly = false) {
+        const chordSymbols = firstChordOnly
+            ? phrase.chords.slice(0, 1)
+            : phrase.chords;
+        const targets = chordSymbols.map((symbol, index) => {
+            const chord = parseChord(symbol), notes = phrase.notes.filter((n) => n.chord === index), degree = degreeForPc(chord, notes[0].midi % 12);
+            return {
+                chord,
+                degree,
+                name: spellTarget(chord, degree),
+                midi: notes[0].midi,
+                beats: notes.reduce((sum, n) => sum + n.beats, 0),
+            };
+        });
+        const duration = this.play(targets, { ...config, context: "full" }, false, false, { countIn: config.countIn });
+        let cursor = (config.countIn * 60) / config.bpm;
+        phrase.notes
+            .filter((n) => !firstChordOnly || n.chord === 0)
+            .forEach((note) => {
+            const length = (note.beats * 60) / config.bpm;
+            this.tone(note.midi, this.playbackStart + cursor, length * 0.88, config.volume * 0.24, false);
+            cursor += length;
+        });
+        return duration;
     }
 }

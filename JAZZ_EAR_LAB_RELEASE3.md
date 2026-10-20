@@ -1,5 +1,7 @@
 # Jazz Ear Lab: Release 2 extensions and Release 3 core
 
+Historical milestone: remaining implementation work listed here is superseded by the [v1 specification audit](JAZZ_EAR_LAB_SPEC_AUDIT.md).
+
 Run `npm run build`, then `npm run dev`. Open http://127.0.0.1:4173/jazz-ear-lab/.
 
 Existing trainers, their storage keys and the non-repeating degree questions are preserved. The application remains native TypeScript and static multipage HTML.

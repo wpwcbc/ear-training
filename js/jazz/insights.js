@@ -11,9 +11,10 @@ export function skillStats(sessions, grouping) {
                 ? degree
                 : parseChord(record.chords[i]).quality);
         labels.forEach((label, i) => {
-            const id = record.gradingSource + ":" + label;
+            const id = record.mode + ":" + record.gradingSource + ":" + label;
             const stats = groups.get(id) ?? {
                 label,
+                mode: record.mode,
                 source: record.gradingSource,
                 count: 0,
                 correct: 0,
@@ -26,7 +27,10 @@ export function skillStats(sessions, grouping) {
             const grade = record.gradingSource === "automatic" &&
                 record.selectedDegrees &&
                 grouping !== "progression"
-                ? record.selectedDegrees[i] === record.targets[i]
+                ? record.selectedDegrees[i] === record.targets[i] &&
+                    (!record.selectedQualities ||
+                        record.selectedQualities[i] ===
+                            parseChord(record.chords[i]).quality)
                     ? "correct"
                     : "missed"
                 : record.grade;
@@ -52,8 +56,14 @@ export function confusions(records) {
         r.grade !== "skipped" &&
         !r.referenceAssisted)
         .forEach((record) => {
-        record.selectedDegrees?.forEach((selected, i) => {
-            const expected = record.targets[i];
+        record.selectedDegrees?.forEach((choice, i) => {
+            let expected = record.targets[i], selected = choice;
+            const quality = parseChord(record.chords[i]).quality;
+            if (record.selectedQualities &&
+                record.selectedQualities[i] !== quality) {
+                expected = quality + ": " + expected;
+                selected = record.selectedQualities[i] + ": " + selected;
+            }
             if (!selected || !expected || selected === expected)
                 return;
             const key = JSON.stringify([expected, selected]);

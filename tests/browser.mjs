@@ -101,7 +101,7 @@ try {
   await page.locator("#path-tab").click();
   assert.equal(
     await page.locator("#path-list button:not([disabled])").count(),
-    5,
+    7,
   );
   assert.deepEqual(errors, []);
   console.log(

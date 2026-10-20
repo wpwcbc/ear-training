@@ -54,6 +54,14 @@
         >
           Insights
         </button>
+        <button
+          id="review-tab"
+          role="tab"
+          aria-selected="false"
+          aria-controls="review-view"
+        >
+          Review
+        </button>
       </div>
       <section id="free-view" role="tabpanel" aria-labelledby="free-tab">
         <div class="mode-bar">
@@ -64,6 +72,8 @@
               <option value="m3">M3 / Common Tone</option>
               <option value="m4">M4 / Anticipatory Audiation</option>
               <option value="m5">M5 / Changing Tonal Centers</option>
+              <option value="m6">M6 / Phrase Audiation</option>
+              <option value="m7">M7 / Ear-to-Bass Mapping</option>
             </select></label
           ><a id="recognize" href="../degree-trainer/"
             >Recognize a degree instead</a
@@ -88,6 +98,12 @@
             ><button id="retry" class="secondary" disabled>Retry</button
             ><button id="skip" class="secondary" disabled>Skip</button
             ><button id="next" disabled>Next</button>
+            <button id="favorite" class="secondary" disabled>
+              Save for review
+            </button>
+            <button id="context-only" class="secondary" disabled>
+              Context only
+            </button>
           </div>
           <div id="grading" class="grading" hidden>
             <span>Self-assessment</span
@@ -98,6 +114,22 @@
           <p id="status" role="status" aria-live="polite">
             Ready when you are.
           </p>
+          <div id="run-reference" class="answer" hidden></div>
+          <section id="phrase-panel" hidden>
+            <button id="phrase-step" class="secondary">Sing back</button>
+            <div id="phrase-marks" class="choices"></div>
+            <div id="phrase-score" class="score-scroll"></div>
+            <p id="phrase-credit"></p>
+          </section>
+          <section id="bass-panel" hidden>
+            <button id="bass-stage" class="secondary">I sang it</button>
+            <div id="fretboard" class="score-scroll"></div>
+            <p id="bass-result"></p>
+          </section>
+          <details id="reference-details" hidden>
+            <summary>Reference playback</summary>
+            <div id="reference-tools" class="choices" hidden></div>
+          </details>
         </section>
         <details class="settings">
           <summary>Practice settings</summary>
@@ -135,11 +167,17 @@
                   id="recognitionPool"
                   value="1 b3 3 5 b7 maj7 9 11 13"
               /></label>
+              <label id="blind-quality-setting" hidden
+                >Recognition qualities<input
+                  id="recognitionQualities"
+                  value="maj7 m7 7 m7b5"
+              /></label>
               <label
                 >Root order<select id="rootOrder">
                   <option value="fixed">Fixed</option>
                   <option value="random">Random from list</option>
                   <option value="cycle">Cycle through list</option>
+                  <option value="fifths">Circle of fifths</option>
                 </select></label
               >
               <label class="wide"
@@ -147,6 +185,79 @@
                   id="roots"
                   value="C G D A E B F# C# Ab Eb Bb F"
               /></label>
+            </div>
+            <div id="performance-settings" class="settings-grid" hidden>
+              <label
+                >Playback<select id="runMode">
+                  <option value="step">Assess each transition</option>
+                  <option value="continuous">Continuous performance</option>
+                </select></label
+              >
+              <label
+                >Targets per chord<select id="targetPattern">
+                  <option value="one">One target</option>
+                  <option value="two">Two targets</option>
+                  <option value="line">Continuous guide-tone line</option>
+                </select></label
+              >
+            </div>
+            <div id="target-limit-setting" class="settings-grid" hidden>
+              <label
+                >Target set<select id="targetLimit">
+                  <option value="preset">Preset targets</option>
+                  <option value="guides">3rd / 7th</option>
+                  <option value="chord">Chord tones</option>
+                  <option value="tensions">Tensions</option>
+                </select></label
+              >
+            </div>
+            <div id="phrase-settings" class="settings-grid" hidden>
+              <label>Original study<select id="phraseId"></select></label>
+              <label
+                >Variation<select id="variation">
+                  <option value="original">Original</option>
+                  <option value="rhythm">Change rhythm</option>
+                  <option value="approach">Chromatic approaches</option>
+                  <option value="enclosure">Enclosures</option>
+                </select></label
+              >
+              <label
+                >Transpose (semitones)<input
+                  id="transpose"
+                  type="number"
+                  min="-11"
+                  max="11"
+                  value="0"
+              /></label>
+            </div>
+            <div id="bass-settings" class="settings-grid" hidden>
+              <label
+                >Task<select id="bassTask">
+                  <option value="sing-play">Sing, then play</option>
+                  <option value="hear-play">Hear, then play</option>
+                  <option value="next-beat">Play on the next beat</option>
+                </select></label
+              >
+              <label
+                >Lowest fret<input
+                  id="fretLow"
+                  type="number"
+                  min="0"
+                  max="24"
+                  value="0"
+              /></label>
+              <label
+                >Highest fret<input
+                  id="fretHigh"
+                  type="number"
+                  min="0"
+                  max="24"
+                  value="12"
+              /></label>
+              <label class="check"
+                ><input id="fretNames" type="checkbox" />Show fretboard note
+                names</label
+              >
             </div>
             <div id="progression-settings" class="settings-grid" hidden>
               <label>Progression<select id="progression"></select></label
@@ -239,6 +350,53 @@
               <summary>Audio and display</summary>
               <div class="settings-grid">
                 <label
+                  >Target range<select id="rangePreset">
+                    <option value="custom">Custom range</option>
+                    <option value="voice">Vocal range</option>
+                    <option value="bass">Bass range</option>
+                  </select></label
+                >
+                <label
+                  >Hints<select id="hintLevel">
+                    <option value="full">Current note and next target</option>
+                    <option value="minimal">Next target only</option>
+                  </select></label
+                >
+                <label
+                  >Vocal low (MIDI)<input
+                    id="vocalLow"
+                    type="number"
+                    min="28"
+                    max="84"
+                    value="48" /></label
+                ><label
+                  >Vocal high (MIDI)<input
+                    id="vocalHigh"
+                    type="number"
+                    min="40"
+                    max="96"
+                    value="72"
+                /></label>
+                <label
+                  >Bass low (MIDI)<input
+                    id="bassLow"
+                    type="number"
+                    min="28"
+                    max="67"
+                    value="28" /></label
+                ><label
+                  >Bass high (MIDI)<input
+                    id="bassHigh"
+                    type="number"
+                    min="39"
+                    max="67"
+                    value="60"
+                /></label>
+                <label class="check"
+                  ><input id="showProgression" type="checkbox" checked />Show
+                  progression chart</label
+                >
+                <label
                   >Count-in<select id="countIn">
                     <option value="0">None</option>
                     <option value="4">4 beats</option>
@@ -311,7 +469,8 @@
 Dm7 4&#10;G7 4&#10;Cmaj7 8</textarea>
             </label>
             <p id="custom-format">
-              One chord and its beat duration per line. Example: Dm7 4
+              Chord, beats, optional bar number (4/4), one per line. Example:
+              Dm7 4 1
             </p>
             <div class="actions">
               <button type="submit" id="custom-save">Save progression</button
@@ -347,6 +506,10 @@ Dm7 4&#10;G7 4&#10;Cmaj7 8</textarea>
         <div id="skill-stats" class="table-scroll"></div>
         <h3>Recognition confusions</h3>
         <div id="confusions" class="table-scroll"></div>
+      </section>
+      <section id="review-view" hidden>
+        <h2>Saved for review</h2>
+        <div id="review-list"></div>
       </section>
       <section id="path-view" role="tabpanel" aria-labelledby="path-tab" hidden>
         <h2>Suggested next practice</h2>

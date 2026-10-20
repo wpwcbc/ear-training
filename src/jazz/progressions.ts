@@ -2,6 +2,7 @@ import {
   parseChord,
   progressions as originalProgressions,
   type Chord,
+  guides,
 } from "./theory.js";
 
 export interface Progression {
@@ -11,10 +12,18 @@ export interface Progression {
   targets: string[];
   common?: string;
   beats?: number[];
+  bars?: number[];
 }
 
 export const progressionBank: Progression[] = [
   ...originalProgressions,
+  {
+    id: "six-triads",
+    name: "Three centers / six I-V triads",
+    chords: ["Bmaj", "Dmaj", "Gmaj", "Bbmaj", "Ebmaj", "F#maj"],
+    targets: ["3", "3", "3", "3", "3", "3"],
+    beats: [4, 4, 4, 4, 4, 4],
+  },
   {
     id: "secondary",
     name: "Secondary dominants / C-A7-Dm7-G7",
@@ -62,10 +71,7 @@ export const progressionBank: Progression[] = [
 ];
 
 export function guideDegrees(chord: Chord): string[] {
-  return [
-    chord.quality === "m7" || chord.quality === "m7b5" ? "b3" : "3",
-    chord.quality === "maj7" ? "maj7" : "b7",
-  ];
+  return guides(chord);
 }
 
 // Each row is a chord and its harmonic duration, independent of a global key.
@@ -84,15 +90,22 @@ export function parseProgression(
     throw new Error("Enter 2-32 chords, one per line: Dm7 4");
   const chords: string[] = [],
     beats: number[] = [],
-    targets: string[] = [];
+    targets: string[] = [],
+    bars: number[] = [];
+  let elapsedBeats = 0;
   rows.forEach((row, index) => {
     const parts = row.trim().split(/\s+/);
-    if (parts.length > 2)
+    if (parts.length > 3)
       throw new Error(
         `Row ${index + 1}: use a chord symbol and beats, such as G7 4.`,
       );
     const chord = parseChord(parts[0]);
     const duration = parts[1] === undefined ? 4 : Number(parts[1]);
+    const bar = Math.floor(elapsedBeats / 4) + 1;
+    if (parts[2] !== undefined && Number(parts[2]) !== bar)
+      throw new Error(
+        `Row ${index + 1}: this chord starts in bar ${bar} in 4/4.`,
+      );
     if (
       !Number.isFinite(duration) ||
       duration < 1 ||
@@ -105,6 +118,8 @@ export function parseProgression(
     chords.push(chord.symbol);
     beats.push(duration);
     targets.push(guideDegrees(chord)[0]);
+    bars.push(bar);
+    elapsedBeats += duration;
   });
-  return { id, name: name.trim(), chords, beats, targets };
+  return { id, name: name.trim(), chords, beats, targets, bars };
 }
