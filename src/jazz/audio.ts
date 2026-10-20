@@ -144,6 +144,15 @@ export class AudioEngine {
         now + (i * 60) / config.bpm,
         config.volume * (i === 0 ? 0.22 : 0.14),
       );
+    if (config.metronome) {
+      const beat = 60 / config.bpm;
+      for (
+        let start = this.plan.countIn;
+        start < this.plan.duration - 0.04;
+        start += beat
+      )
+        this.click(now + start, config.volume * 0.1);
+    }
     if (options.seed && targets.length)
       this.tone(
         targets[0].midi,

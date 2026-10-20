@@ -151,6 +151,19 @@ export function tensionDegrees(chord) {
         return ["#9", "#11", "b13"];
     return ["9", chord.quality.startsWith("maj") ? "#11" : "11", "13"];
 }
+export function allowedTargetDegrees(chord) {
+    const q = chord.quality;
+    const extensions = q === "dim7"
+        ? ["9", "11", "b13", "maj7"]
+        : q.includes("sus")
+            ? ["9", "11", "13", "b9"]
+            : ["7", "7alt", "7b9", "7#9", "9", "13"].includes(q)
+                ? ["b9", "9", "#9", "11", "#11", "b13", "13"]
+                : q.startsWith("m") && !q.startsWith("maj")
+                    ? ["9", "11", "b13", "13"]
+                    : ["9", "11", "#11", "13"];
+    return [...new Set([...chordToneDegrees(chord), ...extensions])].filter((d) => degreeForPc(chord, targetPc(chord, d)) === d);
+}
 export function recognitionDegrees(chord) {
     return Array.from({ length: 12 }, (_, pc) => degreeForPc(chord, (pitchClass(chord.root) + pc) % 12));
 }

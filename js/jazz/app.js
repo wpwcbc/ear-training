@@ -6,6 +6,8 @@ import { progressionBank, parseProgression } from "./progressions.js";
 import { skillStats, confusions } from "./insights.js";
 import { defaults, generate, keys, loadSessions, saveSession, recommendation, loadProgressions, validateConfig, isRecognition, isSequential, loadFavorites, } from "./model.js";
 import { AudioEngine } from "./audio.js";
+import { sessionQuestion, createSession } from "./lifecycle.js";
+import { installFlow } from "./flow.js";
 const el = (id) => document.getElementById(id);
 const audio = new AudioEngine();
 let customs = loadProgressions(localStorage);
@@ -30,6 +32,11 @@ let performanceRunning = false, phraseStage = 0, bassStage = 0, bassSelection;
 let marks = new Set(), pendingReview = null;
 const continuous = () => config.mode === "m5" && config.runMode === "continuous";
 let sessionStarted = 0, sessionPausedAt = 0, sessionPausedMs = 0;
+let hasPlayed = false;
+let autoTimer = 0;
+let flow;
+let playbackOverrides = {};
+const playbackConfig = () => ({ ...config, ...playbackOverrides });
 const status = (text) => {
     el("status").textContent = text;
 };
@@ -37,6 +44,8 @@ const button = (id, enabled) => {
     el(id).disabled = !enabled;
 };
 function stopAudio() {
+    window.clearTimeout(autoTimer);
+    autoTimer = 0;
     performanceRunning = false;
     audio.stop();
     window.clearTimeout(phaseTimer);
@@ -49,7 +58,10 @@ function stopAudio() {
 }
 function armPrediction(seconds = config.mode === "m5"
     ? (config.gapBeats * 60) / config.bpm
-    : config.predictionSeconds) {
+    : config.predictionUnit === "beats"
+        ? ((config.predictionBeats ?? 2) * 60) /
+            (playbackOverrides.bpm ?? config.bpm)
+        : config.predictionSeconds) {
     if (!challenge ||
         revealed ||
         paused ||
@@ -89,7 +101,7 @@ function startPerformance() {
     contextPending = false;
     performanceRunning = true;
     revealed = false;
-    audio.play(challenge.targets, config, true, false, {
+    audio.play(challenge.targets, playbackConfig(), true, false, {
         countIn: config.countIn,
         gapBeats: config.gapBeats,
     });
@@ -162,7 +174,7 @@ function renderPhrase() {
     el("phrase-credit").textContent = phrase.license;
     const button = el("phrase-step");
     button.hidden = phraseStage === 3;
-    button.disabled = !!phaseTimer;
+    button.disabled = !!phaseTimer || !hasPlayed;
     button.textContent =
         phraseStage === 6
             ? "Apply next variation"
@@ -182,6 +194,7 @@ function renderPhrase() {
                 else
                     marks.add(i);
                 renderPhrase();
+                store();
             };
             holder.append(button);
             beat += note.beats;
@@ -198,6 +211,7 @@ function renderPhrase() {
         drawBass(el("fretboard"), config.fretLow, config.fretHigh, config.fretNames, midi, bassSelection, (chosen) => {
             bassSelection = chosen;
             renderPhrase();
+            store();
         });
         el("bass-stage").hidden = true;
         el("bass-result").textContent =
@@ -219,12 +233,13 @@ function renderBassTask() {
         : "Keep the sound in mind and find it in your selected position.";
     el("bass-stage").hidden = !sing;
     el("bass-stage").textContent = "I sang it";
-    el("bass-stage").disabled = !!phaseTimer;
+    el("bass-stage").disabled = !!phaseTimer || !hasPlayed;
     el("fretboard").hidden = sing;
     if (!sing)
         drawBass(el("fretboard"), config.fretLow, config.fretHigh, config.fretNames, revealed ? target.midi : undefined, bassSelection, (midi) => {
             bassSelection = midi;
             renderBassTask();
+            store();
         });
     el("bass-result").textContent = !revealed
         ? bassSelection === undefined
@@ -241,7 +256,9 @@ function renderReferences() {
     holder.replaceChildren();
     if (!challenge)
         return;
-    challenge.targets.forEach((target) => {
+    challenge.targets
+        .filter((_, i) => !isSequential(config) || continuous() || i <= step)
+        .forEach((target) => {
         for (const [label, melody, only] of [
             ["Chord", false, false],
             ["Target", true, true],
@@ -253,7 +270,7 @@ function renderReferences() {
             button.onclick = safe(async () => {
                 await audio.ready();
                 stopAudio();
-                audio.play([target], config, melody, only);
+                audio.play([target], playbackConfig(), melody, only);
             });
             holder.append(button);
         }
@@ -275,6 +292,10 @@ function renderReview() {
         const practice = document.createElement("button");
         practice.textContent = "Practice";
         practice.onclick = safe(async () => {
+            if (flow) {
+                await flow.practiceFavorite(favorite);
+                return;
+            }
             resetChallenge();
             config = { ...defaults, ...favorite.config };
             if (![...progressionBank, ...customs].some((p) => p.id === config.progression))
@@ -307,6 +328,26 @@ function store() {
                         ? performance.now() - sessionPausedAt
                         : 0)) /
                     1000);
+            if (challenge)
+                session.progress = {
+                    index,
+                    step,
+                    revealed,
+                    graded,
+                    replays,
+                    elapsed,
+                    referenceSeen,
+                    referenceAssisted,
+                    selected: [...selected],
+                    selectedQualities: [...selectedQualities],
+                    phraseStage,
+                    bassStage,
+                    bassSelection,
+                    marks: [...marks],
+                    hasPlayed,
+                    completedQuestions: [...completedQuestions],
+                    contextPending,
+                };
             saveSession(localStorage, session);
         }
     }
@@ -393,13 +434,20 @@ function render() {
     const active = !!challenge;
     for (const id of ["pause", "retry", "skip", "favorite", "context-only"])
         el(id).hidden = !active;
+    el("retry").hidden = !active || !hasPlayed || (!revealed && !graded);
+    el("favorite").hidden = !active || !revealed;
+    el("skip").hidden = !active || graded;
+    el("reveal").hidden = revealed;
+    el("next").hidden = !graded;
+    el("replay").textContent = revealed ? "Replay both" : "Replay context";
     button("start", !busy);
-    el("start").textContent = active ? "Restart session" : "Start";
+    el("start").textContent = active ? "Play context" : "Start";
+    el("start").hidden = active && hasPlayed;
     button("pause", active);
     button("retry", active && !paused);
     button("skip", active && !paused);
     button("replay", active && !paused);
-    button("reveal", active && !paused && !revealed && !phaseTimer);
+    button("reveal", active && hasPlayed && !paused && !revealed && !phaseTimer);
     button("next", active && !paused && graded);
     button("favorite", active && !paused);
     button("context-only", active && !paused);
@@ -438,7 +486,13 @@ function render() {
         return;
     const targets = challenge.targets;
     const chart = el("chart");
-    chart.hidden = !config.showProgression;
+    chart.hidden =
+        !config.showProgression ||
+            !!(config.hideChartAfterListening &&
+                hasPlayed &&
+                !contextPending &&
+                !revealed &&
+                !performanceRunning);
     chart.replaceChildren();
     targets.forEach((target, i) => {
         const span = document.createElement("span");
@@ -449,10 +503,11 @@ function render() {
         chart.append(span);
     });
     el("session-count").textContent =
-        `Question ${index + 1}${config.count ? " / " + config.count : ""}`;
+        `Question ${index + 1}${session?.questionCount ? " / " + session.questionCount : ""}`;
     if (paused) {
         el("phase").textContent = "PAUSED";
         el("prompt").textContent = "Practice paused";
+        flow?.onRender();
         return;
     }
     el("phase").textContent = contextPending
@@ -514,10 +569,14 @@ function render() {
                     : "");
     if (revealed)
         renderReferences();
+    store();
+    flow?.onRender();
 }
 function playContext() {
     if (!challenge)
         return;
+    hasPlayed = true;
+    status("Listen to the context, then respond.");
     if (!revealed && !contextPending)
         elapsed += Math.max(0, performance.now() - started) / 1000;
     stopAudio();
@@ -530,8 +589,8 @@ function playContext() {
         ? [challenge.targets[step - 1]]
         : challenge.targets;
     const duration = config.mode === "m6" && challenge.phrase
-        ? audio.playPhrase(challenge.phrase, config, phraseStage === 3)
-        : audio.play(targets, config, isSequential(config) || isRecognition(config) || config.mode === "m7", false, {
+        ? audio.playPhrase(challenge.phrase, playbackConfig(), phraseStage === 3)
+        : audio.play(targets, playbackConfig(), isSequential(config) || isRecognition(config) || config.mode === "m7", false, {
             countIn: config.countIn,
             repeats: config.mode === "m3" ? config.repeats : 1,
             seed: config.mode === "m3" && !isRecognition(config),
@@ -544,6 +603,9 @@ function playContext() {
         started = performance.now();
         render();
         armPrediction();
+        status(isRecognition(config)
+            ? "Choose your answer, then check it."
+            : "Sing or play the target, then reveal the reference.");
         if (config.mode === "m7" && config.bassTask === "next-beat")
             status("Play now.");
     }, duration * 1000);
@@ -579,6 +641,7 @@ function renderChoices() {
                 select.disabled = !qualitySelect.value;
                 if (qualitySelect.value)
                     fillOptions(qualitySelect.value);
+                store();
             };
             label.append(qualitySelect);
         }
@@ -586,14 +649,19 @@ function renderChoices() {
             fillOptions(target.chord.quality);
         select.addEventListener("change", () => {
             selected[i] = select.value;
+            store();
         });
         label.append(select);
         holder.append(label);
     });
 }
-function newQuestion() {
+function newQuestion(play = true) {
     stopAudio();
-    challenge = pendingReview ?? generate(config, index, customs);
+    challenge =
+        pendingReview ??
+            (session
+                ? sessionQuestion(session, index)
+                : generate(config, index, customs));
     pendingReview = null;
     step = isSequential(config) ? 1 : 0;
     revealed = false;
@@ -604,6 +672,7 @@ function newQuestion() {
     referenceSeen = false;
     referenceAssisted = false;
     contextPending = true;
+    hasPlayed = false;
     phraseStage = 0;
     bassStage = 0;
     bassSelection = undefined;
@@ -612,7 +681,14 @@ function newQuestion() {
     started = performance.now();
     renderChoices();
     render();
-    playContext();
+    if (play)
+        playContext();
+    else {
+        el("phase").textContent = "READY";
+        status("Press Play context when ready.");
+        store();
+        return;
+    }
     el("phase").textContent = "ESTABLISH CONTEXT";
     button("reveal", false);
     status(continuous()
@@ -622,6 +698,13 @@ function newQuestion() {
             : "Listen, then respond when ready.");
 }
 async function start() {
+    if (challenge && session) {
+        await audio.ready();
+        if (paused)
+            await togglePause();
+        playContext();
+        return;
+    }
     if (busy)
         return;
     busy = true;
@@ -680,6 +763,8 @@ function record(grade, source) {
         : [t]);
     const latency = elapsed + (revealed ? 0 : Math.max(0, performance.now() - started) / 1000);
     session.records.push({
+        questionIndex: index,
+        chordStep: step,
         timestamp: new Date().toISOString(),
         mode: config.mode,
         config: { ...config },
@@ -706,8 +791,7 @@ function record(grade, source) {
         referenceAssisted,
     });
     graded = true;
-    if (grade !== "skipped" &&
-        !completedQuestions.has(index) &&
+    if (!completedQuestions.has(index) &&
         (!isSequential(config) ||
             continuous() ||
             step === challenge.targets.length - 1)) {
@@ -721,9 +805,14 @@ function record(grade, source) {
             ? "Correct. Compare the target with its harmonic context."
             : "Compare your answers with the reference, then retry or continue."
         : `Self-assessment saved: ${grade}.`);
+    if (config.autoAdvance && !paused)
+        autoTimer = window.setTimeout(() => {
+            if (graded && !paused)
+                safe(next)();
+        }, 1200);
 }
 async function reveal() {
-    if (!challenge || revealed || paused || phaseTimer)
+    if (!challenge || !hasPlayed || revealed || paused || phaseTimer)
         return;
     if (performanceRunning)
         return;
@@ -748,10 +837,10 @@ async function reveal() {
     referenceSeen = true;
     if (config.mode === "m6" && challenge.phrase) {
         phraseStage = 4;
-        audio.playPhrase(challenge.phrase, config);
+        audio.playPhrase(challenge.phrase, playbackConfig());
     }
     else
-        audio.play(config.mode === "m3" ? challenge.targets : [challenge.targets[step]], config, true);
+        audio.play(config.mode === "m3" ? challenge.targets : [challenge.targets[step]], playbackConfig(), true);
     render();
     followAudio(config.mode === "m3" ? 0 : step);
     if (isRecognition(config))
@@ -783,7 +872,7 @@ function next() {
         return;
     }
     index++;
-    if (config.count && index >= config.count) {
+    if (session?.questionCount && index >= session.questionCount) {
         stopAudio();
         challenge = null;
         render();
@@ -796,6 +885,12 @@ function next() {
         el("session-count").textContent = `${session?.completedCount} completed`;
         store();
         sessionStarted = 0;
+        if (session) {
+            session.status = "completed";
+            session.endedAt = new Date().toISOString();
+            saveSession(localStorage, session);
+            flow?.showSummary(session.id);
+        }
         renderHistory();
         return;
     }
@@ -823,6 +918,9 @@ async function togglePause() {
         }
         render();
         status(paused ? "Performance paused." : "Performance resumed.");
+        if (session)
+            session.status = paused ? "paused" : "active";
+        store();
         return;
     }
     if (!paused) {
@@ -836,12 +934,15 @@ async function togglePause() {
     else {
         paused = false;
         started = performance.now();
-        if (contextPending)
+        if (contextPending && hasPlayed)
             playContext();
         else if (!revealed)
             armPrediction(predictionRemaining);
     }
     render();
+    if (session)
+        session.status = paused ? "paused" : "active";
+    store();
     status(paused
         ? "Audio stopped. Your challenge is preserved."
         : "Resumed. Replay context when ready.");
@@ -1062,6 +1163,10 @@ el("recognize").onclick = (event) => {
 };
 el("reveal").onclick = safe(reveal);
 el("replay").onclick = safe(async () => {
+    if (config.replayLimit && replays >= config.replayLimit) {
+        status("Replay limit reached. Reveal or finish this question.");
+        return;
+    }
     const currentChallenge = challenge;
     await audio.ready();
     if (challenge !== currentChallenge || paused || !challenge)
@@ -1070,11 +1175,11 @@ el("replay").onclick = safe(async () => {
     if (revealed && challenge) {
         stopAudio();
         if (config.mode === "m6" && challenge.phrase)
-            audio.playPhrase(challenge.phrase, config);
+            audio.playPhrase(challenge.phrase, playbackConfig());
         else
             audio.play(config.mode === "m3" || continuous()
                 ? challenge.targets
-                : [challenge.targets[step]], config, true);
+                : [challenge.targets[step]], playbackConfig(), true);
         followAudio(config.mode === "m3" || continuous() || config.mode === "m6" ? 0 : step);
     }
     else
@@ -1127,6 +1232,10 @@ el("phrase-step").onclick = safe(async () => {
         const variants = ["rhythm", "approach", "enclosure", "original"];
         const next = variants[(variants.indexOf(config.variation) + 1) %
             variants.length];
+        if (flow) {
+            await flow.varyPhrase(next);
+            return;
+        }
         resetChallenge();
         config.variation = next;
         populate();
@@ -1157,7 +1266,7 @@ el("context-only").onclick = safe(async () => {
     stopAudio();
     audio.play(isSequential(config)
         ? [challenge.targets[Math.max(0, step - 1)]]
-        : challenge.targets, config, false);
+        : challenge.targets, playbackConfig(), false);
     replays++;
 });
 el("favorite").onclick = safe(() => {
@@ -1228,6 +1337,8 @@ el("custom-delete").onclick = () => {
     }
 };
 el("settings").onchange = () => {
+    if (flow)
+        return;
     resetChallenge();
     try {
         const next = readConfig();
@@ -1262,6 +1373,8 @@ window.addEventListener("pagehide", () => {
     store();
 });
 document.addEventListener("keydown", (event) => {
+    if (flow)
+        return;
     if (event.target.matches("input,select,textarea,button,a") ||
         event.repeat)
         return;
@@ -1282,3 +1395,127 @@ document.addEventListener("keydown", (event) => {
 populate();
 render();
 renderHistory();
+flow = installFlow({
+    getConfig: () => structuredClone(config),
+    setConfig: (next) => {
+        config = structuredClone(next);
+        populate();
+    },
+    getCustoms: () => structuredClone(customs),
+    setCustoms: (next) => {
+        customs = next;
+        populate();
+    },
+    readConfig,
+    getSession: () => session,
+    async create(next, source, presetId, exact) {
+        const created = createSession(next, customs, source, presetId);
+        if (exact?.length) {
+            created.questions = structuredClone(exact);
+            created.questionCount = exact.length;
+        }
+        resetChallenge();
+        session = created;
+        config = structuredClone(created.config);
+        playbackOverrides = {};
+        index = 0;
+        completedQuestions = new Set();
+        sessionStarted = performance.now();
+        sessionPausedAt = 0;
+        sessionPausedMs = 0;
+        newQuestion(false);
+        store();
+        saveSession(localStorage, created);
+        return created;
+    },
+    resume(saved) {
+        resetChallenge();
+        session = structuredClone(saved);
+        config = { ...defaults, ...session.config };
+        playbackOverrides = {};
+        populate();
+        const p = session.progress;
+        index = p?.index ?? 0;
+        challenge = sessionQuestion(session, index);
+        step = p?.step ?? (isSequential(config) ? 1 : 0);
+        revealed = p?.revealed ?? false;
+        graded = p?.graded ?? false;
+        replays = p?.replays ?? 0;
+        elapsed = p?.elapsed ?? 0;
+        referenceSeen = p?.referenceSeen ?? false;
+        referenceAssisted = p?.referenceAssisted ?? false;
+        phraseStage = p?.phraseStage ?? 0;
+        bassStage = p?.bassStage ?? 0;
+        bassSelection = p?.bassSelection;
+        marks = new Set(p?.marks ?? []);
+        completedQuestions = new Set(p?.completedQuestions ?? []);
+        hasPlayed = (p?.hasPlayed ?? false) && !p?.contextPending;
+        contextPending = false;
+        paused = false;
+        session.status = "active";
+        sessionStarted = performance.now() - session.totalTime * 1000;
+        sessionPausedMs = 0;
+        sessionPausedAt = 0;
+        started = performance.now();
+        renderChoices();
+        selected = p?.selected ?? [];
+        selectedQualities = p?.selectedQualities ?? [];
+        el("choices")
+            .querySelectorAll("label")
+            .forEach((label, i) => {
+            const selects = label.querySelectorAll("select");
+            if (selects.length === 2 && selectedQualities[i]) {
+                selects[0].value = selectedQualities[i];
+                selects[0].dispatchEvent(new Event("change"));
+            }
+            selects[selects.length - 1].value = p?.selected[i] ?? "";
+        });
+        selected = p?.selected ?? [];
+        render();
+        store();
+        status("Session restored. Replay context when ready.");
+    },
+    leave(end = false) {
+        operation++;
+        stopAudio();
+        if (session &&
+            challenge &&
+            session.status !== "completed" &&
+            session.status !== "abandoned") {
+            if (!paused) {
+                if (!revealed && !contextPending && hasPlayed)
+                    elapsed += Math.max(0, performance.now() - started) / 1000;
+                sessionPausedAt = performance.now();
+                paused = true;
+            }
+            session.status = end ? "abandoned" : "paused";
+            if (end)
+                session.endedAt = new Date().toISOString();
+            store();
+        }
+        sessionStarted = 0;
+    },
+    compact(next) {
+        stopAudio();
+        contextPending = false;
+        if (continuous() && !revealed)
+            hasPlayed = false;
+        if (config.mode === "m6" && !revealed)
+            hasPlayed = false;
+        playbackOverrides = { ...playbackOverrides, ...next };
+        render();
+        status("Playback settings updated. Replay context when ready.");
+    },
+    pause: togglePause,
+    unlock: () => audio.ready(),
+    refreshViews: () => {
+        renderHistory();
+        renderReview();
+    },
+    play: async () => {
+        await audio.ready();
+        if (paused)
+            await togglePause();
+        playContext();
+    },
+});

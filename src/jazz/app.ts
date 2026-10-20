@@ -30,6 +30,8 @@ import {
   type Mode,
 } from "./model.js";
 import { AudioEngine } from "./audio.js";
+import { sessionQuestion, createSession } from "./lifecycle.js";
+import { installFlow } from "./flow.js";
 
 const el = <T extends HTMLElement = HTMLElement>(id: string): T =>
   document.getElementById(id) as T;
@@ -74,6 +76,11 @@ const continuous = () =>
 let sessionStarted = 0,
   sessionPausedAt = 0,
   sessionPausedMs = 0;
+let hasPlayed = false;
+let autoTimer = 0;
+let flow: ReturnType<typeof installFlow> | undefined;
+let playbackOverrides: Partial<Config> = {};
+const playbackConfig = () => ({ ...config, ...playbackOverrides });
 const status = (text: string) => {
   el("status").textContent = text;
 };
@@ -81,6 +88,8 @@ const button = (id: string, enabled: boolean) => {
   el<HTMLButtonElement>(id).disabled = !enabled;
 };
 function stopAudio(): void {
+  window.clearTimeout(autoTimer);
+  autoTimer = 0;
   performanceRunning = false;
   audio.stop();
   window.clearTimeout(phaseTimer);
@@ -94,7 +103,10 @@ function stopAudio(): void {
 function armPrediction(
   seconds = config.mode === "m5"
     ? (config.gapBeats * 60) / config.bpm
-    : config.predictionSeconds,
+    : config.predictionUnit === "beats"
+      ? ((config.predictionBeats ?? 2) * 60) /
+        (playbackOverrides.bpm ?? config.bpm)
+      : config.predictionSeconds,
 ): void {
   if (
     !challenge ||
@@ -143,7 +155,7 @@ function startPerformance(): void {
   contextPending = false;
   performanceRunning = true;
   revealed = false;
-  audio.play(challenge.targets, config, true, false, {
+  audio.play(challenge.targets, playbackConfig(), true, false, {
     countIn: config.countIn,
     gapBeats: config.gapBeats,
   });
@@ -222,7 +234,7 @@ function renderPhrase(): void {
   el("phrase-credit").textContent = phrase.license;
   const button = el<HTMLButtonElement>("phrase-step");
   button.hidden = phraseStage === 3;
-  button.disabled = !!phaseTimer;
+  button.disabled = !!phaseTimer || !hasPlayed;
   button.textContent =
     phraseStage === 6
       ? "Apply next variation"
@@ -240,6 +252,7 @@ function renderPhrase(): void {
         if (marks.has(i)) marks.delete(i);
         else marks.add(i);
         renderPhrase();
+        store();
       };
       holder.append(button);
       beat += note.beats;
@@ -267,6 +280,7 @@ function renderPhrase(): void {
       (chosen) => {
         bassSelection = chosen;
         renderPhrase();
+        store();
       },
     );
     el("bass-stage").hidden = true;
@@ -288,7 +302,7 @@ function renderBassTask(): void {
     : "Keep the sound in mind and find it in your selected position.";
   el("bass-stage").hidden = !sing;
   el("bass-stage").textContent = "I sang it";
-  el<HTMLButtonElement>("bass-stage").disabled = !!phaseTimer;
+  el<HTMLButtonElement>("bass-stage").disabled = !!phaseTimer || !hasPlayed;
   el("fretboard").hidden = sing;
   if (!sing)
     drawBass(
@@ -301,6 +315,7 @@ function renderBassTask(): void {
       (midi) => {
         bassSelection = midi;
         renderBassTask();
+        store();
       },
     );
   el("bass-result").textContent = !revealed
@@ -317,23 +332,25 @@ function renderReferences(): void {
   const holder = el("reference-tools");
   holder.replaceChildren();
   if (!challenge) return;
-  challenge.targets.forEach((target) => {
-    for (const [label, melody, only] of [
-      ["Chord", false, false],
-      ["Target", true, true],
-      ["Together", true, false],
-    ] as const) {
-      const button = document.createElement("button");
-      button.className = "secondary";
-      button.textContent = `${target.chord.symbol}: ${label}`;
-      button.onclick = safe(async () => {
-        await audio.ready();
-        stopAudio();
-        audio.play([target], config, melody, only);
-      });
-      holder.append(button);
-    }
-  });
+  challenge.targets
+    .filter((_, i) => !isSequential(config) || continuous() || i <= step)
+    .forEach((target) => {
+      for (const [label, melody, only] of [
+        ["Chord", false, false],
+        ["Target", true, true],
+        ["Together", true, false],
+      ] as const) {
+        const button = document.createElement("button");
+        button.className = "secondary";
+        button.textContent = `${target.chord.symbol}: ${label}`;
+        button.onclick = safe(async () => {
+          await audio.ready();
+          stopAudio();
+          audio.play([target], playbackConfig(), melody, only);
+        });
+        holder.append(button);
+      }
+    });
 }
 function renderReview(): void {
   const holder = el("review-list");
@@ -351,6 +368,10 @@ function renderReview(): void {
     const practice = document.createElement("button");
     practice.textContent = "Practice";
     practice.onclick = safe(async () => {
+      if (flow) {
+        await flow.practiceFavorite(favorite);
+        return;
+      }
       resetChallenge();
       config = { ...defaults, ...favorite.config };
       if (
@@ -395,6 +416,26 @@ function store(): void {
               : 0)) /
             1000,
         );
+      if (challenge)
+        session.progress = {
+          index,
+          step,
+          revealed,
+          graded,
+          replays,
+          elapsed,
+          referenceSeen,
+          referenceAssisted,
+          selected: [...selected],
+          selectedQualities: [...selectedQualities],
+          phraseStage,
+          bassStage,
+          bassSelection,
+          marks: [...marks],
+          hasPlayed,
+          completedQuestions: [...completedQuestions],
+          contextPending,
+        };
       saveSession(localStorage, session);
     }
   } catch {
@@ -492,13 +533,20 @@ function render(): void {
   const active = !!challenge;
   for (const id of ["pause", "retry", "skip", "favorite", "context-only"])
     el(id).hidden = !active;
+  el("retry").hidden = !active || !hasPlayed || (!revealed && !graded);
+  el("favorite").hidden = !active || !revealed;
+  el("skip").hidden = !active || graded;
+  el("reveal").hidden = revealed;
+  el("next").hidden = !graded;
+  el("replay").textContent = revealed ? "Replay both" : "Replay context";
   button("start", !busy);
-  el("start").textContent = active ? "Restart session" : "Start";
+  el("start").textContent = active ? "Play context" : "Start";
+  el("start").hidden = active && hasPlayed;
   button("pause", active);
   button("retry", active && !paused);
   button("skip", active && !paused);
   button("replay", active && !paused);
-  button("reveal", active && !paused && !revealed && !phaseTimer);
+  button("reveal", active && hasPlayed && !paused && !revealed && !phaseTimer);
   button("next", active && !paused && graded);
   button("favorite", active && !paused);
   button("context-only", active && !paused);
@@ -537,7 +585,15 @@ function render(): void {
   if (!challenge) return;
   const targets = challenge.targets;
   const chart = el("chart");
-  chart.hidden = !config.showProgression;
+  chart.hidden =
+    !config.showProgression ||
+    !!(
+      config.hideChartAfterListening &&
+      hasPlayed &&
+      !contextPending &&
+      !revealed &&
+      !performanceRunning
+    );
   chart.replaceChildren();
   targets.forEach((target, i) => {
     const span = document.createElement("span");
@@ -548,10 +604,11 @@ function render(): void {
     chart.append(span);
   });
   el("session-count").textContent =
-    `Question ${index + 1}${config.count ? " / " + config.count : ""}`;
+    `Question ${index + 1}${session?.questionCount ? " / " + session.questionCount : ""}`;
   if (paused) {
     el("phase").textContent = "PAUSED";
     el("prompt").textContent = "Practice paused";
+    flow?.onRender();
     return;
   }
   el("phase").textContent = contextPending
@@ -614,9 +671,13 @@ function render(): void {
         ? ". The 11 is a tension; its treatment depends on context."
         : "");
   if (revealed) renderReferences();
+  store();
+  flow?.onRender();
 }
 function playContext(): void {
   if (!challenge) return;
+  hasPlayed = true;
+  status("Listen to the context, then respond.");
   if (!revealed && !contextPending)
     elapsed += Math.max(0, performance.now() - started) / 1000;
   stopAudio();
@@ -630,10 +691,10 @@ function playContext(): void {
     : challenge.targets;
   const duration =
     config.mode === "m6" && challenge.phrase
-      ? audio.playPhrase(challenge.phrase, config, phraseStage === 3)
+      ? audio.playPhrase(challenge.phrase, playbackConfig(), phraseStage === 3)
       : audio.play(
           targets,
-          config,
+          playbackConfig(),
           isSequential(config) || isRecognition(config) || config.mode === "m7",
           false,
           {
@@ -650,6 +711,11 @@ function playContext(): void {
     started = performance.now();
     render();
     armPrediction();
+    status(
+      isRecognition(config)
+        ? "Choose your answer, then check it."
+        : "Sing or play the target, then reveal the reference.",
+    );
     if (config.mode === "m7" && config.bassTask === "next-beat")
       status("Play now.");
   }, duration * 1000);
@@ -691,19 +757,25 @@ function renderChoices(): void {
         selected[i] = "";
         select.disabled = !qualitySelect.value;
         if (qualitySelect.value) fillOptions(qualitySelect.value as Quality);
+        store();
       };
       label.append(qualitySelect);
     } else fillOptions(target.chord.quality);
     select.addEventListener("change", () => {
       selected[i] = select.value;
+      store();
     });
     label.append(select);
     holder.append(label);
   });
 }
-function newQuestion(): void {
+function newQuestion(play = true): void {
   stopAudio();
-  challenge = pendingReview ?? generate(config, index, customs);
+  challenge =
+    pendingReview ??
+    (session
+      ? sessionQuestion(session, index)
+      : generate(config, index, customs));
   pendingReview = null;
   step = isSequential(config) ? 1 : 0;
   revealed = false;
@@ -714,6 +786,7 @@ function newQuestion(): void {
   referenceSeen = false;
   referenceAssisted = false;
   contextPending = true;
+  hasPlayed = false;
   phraseStage = 0;
   bassStage = 0;
   bassSelection = undefined;
@@ -722,7 +795,13 @@ function newQuestion(): void {
   started = performance.now();
   renderChoices();
   render();
-  playContext();
+  if (play) playContext();
+  else {
+    el("phase").textContent = "READY";
+    status("Press Play context when ready.");
+    store();
+    return;
+  }
   el("phase").textContent = "ESTABLISH CONTEXT";
   button("reveal", false);
   status(
@@ -734,6 +813,12 @@ function newQuestion(): void {
   );
 }
 async function start(): Promise<void> {
+  if (challenge && session) {
+    await audio.ready();
+    if (paused) await togglePause();
+    playContext();
+    return;
+  }
   if (busy) return;
   busy = true;
   button("start", false);
@@ -791,6 +876,8 @@ function record(grade: Grade, source: "self" | "automatic"): void {
   const latency =
     elapsed + (revealed ? 0 : Math.max(0, performance.now() - started) / 1000);
   session.records.push({
+    questionIndex: index,
+    chordStep: step,
     timestamp: new Date().toISOString(),
     mode: config.mode,
     config: { ...config },
@@ -818,7 +905,6 @@ function record(grade: Grade, source: "self" | "automatic"): void {
   });
   graded = true;
   if (
-    grade !== "skipped" &&
     !completedQuestions.has(index) &&
     (!isSequential(config) ||
       continuous() ||
@@ -836,9 +922,13 @@ function record(grade: Grade, source: "self" | "automatic"): void {
         : "Compare your answers with the reference, then retry or continue."
       : `Self-assessment saved: ${grade}.`,
   );
+  if (config.autoAdvance && !paused)
+    autoTimer = window.setTimeout(() => {
+      if (graded && !paused) safe(next)();
+    }, 1200);
 }
 async function reveal(): Promise<void> {
-  if (!challenge || revealed || paused || phaseTimer) return;
+  if (!challenge || !hasPlayed || revealed || paused || phaseTimer) return;
   if (performanceRunning) return;
   if (config.mode === "m6" && phraseStage < 3) return;
   if (
@@ -861,11 +951,11 @@ async function reveal(): Promise<void> {
   referenceSeen = true;
   if (config.mode === "m6" && challenge.phrase) {
     phraseStage = 4;
-    audio.playPhrase(challenge.phrase, config);
+    audio.playPhrase(challenge.phrase, playbackConfig());
   } else
     audio.play(
       config.mode === "m3" ? challenge.targets : [challenge.targets[step]],
-      config,
+      playbackConfig(),
       true,
     );
   render();
@@ -905,7 +995,7 @@ function next(): void {
     return;
   }
   index++;
-  if (config.count && index >= config.count) {
+  if (session?.questionCount && index >= session.questionCount) {
     stopAudio();
     challenge = null;
     render();
@@ -918,6 +1008,12 @@ function next(): void {
     el("session-count").textContent = `${session?.completedCount} completed`;
     store();
     sessionStarted = 0;
+    if (session) {
+      session.status = "completed";
+      session.endedAt = new Date().toISOString();
+      saveSession(localStorage, session);
+      flow?.showSummary(session.id);
+    }
     renderHistory();
     return;
   }
@@ -942,6 +1038,8 @@ async function togglePause(): Promise<void> {
     }
     render();
     status(paused ? "Performance paused." : "Performance resumed.");
+    if (session) session.status = paused ? "paused" : "active";
+    store();
     return;
   }
   if (!paused) {
@@ -957,10 +1055,12 @@ async function togglePause(): Promise<void> {
   } else {
     paused = false;
     started = performance.now();
-    if (contextPending) playContext();
+    if (contextPending && hasPlayed) playContext();
     else if (!revealed) armPrediction(predictionRemaining);
   }
   render();
+  if (session) session.status = paused ? "paused" : "active";
+  store();
   status(
     paused
       ? "Audio stopped. Your challenge is preserved."
@@ -1212,6 +1312,10 @@ el("recognize").onclick = (event) => {
 };
 el("reveal").onclick = safe(reveal);
 el("replay").onclick = safe(async () => {
+  if (config.replayLimit && replays >= config.replayLimit) {
+    status("Replay limit reached. Reveal or finish this question.");
+    return;
+  }
   const currentChallenge = challenge;
   await audio.ready();
   if (challenge !== currentChallenge || paused || !challenge) return;
@@ -1219,13 +1323,13 @@ el("replay").onclick = safe(async () => {
   if (revealed && challenge) {
     stopAudio();
     if (config.mode === "m6" && challenge.phrase)
-      audio.playPhrase(challenge.phrase, config);
+      audio.playPhrase(challenge.phrase, playbackConfig());
     else
       audio.play(
         config.mode === "m3" || continuous()
           ? challenge.targets
           : [challenge.targets[step]],
-        config,
+        playbackConfig(),
         true,
       );
     followAudio(
@@ -1280,6 +1384,10 @@ el("phrase-step").onclick = safe(async () => {
         (variants.indexOf(config.variation as (typeof variants)[number]) + 1) %
           variants.length
       ];
+    if (flow) {
+      await flow.varyPhrase(next);
+      return;
+    }
     resetChallenge();
     config.variation = next;
     populate();
@@ -1308,7 +1416,7 @@ el("context-only").onclick = safe(async () => {
     isSequential(config)
       ? [challenge.targets[Math.max(0, step - 1)]]
       : challenge.targets,
-    config,
+    playbackConfig(),
     false,
   );
   replays++;
@@ -1387,6 +1495,7 @@ el("custom-delete").onclick = () => {
   }
 };
 el("settings").onchange = () => {
+  if (flow) return;
   resetChallenge();
   try {
     const next = readConfig();
@@ -1419,6 +1528,7 @@ window.addEventListener("pagehide", () => {
   store();
 });
 document.addEventListener("keydown", (event) => {
+  if (flow) return;
   if (
     (event.target as HTMLElement).matches("input,select,textarea,button,a") ||
     event.repeat
@@ -1442,3 +1552,125 @@ document.addEventListener("keydown", (event) => {
 populate();
 render();
 renderHistory();
+flow = installFlow({
+  getConfig: () => structuredClone(config),
+  setConfig: (next) => {
+    config = structuredClone(next);
+    populate();
+  },
+  getCustoms: () => structuredClone(customs),
+  setCustoms: (next) => {
+    customs = next;
+    populate();
+  },
+  readConfig,
+  getSession: () => session,
+  async create(next, source, presetId, exact) {
+    const created = createSession(next, customs, source, presetId);
+    if (exact?.length) {
+      created.questions = structuredClone(exact);
+      created.questionCount = exact.length;
+    }
+    resetChallenge();
+    session = created;
+    config = structuredClone(created.config);
+    playbackOverrides = {};
+    index = 0;
+    completedQuestions = new Set();
+    sessionStarted = performance.now();
+    sessionPausedAt = 0;
+    sessionPausedMs = 0;
+    newQuestion(false);
+    store();
+    saveSession(localStorage, created);
+    return created;
+  },
+  resume(saved) {
+    resetChallenge();
+    session = structuredClone(saved);
+    config = { ...defaults, ...session.config };
+    playbackOverrides = {};
+    populate();
+    const p = session.progress;
+    index = p?.index ?? 0;
+    challenge = sessionQuestion(session, index);
+    step = p?.step ?? (isSequential(config) ? 1 : 0);
+    revealed = p?.revealed ?? false;
+    graded = p?.graded ?? false;
+    replays = p?.replays ?? 0;
+    elapsed = p?.elapsed ?? 0;
+    referenceSeen = p?.referenceSeen ?? false;
+    referenceAssisted = p?.referenceAssisted ?? false;
+    phraseStage = p?.phraseStage ?? 0;
+    bassStage = p?.bassStage ?? 0;
+    bassSelection = p?.bassSelection;
+    marks = new Set(p?.marks ?? []);
+    completedQuestions = new Set(p?.completedQuestions ?? []);
+    hasPlayed = (p?.hasPlayed ?? false) && !p?.contextPending;
+    contextPending = false;
+    paused = false;
+    session.status = "active";
+    sessionStarted = performance.now() - session.totalTime * 1000;
+    sessionPausedMs = 0;
+    sessionPausedAt = 0;
+    started = performance.now();
+    renderChoices();
+    selected = p?.selected ?? [];
+    selectedQualities = p?.selectedQualities ?? [];
+    el("choices")
+      .querySelectorAll("label")
+      .forEach((label, i) => {
+        const selects = label.querySelectorAll("select");
+        if (selects.length === 2 && selectedQualities[i]) {
+          selects[0].value = selectedQualities[i];
+          selects[0].dispatchEvent(new Event("change"));
+        }
+        selects[selects.length - 1].value = p?.selected[i] ?? "";
+      });
+    selected = p?.selected ?? [];
+    render();
+    store();
+    status("Session restored. Replay context when ready.");
+  },
+  leave(end = false) {
+    operation++;
+    stopAudio();
+    if (
+      session &&
+      challenge &&
+      session.status !== "completed" &&
+      session.status !== "abandoned"
+    ) {
+      if (!paused) {
+        if (!revealed && !contextPending && hasPlayed)
+          elapsed += Math.max(0, performance.now() - started) / 1000;
+        sessionPausedAt = performance.now();
+        paused = true;
+      }
+      session.status = end ? "abandoned" : "paused";
+      if (end) session.endedAt = new Date().toISOString();
+      store();
+    }
+    sessionStarted = 0;
+  },
+  compact(next) {
+    stopAudio();
+    contextPending = false;
+    if (continuous() && !revealed) hasPlayed = false;
+    if (config.mode === "m6" && !revealed) hasPlayed = false;
+    playbackOverrides = { ...playbackOverrides, ...next };
+    render();
+    status("Playback settings updated. Replay context when ready.");
+  },
+  pause: togglePause,
+  unlock: () => audio.ready(),
+  refreshViews: () => {
+    renderHistory();
+    renderReview();
+  },
+  play: async () => {
+    await audio.ready();
+    if (paused) await togglePause();
+    playContext();
+  },
+});

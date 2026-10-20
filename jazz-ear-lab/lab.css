@@ -287,6 +287,266 @@ body {
 [hidden] {
   display: none !important;
 }
+.wizard-off {
+  display: none !important;
+}
+#wizard-options:not(.customizing) [data-advanced="true"] {
+  display: none !important;
+}
+.customize-control {
+  margin: 18px 0;
+}
+.dashboard-start,
+.session-top,
+.resume-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 0;
+}
+.dashboard-tabs {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid #cfd8d5;
+  padding: 12px 0;
+}
+.dashboard-tabs button {
+  background: transparent;
+  color: #344342;
+  border-color: transparent;
+}
+.dashboard-tabs button[aria-selected="true"] {
+  background: #e2eee7;
+  color: #174d3d;
+  border-color: #226b57;
+}
+.config-item {
+  padding: 22px 0;
+  border-bottom: 1px solid #cfd8d5;
+}
+.config-item h3 {
+  font-size: 19px;
+  margin: 0 0 8px;
+}
+.config-item p,
+.config-item small {
+  overflow-wrap: anywhere;
+}
+.config-item details {
+  margin-top: 16px;
+}
+.overview {
+  padding: 24px 0 8px;
+  font-variant-numeric: tabular-nums;
+}
+.local-notice {
+  font-size: 12px;
+  color: #59675f;
+}
+.wizard-stepper {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  margin: 24px 0;
+}
+.wizard-stepper button {
+  text-align: left;
+  min-height: 88px;
+  background: #fff;
+  color: #344342;
+  border-color: #bacac1;
+  padding: 12px;
+}
+.wizard-stepper button[aria-current="step"] {
+  background: #e2eee7;
+  border-color: #226b57;
+  border-width: 2px;
+}
+.wizard-stepper small {
+  display: block;
+  font-weight: normal;
+  font-size: 11px;
+  margin-top: 6px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  max-height: 32px;
+  overflow: hidden;
+}
+.wizard-footer {
+  position: sticky;
+  bottom: 0;
+  background: #f5f7f6;
+  border-top: 1px solid #b9c9c2;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 0;
+  margin-top: 30px;
+  z-index: 4;
+}
+#wizard-short-summary {
+  flex: 1;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.exercise-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 24px;
+  margin: 18px 0;
+}
+.exercise-item {
+  padding: 18px 0;
+  border-bottom: 1px solid #cfd8d5;
+  min-width: 0;
+}
+.exercise-item button {
+  text-align: left;
+  width: 100%;
+}
+.exercise-item p {
+  margin: 10px 0;
+}
+.exercise-item small {
+  color: #59675f;
+}
+.pool-field {
+  border: 0;
+  border-bottom: 1px solid #cfd8d5;
+  padding: 20px 0;
+  margin: 0 0 16px;
+  min-width: 0;
+}
+.pool-field legend {
+  font-weight: 600;
+  padding-top: 12px;
+}
+.pool-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+.pool-grid label {
+  min-height: 44px;
+  padding: 8px;
+  background: #fff;
+  border: 1px solid #c3cfc9;
+  border-radius: 5px;
+}
+.pool-grid span {
+  overflow-wrap: anywhere;
+}
+#wizard-options .settings-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+#wizard-options .settings-grid:has(> :not([hidden]):not(.wizard-off)) {
+  margin-bottom: 20px;
+}
+#wizard-options .settings-grid:not(:has(> :not([hidden]):not(.wizard-off))) {
+  display: none;
+}
+.config-summary-row {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 0;
+  border-bottom: 1px solid #cfd8d5;
+}
+.config-summary-row span {
+  overflow-wrap: anywhere;
+}
+.lab pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  padding: 12px 0;
+}
+.lab summary {
+  cursor: pointer;
+  min-height: 36px;
+  padding: 8px 0;
+}
+#flow-status:empty {
+  display: none;
+}
+#flow-status:not(:empty),
+#wizard-validation:not(:empty) {
+  padding: 12px 0;
+  color: #8a3d26;
+}
+#session-view .practice {
+  min-height: 60vh;
+}
+.in-session .lab {
+  max-width: 980px;
+  padding-top: 10px;
+}
+.in-session #session-progress {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+#summary-content li {
+  padding: 10px 0;
+  line-height: 1.6;
+}
+@media (max-width: 650px) {
+  .wizard-stepper {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 3px;
+  }
+  .wizard-stepper button {
+    min-height: 70px;
+    font-size: 11px;
+    padding: 6px 3px;
+    overflow-wrap: anywhere;
+  }
+  .wizard-stepper small {
+    font-size: 9px;
+    max-height: 24px;
+  }
+  .exercise-list {
+    grid-template-columns: 1fr;
+  }
+  .pool-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  #wizard-options .settings-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .wizard-footer {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 12px 0;
+  }
+  #wizard-short-summary {
+    flex-basis: calc(100% - 110px);
+  }
+  .config-summary-row {
+    grid-template-columns: 75px minmax(0, 1fr) auto;
+    gap: 8px;
+  }
+  .session-top {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .session-top strong {
+    flex: 1;
+    font-size: 14px;
+  }
+  #session-view .actions {
+    position: sticky;
+    bottom: 0;
+    background: #f5f7f6;
+    padding: 12px 0;
+    z-index: 3;
+  }
+  #session-view .actions button {
+    font-size: 13px;
+    padding: 8px 10px;
+  }
+}
 @media (max-width: 650px) {
   .settings-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));

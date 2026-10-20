@@ -1,5 +1,7 @@
 # Jazz Ear Lab v1: specification audit
 
+The new dashboard/wizard/session navigation is documented in [JAZZ_EAR_LAB_UX_RELEASE.md](JAZZ_EAR_LAB_UX_RELEASE.md). That document supersedes the original navigation and manual-operation instructions below; the musical implementation map remains applicable.
+
 This delivery completes the non-deferred v1 scope of `Jazz_Ear_Lab_Codex_Spec.md` (2026-10-20). Production and physical instrument performance remain self-assessed; no microphone pitch accuracy is claimed.
 
 Run `npm run build`, then `npm run dev`, and open http://127.0.0.1:4173/jazz-ear-lab/.

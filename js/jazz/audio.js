@@ -98,6 +98,11 @@ export class AudioEngine {
         this.plan = playbackPlan(targets, config, options);
         for (let i = 0; i < (options.countIn ?? 0); i++)
             this.click(now + (i * 60) / config.bpm, config.volume * (i === 0 ? 0.22 : 0.14));
+        if (config.metronome) {
+            const beat = 60 / config.bpm;
+            for (let start = this.plan.countIn; start < this.plan.duration - 0.04; start += beat)
+                this.click(now + start, config.volume * 0.1);
+        }
         if (options.seed && targets.length)
             this.tone(targets[0].midi, now + this.plan.seedStart, (60 / config.bpm) * 0.85, config.volume * 0.24, false);
         if (options.rootAnchor && targets.length)

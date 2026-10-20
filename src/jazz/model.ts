@@ -10,6 +10,7 @@ import {
   type Chord,
   chordToneDegrees,
   tensionDegrees,
+  allowedTargetDegrees,
 } from "./theory.js";
 import {
   progressionBank,
@@ -21,6 +22,16 @@ import { bassTarget } from "./bass.js";
 import { transformPhrase } from "./phrases.js";
 export type Mode = "m1" | "m2" | "m3" | "m4" | "m5" | "m6" | "m7";
 export interface Config {
+  qualityPool?: string[];
+  degreePool?: string[];
+  progressionPool?: string[];
+  metronome?: boolean;
+  autoAdvance?: boolean;
+  replayLimit?: number;
+  prepareSeconds?: number;
+  predictionUnit?: "seconds" | "beats";
+  predictionBeats?: number;
+  hideChartAfterListening?: boolean;
   mode: Mode;
   root: string;
   quality: Quality;
@@ -140,6 +151,7 @@ export function generate(
   config: Config,
   index: number,
   customs: Progression[] = [],
+  random: () => number = Math.random,
 ): Challenge {
   if (config.mode === "m6") {
     const phrase = transformPhrase(
@@ -171,21 +183,25 @@ export function generate(
     };
   }
   if (config.mode === "m1" || config.mode === "m2" || config.mode === "m7") {
-    const roots = (
-      config.rootOrder === "fifths"
-        ? "C G D A E B F# C# Ab Eb Bb F"
-        : config.roots
-    )
+    let roots = config.roots
       .trim()
       .split(/[\s,]+/)
       .filter(Boolean);
+    if (config.rootOrder === "fifths") {
+      if (!config.qualityPool && !config.degreePool)
+        roots = "C G D A E B F# C# Ab Eb Bb F".split(" ");
+      const fifths = [0, 7, 2, 9, 4, 11, 6, 1, 8, 3, 10, 5];
+      roots.sort(
+        (a, b) => fifths.indexOf(pitchClass(a)) - fifths.indexOf(pitchClass(b)),
+      );
+    }
     roots.forEach((root) => parseChord(root + config.quality));
     if (!roots.length) throw new Error("Enter at least one root.");
     const root =
       config.rootOrder === "fixed"
         ? config.root
         : config.rootOrder === "random"
-          ? roots[Math.floor(Math.random() * roots.length)]
+          ? roots[Math.floor(random() * roots.length)]
           : roots[index % roots.length];
     const qualityPool =
       config.mode === "m2" && !config.showChords
@@ -197,20 +213,21 @@ export function generate(
                 .filter(Boolean),
             ),
           ]
-        : [config.quality];
+        : (config.qualityPool ?? [config.quality]);
     qualityPool.forEach((quality) => parseChord("C" + quality));
     if (!qualityPool.length)
       throw new Error("Choose at least one recognition quality.");
-    const quality =
-      config.mode === "m2" && !config.showChords
-        ? qualityPool[Math.floor(Math.random() * qualityPool.length)]
-        : config.quality;
+    const quality = qualityPool[Math.floor(random() * qualityPool.length)];
     const chord = parseChord(root + quality);
     const options =
       config.mode === "m2"
         ? [
             ...new Set(
-              config.recognitionPool
+              (
+                config.degreePool
+                  ?.filter((d) => allowedTargetDegrees(chord).includes(d))
+                  .join(" ") ?? config.recognitionPool
+              )
                 .trim()
                 .split(/[\s,]+/)
                 .filter(Boolean)
@@ -220,10 +237,17 @@ export function generate(
         : [];
     if (config.mode === "m2" && !options.length)
       throw new Error("Enter at least one recognition degree.");
+    const allowed = config.degreePool?.filter((d) =>
+      allowedTargetDegrees(chord).includes(d),
+    );
+    if (allowed && !allowed.length)
+      throw new Error(`Targets: no compatible degree for ${chord.symbol}.`);
     const degree =
       config.mode === "m2"
-        ? options[Math.floor(Math.random() * options.length)]
-        : config.degree;
+        ? options[Math.floor(random() * options.length)]
+        : allowed
+          ? allowed[Math.floor(random() * allowed.length)]
+          : config.degree;
     return {
       targets: [
         {
@@ -245,8 +269,13 @@ export function generate(
       progressionId: "single",
     };
   }
+  const progressionId = config.progressionPool
+    ? config.progressionPool[
+        Math.floor(random() * config.progressionPool.length)
+      ]
+    : config.progression;
   const progression = [...progressionBank, ...customs].find(
-    (p) => p.id === config.progression,
+    (p) => p.id === progressionId,
   );
   if (!progression) throw new Error("Select a progression.");
   let previous = inRange(
@@ -288,7 +317,7 @@ export function generate(
       const chord = parseChord(symbol);
       const chordIndex = i % sourceChords.length;
       let degree = progression.targets[chordIndex];
-      const pool = !isSequential(config)
+      const limitPool = !isSequential(config)
         ? null
         : config.targetLimit === "guides"
           ? guideDegrees(chord)
@@ -297,7 +326,17 @@ export function generate(
             : config.targetLimit === "tensions"
               ? tensionDegrees(chord)
               : null;
+      const pool =
+        config.degreePool && isSequential(config)
+          ? config.degreePool.filter(
+              (d) =>
+                allowedTargetDegrees(chord).includes(d) &&
+                (!limitPool || limitPool.includes(d)),
+            )
+          : limitPool;
       let midi: number;
+      if (pool && !pool.length)
+        throw new Error(`Targets: no compatible degree for ${chord.symbol}.`);
       if (config.mode === "m3") {
         midi = commonMidi;
         degree = degreeForPc(chord, midi % 12);
@@ -434,6 +473,50 @@ export function validateConfig(
   customs: Progression[] = [],
 ): Config {
   const next = { ...config };
+  if (
+    next.predictionUnit &&
+    !["seconds", "beats"].includes(next.predictionUnit)
+  )
+    throw new Error("Choose a valid prediction gap unit.");
+  if (
+    next.predictionBeats !== undefined &&
+    ![1, 2, 4].includes(next.predictionBeats)
+  )
+    throw new Error("Prediction gap must be 1, 2 or 4 beats.");
+  for (const key of ["qualityPool", "degreePool", "progressionPool"] as const) {
+    if (next[key] && (!Array.isArray(next[key]) || !next[key]!.length))
+      throw new Error(`Choose at least one ${key}.`);
+  }
+  if (next.qualityPool) {
+    next.qualityPool.forEach((q) => parseChord("C" + q));
+    for (const q of next.qualityPool) {
+      const chord = parseChord("C" + q);
+      if (
+        next.degreePool &&
+        !next.degreePool.some((d) => allowedTargetDegrees(chord).includes(d))
+      )
+        throw new Error(`Targets: choose a compatible degree for ${q}.`);
+    }
+  }
+  next.degreePool?.forEach((d) => targetPc(parseChord("Cmaj7"), d));
+  if (
+    next.progressionPool?.some(
+      (id) => ![...progressionBank, ...customs].some((p) => p.id === id),
+    )
+  )
+    throw new Error("Harmony: a selected progression is unavailable.");
+  if (
+    next.prepareSeconds !== undefined &&
+    (!Number.isFinite(next.prepareSeconds) ||
+      next.prepareSeconds < 0 ||
+      next.prepareSeconds > 30)
+  )
+    throw new Error("Prepare countdown must be 0-30 seconds.");
+  if (
+    next.replayLimit !== undefined &&
+    ![0, 1, 3, 5].includes(next.replayLimit)
+  )
+    throw new Error("Choose a valid replay limit.");
   const bounded = (
     key: keyof Config,
     min: number,
@@ -512,6 +595,8 @@ export function validateConfig(
 }
 export type Grade = "correct" | "close" | "missed" | "skipped";
 export interface RecordEntry {
+  questionIndex?: number;
+  chordStep?: number;
   timestamp: string;
   mode: Mode;
   config: Config;
@@ -530,6 +615,15 @@ export interface RecordEntry {
   selectedPosition?: number;
 }
 export interface Session {
+  status?: "active" | "paused" | "completed" | "abandoned";
+  source?: string;
+  sourcePresetId?: string;
+  endedAt?: string;
+  rngSeed?: string;
+  generatorVersion?: string;
+  questions?: Challenge[];
+  progress?: PracticeProgress;
+  customSnapshot?: Progression[];
   id: string;
   timestamp: string;
   mode: Mode;
@@ -539,6 +633,25 @@ export interface Session {
   completedCount: number;
   records: RecordEntry[];
   timeSource?: "active-session" | "response-sum";
+}
+export interface PracticeProgress {
+  index: number;
+  step: number;
+  revealed: boolean;
+  graded: boolean;
+  replays: number;
+  elapsed: number;
+  referenceSeen: boolean;
+  referenceAssisted: boolean;
+  selected: string[];
+  selectedQualities: string[];
+  phraseStage: number;
+  bassStage: number;
+  bassSelection?: number;
+  marks: number[];
+  hasPlayed: boolean;
+  completedQuestions: number[];
+  contextPending?: boolean;
 }
 export interface StorageLike {
   getItem(key: string): string | null;
