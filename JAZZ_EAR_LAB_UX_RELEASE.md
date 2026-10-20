@@ -1,5 +1,7 @@
 # Jazz Ear Lab: reusable practice sessions
 
+The subsequent visual refresh and its additional browser checks are described in [JAZZ_EAR_LAB_UI_DESIGN.md](JAZZ_EAR_LAB_UI_DESIGN.md).
+
 This release implements `Jazz_Ear_Lab_UX_Flow_Spec.md` alongside the musical requirements in `Jazz_Ear_Lab_Codex_Spec.md`. All seven existing modes use the new flow. No framework, account service, audio sample dependency, or legacy storage migration was introduced.
 
 ## Repository design and routes

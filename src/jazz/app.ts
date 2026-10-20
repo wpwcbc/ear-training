@@ -539,6 +539,7 @@ function render(): void {
   el("reveal").hidden = revealed;
   el("next").hidden = !graded;
   el("replay").textContent = revealed ? "Replay both" : "Replay context";
+  el("replay").hidden = !hasPlayed;
   button("start", !busy);
   el("start").textContent = active ? "Play context" : "Start";
   el("start").hidden = active && hasPlayed;

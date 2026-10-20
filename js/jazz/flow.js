@@ -2,6 +2,7 @@ import { defaults, validateConfig, loadSessions, saveSession, isRecognition, rec
 import { qualities, degrees, parseChord, allowedTargetDegrees, chordToneDegrees, } from "./theory.js";
 import { progressionBank } from "./progressions.js";
 import { flowKeys, readList, rememberConfig, canonicalizeConfig, sessionStatus, missedQuestions, } from "./lifecycle.js";
+import { icon, commandIcon, relativeDate, duration } from "./ui.js";
 export const exerciseNames = {
     m1: "Hear a Chord Degree",
     m2: "Identify a Chord Degree",
@@ -32,12 +33,14 @@ function node(tag, text = "", className = "") {
 function action(text, handler, secondary = true) {
     const button = node("button", text, secondary ? "secondary" : "");
     button.type = "button";
+    commandIcon(button);
     button.onclick = () => {
         Promise.resolve().then(handler).catch(showError);
     };
     return button;
 }
 function showError(error) {
+    $("flow-status").dataset.tone = "error";
     $("flow-status").textContent =
         error instanceof Error ? error.message : String(error);
 }
@@ -48,14 +51,23 @@ function summary(config) {
             ? `${config.rootOrder === "fixed" ? config.root : config.roots} / ${(config.qualityPool ?? [config.quality]).join(", ")}`
             : config.mode === "m6"
                 ? `${config.phraseId}, ${config.variation}, transpose ${config.transpose}`
-                : (config.progressionPool ?? [config.progression]).join(", "),
+                : (config.progressionPool ?? [config.progression])
+                    .map((id) => progressionBank.find((p) => p.id === id)?.name ??
+                    "Custom progression")
+                    .join(", "),
         config.degreePool?.join(", ") ??
             (config.mode === "m1" || config.mode === "m7"
                 ? config.degree
                 : config.mode === "m2"
                     ? config.recognitionPool
-                    : config.path),
-        `${config.bpm} BPM / ${config.beats} beats / ${config.context} / count-in ${config.countIn} / ${config.metronome ? "metronome" : "no metronome"}`,
+                    : {
+                        guided: "Preset targets",
+                        nearest: "Nearest guide tones",
+                        common: "Common tones",
+                        stepwise: "Stepwise targets",
+                        leap: "Leaping targets",
+                    }[config.path]),
+        `${config.bpm} BPM / ${config.beats} beats per chord / ${config.context === "full" ? "Full chord" : config.context === "shell" ? "Chord shell" : "Root anchor"}${config.countIn ? " / " + config.countIn + "-beat count-in" : ""}${config.metronome ? " / Metronome" : ""}`,
         config.count ? `${config.count} questions` : "Endless",
     ];
 }
@@ -64,6 +76,7 @@ export function installFlow(engine) {
     let wizardStep = 0, maxStep = 0, currentRoute = "", dashboardTab = "recent";
     let source = "wizard", sourcePresetId;
     let creating = false;
+    let showAllRecent = false;
     let prepareTimer = 0;
     let historyFilters = {
         mode: "",
@@ -84,28 +97,54 @@ export function installFlow(engine) {
     shell.id = "flow-shell";
     shell.innerHTML = `
     <p id="flow-status" role="status" aria-live="polite"></p>
-    <section id="dashboard-view"><div class="dashboard-start"><h2>Practice</h2><button id="start-practicing">Start Practicing</button></div>
+    <section id="dashboard-view"><div class="dashboard-start"><div><span class="section-label">YOUR PRACTICE</span><h2>Ready for the next note.</h2></div><button id="start-practicing">Start Practicing</button></div>
       <div id="resume-list"></div><div class="dashboard-tabs" role="tablist" aria-label="Configurations"><button data-dashboard="recent" role="tab">Recent</button><button data-dashboard="saved" role="tab">Saved</button><button data-dashboard="suggested" role="tab">Suggested</button></div>
       <div id="configuration-list" role="tabpanel"></div><div id="dashboard-overview" class="overview"></div>
       <p class="local-notice">Saved in this browser only. Other devices do not sync; clearing browser data removes local practice records.</p>
     </section>
-    <section id="wizard-view" hidden><h2>Set Up Practice</h2><nav id="wizard-stepper" class="wizard-stepper" aria-label="Setup steps"></nav>
+    <section id="wizard-view" hidden><div class="page-title"><span class="section-label">NEW SESSION</span><h2>Set Up Practice</h2></div><nav id="wizard-stepper" class="wizard-stepper" aria-label="Setup steps"></nav><div class="wizard-section-title"><span id="wizard-section-index"></span><h3 id="wizard-section-title"></h3></div>
       <div id="exercise-step"><label>Exercises<select id="exercise-filter"><option value="recommended">Recommended</option><option value="all">All Exercises</option></select></label><div id="exercise-list" class="exercise-list"></div></div>
       <div id="wizard-options"><div id="pool-fields"></div><div id="legacy-fields"></div></div>
       <div id="review-config"></div><p id="wizard-validation" role="status"></p>
       <div class="wizard-footer"><button id="wizard-back" class="secondary">Back</button><span id="wizard-short-summary"></span><button id="save-draft" class="secondary">Save Draft</button><button id="wizard-save-preset" class="secondary">Save as Preset</button><button id="wizard-next">Continue</button></div>
     </section>
-    <section id="session-view" hidden><div class="session-top"><button id="session-exit" class="secondary">Exit</button><strong id="session-exercise"></strong><span id="session-progress"></span><button id="session-end" class="secondary">Finish Session</button></div>
+    <section id="session-view" hidden><div class="session-top"><button id="session-exit" class="secondary">Exit</button><strong id="session-exercise"></strong><span id="session-progress"></span><div id="session-tools"></div><button id="session-end" class="secondary">Finish Session</button></div><progress id="session-meter" value="0" max="10" aria-label="Session completion"></progress>
       <details id="compact-settings"><summary>Playback Settings</summary><div class="settings-grid"><label>Volume<input id="compact-volume" type="range" min="0" max="1" step="0.05"></label><label>Tempo<input id="compact-bpm" type="number" min="30" max="240"></label><label class="check"><input id="compact-metronome" type="checkbox">Metronome</label><button id="session-edit" class="secondary">End &amp; Edit Exercise</button></div></details>
-      <p id="session-prepare" role="timer"></p><div id="practice-host"></div>
+      <div class="session-phases" aria-label="Practice stages"><span data-phase="listen">Listen</span><span data-phase="imagine">Imagine</span><span data-phase="compare">Compare</span><span data-phase="assess">Assess</span></div><p id="session-prepare" role="timer"></p><div id="practice-host"></div>
     </section>
     <section id="summary-view" hidden><h2>Session Summary</h2><div id="summary-content"></div><div id="summary-actions" class="actions"></div></section>`;
     main.append(shell);
+    icon(document.querySelector(".lab-heading h1"), "audio-lines");
+    icon($("start-practicing"), "play");
+    icon($("wizard-back"), "arrow-left");
+    icon($("save-draft"), "save", true);
+    icon($("wizard-save-preset"), "bookmark");
+    icon($("wizard-next"), "arrow-right");
+    icon($("session-exit"), "arrow-left", true);
     $("practice-host").append(originalPractice);
-    document
-        .querySelector(".session-top")
-        .insertBefore($("pause"), $("session-end"));
+    $("session-tools").append($("pause"), $("favorite"));
+    const dock = node("div", "", "practice-dock");
+    dock.append($("grading"), originalPractice.querySelector(".actions"), $("status"));
+    originalPractice.append(dock);
     $("reference-details").append($("context-only"));
+    for (const [id, name, only] of [
+        ["start", "play", false],
+        ["replay", "rotate-ccw", false],
+        ["reveal", "eye", false],
+        ["next", "arrow-right", false],
+        ["pause", "pause", true],
+        ["favorite", "bookmark", true],
+        ["skip", "skip-forward", true],
+        ["retry", "rotate-ccw", true],
+    ])
+        icon($(id), name, only);
+    for (const [grade, name] of [
+        ["correct", "check"],
+        ["close", "minus"],
+        ["missed", "x"],
+    ])
+        icon(document.querySelector(`[data-grade="${grade}"]`), name);
+    icon($("compact-settings").querySelector("summary"), "sliders-horizontal");
     $("legacy-fields").append(modeBar, settingsDetails, customEditor);
     settingsDetails.open = true;
     settingsDetails.querySelector("summary").hidden = true;
@@ -294,7 +333,48 @@ export function installFlow(engine) {
         const fieldset = node("fieldset", "", "pool-field");
         fieldset.append(node("legend", title));
         const grid = node("div", "", "pool-grid");
+        grid.dataset.pool = title;
+        if (title === "Target Degrees") {
+            const ordered = [
+                "1",
+                "b3",
+                "3",
+                "4",
+                "b5",
+                "5",
+                "6",
+                "bb7",
+                "b7",
+                "maj7",
+                "b9",
+                "9",
+                "#9",
+                "11",
+                "#11",
+                "#5",
+                "b13",
+                "13",
+            ];
+            values = ordered.filter((d) => values.includes(d));
+        }
         values.forEach((value) => {
+            if (title === "Target Degrees") {
+                const isTension = [
+                    "b9",
+                    "9",
+                    "#9",
+                    "11",
+                    "#11",
+                    "#5",
+                    "b13",
+                    "13",
+                ].includes(value);
+                if (!grid.querySelector(`[data-group="${isTension ? "tensions" : "landmarks"}"]`)) {
+                    const heading = node("div", isTension ? "Extensions & tensions" : "Chord landmarks", "pool-group-label");
+                    heading.dataset.group = isTension ? "tensions" : "landmarks";
+                    grid.append(heading);
+                }
+            }
             const wrapper = node("label", "", "check");
             const checkbox = node("input");
             checkbox.type = "checkbox";
@@ -316,6 +396,14 @@ export function installFlow(engine) {
         const stepper = $("wizard-stepper");
         stepper.replaceChildren();
         const texts = summary(draft);
+        $("wizard-section-index").textContent = `0${wizardStep + 1}`;
+        $("wizard-section-title").textContent = [
+            "Choose your exercise",
+            "Choose the harmony",
+            "Set your targets",
+            "Playback & session",
+            "Ready to practice",
+        ][wizardStep];
         steps.forEach((title, i) => {
             const button = action(`${i + 1}. ${title}`, () => {
                 readDraft();
@@ -325,6 +413,7 @@ export function installFlow(engine) {
             button.disabled = i > maxStep;
             button.setAttribute("aria-current", i === wizardStep ? "step" : "false");
             button.append(node("small", texts[i]));
+            button.title = texts[i];
             stepper.append(button);
         });
         $("exercise-step").hidden = wizardStep !== 0;
@@ -487,6 +576,8 @@ export function installFlow(engine) {
         $("wizard-back").textContent = wizardStep ? "Back" : "Dashboard";
         $("wizard-next").textContent =
             wizardStep === 4 ? "Start Practice" : "Continue";
+        icon($("wizard-next"), wizardStep === 4 ? "play" : "arrow-right");
+        icon($("wizard-back"), "arrow-left");
         $("wizard-save-preset").hidden = wizardStep !== 4;
         $("wizard-short-summary").textContent =
             `${exerciseNames[draft.mode]} / ${draft.count || "Endless"}`;
@@ -543,8 +634,42 @@ export function installFlow(engine) {
         });
         const details = node("details");
         details.append(node("summary", "Full configuration"));
-        const pre = node("pre", JSON.stringify(config, null, 2));
-        details.append(pre);
+        const list = node("dl", "", "parameter-list");
+        const parameters = [
+            [
+                "Root order",
+                config.rootOrder === "fixed"
+                    ? "Fixed root"
+                    : config.rootOrder === "fifths"
+                        ? "Circle of fifths"
+                        : config.rootOrder === "cycle"
+                            ? "Cycle through roots"
+                            : "Shuffle roots",
+            ],
+            ["Target range", `MIDI ${config.low}-${config.high}`],
+            [
+                "Voicing",
+                ["Root position", "First inversion", "Second inversion"][config.inversion],
+            ],
+            ["Sound", config.timbre === "pad" ? "Chord pad" : "Piano-like synth"],
+            ["Hints", config.hintLevel === "full" ? "Full" : "Minimal"],
+            ["Auto advance", config.autoAdvance ? "After grading" : "Off"],
+            [
+                "Replay",
+                config.replayLimit ? `${config.replayLimit} per question` : "Unlimited",
+            ],
+            [
+                "Prediction",
+                config.revealMode === "manual"
+                    ? "Manual reveal"
+                    : config.predictionUnit === "beats"
+                        ? `${config.predictionBeats ?? 2} beats`
+                        : `${config.predictionSeconds}s`,
+            ],
+        ];
+        for (const [name, value] of parameters)
+            list.append(node("dt", name), node("dd", value));
+        details.append(list);
         holder.append(details);
     }
     function openWizard(config, customs, review = false, from = "wizard", presetId) {
@@ -623,6 +748,7 @@ export function installFlow(engine) {
             useCount: 0,
         };
         write(flowKeys.presets, [...presets(), preset]);
+        $("flow-status").dataset.tone = "info";
         $("flow-status").textContent = "Preset saved.";
     }
     const quickStarts = [
@@ -665,17 +791,26 @@ export function installFlow(engine) {
         resume.replaceChildren();
         sessions
             .filter((s) => ["active", "paused"].includes(sessionStatus(s)) && s.progress)
-            .slice(-3)
+            .slice(-1)
             .reverse()
             .forEach((session) => {
             const row = node("div", "", "resume-row");
-            row.append(node("span", `${exerciseNames[session.mode]} / Question ${(session.progress?.index ?? 0) + 1}`), action("Resume", () => go(`session/${session.id}`)));
+            const text = node("div");
+            text.append(node("span", "CONTINUE SESSION", "section-label"), node("strong", exerciseNames[session.mode]), node("small", `Question ${(session.progress?.index ?? 0) + 1}${session.questionCount ? " of " + session.questionCount : " / Endless"} / ${relativeDate(session.timestamp)}`));
+            row.append(text, action("Resume", () => go(`session/${session.id}`), false));
             resume.append(row);
         });
         document
             .querySelectorAll("[data-dashboard]")
-            .forEach((button) => button.setAttribute("aria-selected", String(button.dataset.dashboard === dashboardTab)));
+            .forEach((button) => {
+            const active = button.dataset.dashboard === dashboardTab;
+            button.setAttribute("aria-selected", String(active));
+            button.tabIndex = active ? 0 : -1;
+            button.id = "dashboard-" + button.dataset.dashboard;
+            button.setAttribute("aria-controls", "configuration-list");
+        });
         const holder = $("configuration-list");
+        holder.setAttribute("aria-labelledby", "dashboard-" + dashboardTab);
         holder.replaceChildren();
         if (dashboardTab === "suggested") {
             renderSuggested(holder);
@@ -687,7 +822,7 @@ export function installFlow(engine) {
                 holder.append(node("p", "No saved presets yet."));
             saved.forEach((preset) => {
                 const row = configRow(preset.name + (preset.favorite ? " / Favorite" : ""), preset.config, preset.lastUsedAt, preset.customs, "saved", preset.id);
-                row.append(action("Rename", () => {
+                row.querySelector(".row-menu-items").append(action("Rename", () => {
                     const name = window.prompt("Preset name", preset.name);
                     if (name?.trim()) {
                         mutatePreset(preset.id, (p) => {
@@ -720,13 +855,23 @@ export function installFlow(engine) {
             const recent = readList(localStorage, flowKeys.recent);
             if (!recent.length)
                 holder.append(node("p", "No recent practice yet."));
-            recent.forEach((item) => holder.append(configRow(exerciseNames[item.config.mode], item.config, item.lastUsedAt, item.customs, "recent")));
-            if (!recent.length)
+            (showAllRecent ? recent : recent.slice(0, 5)).forEach((item) => holder.append(configRow(exerciseNames[item.config.mode], item.config, item.lastUsedAt, item.customs, "recent")));
+            if (recent.length > 5)
+                holder.append(action(showAllRecent
+                    ? "Show fewer configurations"
+                    : `Show all ${recent.length} configurations`, () => {
+                    showAllRecent = !showAllRecent;
+                    renderDashboard();
+                }));
+            if (!recent.length) {
+                const quick = node("div", "", "quick-starts");
                 for (const [name, config] of quickStarts) {
-                    const row = node("article", "", "config-item");
-                    row.append(node("h3", name), node("p", summary(config).slice(1, 3).join(" / ")), action("Review & Practice", () => openWizard(config, engine.getCustoms(), true), false));
-                    holder.append(row);
+                    const row = node("article", "", "quick-start");
+                    row.append(node("h3", name), node("p", summary(config).slice(1, 3).join(" / "), "config-description"), action("Review & Practice", () => openWizard(config, engine.getCustoms(), true), true));
+                    quick.append(row);
                 }
+                holder.append(quick);
+            }
         }
         const complete = sessions.filter((s) => sessionStatus(s) === "completed");
         const days = new Set(sessions.map((s) => new Date(s.timestamp).toLocaleDateString())).size;
@@ -738,8 +883,25 @@ export function installFlow(engine) {
             .filter((r) => r.gradingSource === "automatic" &&
             r.grade !== "skipped" &&
             !r.referenceAssisted);
-        $("dashboard-overview").textContent =
-            `${days} practice days / ${complete.length} completed sessions / ${self.length} self-assessments / Recognition: ${automatic.length ? Math.round((automatic.filter((r) => r.grade === "correct").length / automatic.length) * 100) + "%" : "no results"}`;
+        const overview = $("dashboard-overview");
+        overview.replaceChildren();
+        for (const [label, value] of [
+            ["Practice days", String(days)],
+            ["Completed sessions", String(complete.length)],
+            ["Self-assessments", String(self.length)],
+            [
+                "Recognition accuracy",
+                automatic.length
+                    ? Math.round((automatic.filter((r) => r.grade === "correct").length /
+                        automatic.length) *
+                        100) + "%"
+                    : "--",
+            ],
+        ]) {
+            const metric = node("div", "", "metric");
+            metric.append(node("strong", value), node("span", label));
+            overview.append(metric);
+        }
     }
     function mutatePreset(id, change) {
         const all = presets();
@@ -753,17 +915,35 @@ export function installFlow(engine) {
     }
     function configRow(name, config, date, customs, from, presetId) {
         const row = node("article", "", "config-item");
-        row.append(node("h3", name), node("p", summary(config).slice(1).join(" / ")), node("small", date
-            ? `Last used ${new Date(date).toLocaleString()}`
-            : "Not yet practiced"));
+        const body = node("div", "", "config-main");
+        const category = node("span", isRecognition(config) ? "Recognition" : "Production", "exercise-type");
+        const text = summary(config);
+        body.append(node("h3", name), node("p", `${text[1]} / ${text[2]}`, "config-description"));
+        const meta = node("div", "", "config-meta");
+        meta.append(category, node("span", text[4]), node("span", `${config.bpm} BPM`), node("time", relativeDate(date)));
+        body.append(meta);
+        row.append(body);
         const controls = node("div", "", "actions");
-        controls.append(action("Practice", () => begin(config, customs, from, presetId), false), action("Edit & Practice", () => openWizard(config, customs, true, from, presetId)), action("Save as Preset", () => savePreset(config, customs)));
+        const menu = node("details", "", "row-menu");
+        const trigger = node("summary", "More actions", "row-menu-trigger");
+        icon(trigger, "ellipsis", true);
+        trigger.setAttribute("aria-label", `More actions for ${name}`);
+        const items = node("div", "", "row-menu-items");
+        items.addEventListener("click", (event) => {
+            if (event.target.closest("button"))
+                menu.open = false;
+        });
+        items.append(action("Edit & Practice", () => openWizard(config, customs, true, from, presetId)), action("Save as Preset", () => savePreset(config, customs)));
+        menu.append(trigger, items);
+        controls.append(action("Practice", () => begin(config, customs, from, presetId), false), menu);
         const details = node("details");
         details.append(node("summary", "Configuration"));
-        const body = node("div");
-        configDetails(body, config);
-        details.append(body);
-        row.append(controls, details);
+        const detailBody = node("div");
+        configDetails(detailBody, config);
+        details.append(detailBody);
+        details.className = "config-details";
+        body.append(details);
+        row.append(controls);
         return row;
     }
     function renderSuggested(holder) {
@@ -820,23 +1000,58 @@ export function installFlow(engine) {
     function renderSummary(session) {
         const holder = $("summary-content");
         holder.replaceChildren();
-        holder.append(node("h3", exerciseNames[session.mode]), node("p", `${new Date(session.timestamp).toLocaleString()} / ${sessionStatus(session)} / ${session.completedCount} completed of ${session.questionCount || "Endless"} / ${Math.round(session.totalTime)} seconds active`));
+        holder.append(node("span", sessionStatus(session), "status-badge"), node("h3", exerciseNames[session.mode]), node("p", new Date(session.timestamp).toLocaleString(), "muted"));
+        const metrics = node("div", "", "overview");
+        for (const [label, value] of [
+            [
+                "Questions completed",
+                `${session.completedCount}${session.questionCount ? " / " + session.questionCount : ""}`,
+            ],
+            [
+                session.timeSource === "active-session"
+                    ? "Active practice"
+                    : "Recorded response time",
+                duration(session.totalTime),
+            ],
+        ]) {
+            const metric = node("div", "", "metric");
+            metric.append(node("strong", value), node("span", label));
+            metrics.append(metric);
+        }
+        holder.append(metrics);
         const records = session.records.filter((r) => !r.referenceAssisted);
         const self = records.filter((r) => r.gradingSource === "self");
         const automatic = records.filter((r) => r.gradingSource === "automatic" && r.grade !== "skipped");
-        if (self.length)
-            holder.append(node("h3", "Self-assessed performance"), node("p", ["correct", "close", "missed", "skipped"]
-                .map((grade) => `${grade}: ${self.filter((r) => r.grade === grade).length}`)
-                .join(" / ")));
+        if (self.length) {
+            holder.append(node("h3", "Self-assessed performance"));
+            const distribution = node("div", "", "grade-distribution");
+            for (const grade of ["correct", "close", "missed", "skipped"]) {
+                const count = self.filter((r) => r.grade === grade).length;
+                const row = node("div", "", `grade-result ${grade}`);
+                const bar = node("progress");
+                bar.max = self.length;
+                bar.value = count;
+                bar.setAttribute("aria-label", `${grade}: ${count}`);
+                row.append(node("span", grade), bar, node("strong", String(count)));
+                distribution.append(row);
+            }
+            holder.append(distribution);
+        }
         if (automatic.length)
             holder.append(node("h3", "Automatically graded recognition"), node("p", `${Math.round((automatic.filter((r) => r.grade === "correct").length / automatic.length) * 100)}% accuracy / ${automatic.length} assessments`));
         const needs = records.filter((r) => ["missed", "close"].includes(r.grade) ||
             r.replayCount >= 3 ||
             r.responseLatency >= 15);
-        if (needs.length)
-            holder.append(node("h3", "Needs Review"), node("p", [
+        if (needs.length) {
+            const review = node("section", "", "needs-review");
+            review.append(node("h3", "Needs Review"));
+            const list = node("ul");
+            [
                 ...new Set(needs.map((r) => `${r.chords.join(" > ")}: ${r.targets.join(", ")}`)),
-            ].join(" / ")));
+            ].forEach((text) => list.append(node("li", text)));
+            review.append(list);
+            holder.append(review);
+        }
         const detail = node("details");
         detail.append(node("summary", "Configuration snapshot"));
         const config = node("div");
@@ -845,23 +1060,52 @@ export function installFlow(engine) {
         holder.append(detail);
         appendResults(holder, session);
         const controls = $("summary-actions");
-        controls.replaceChildren();
-        controls.append(action("Practice Same Settings", () => begin(session.config, session.customSnapshot ?? engine.getCustoms(), "history"), false), action("Edit Settings", () => openWizard(session.config, session.customSnapshot, true, "history")), action("Save Configuration", () => savePreset(session.config, session.customSnapshot ?? [])), action("Back to Dashboard", () => go("home")));
         const missed = missedQuestions(session);
+        controls.replaceChildren();
+        controls.append(action("Practice Same Settings", () => begin(session.config, session.customSnapshot ?? engine.getCustoms(), "history"), missed.length > 0), action("Edit Settings", () => openWizard(session.config, session.customSnapshot, true, "history")), action("Save Configuration", () => savePreset(session.config, session.customSnapshot ?? [])), action("Back to Dashboard", () => go("home")));
         if (missed.length)
-            controls.append(action("Review Missed", () => begin({ ...session.config, count: 0 }, session.customSnapshot ?? [], "history", undefined, missed)));
+            controls.prepend(action("Review Missed", () => begin({ ...session.config, count: 0 }, session.customSnapshot ?? [], "history", undefined, missed), false));
         if (session.questions?.length)
             controls.append(action("Replay Exact Questions", () => begin({ ...session.config, count: 0 }, session.customSnapshot ?? [], "history", undefined, session.questions)));
     }
     function appendResults(holder, session) {
         const details = node("details");
         details.append(node("summary", "Question results"));
-        const list = node("ol");
+        const scroll = node("div", "", "table-scroll");
+        const list = node("table");
+        const head = node("thead"), header = node("tr");
+        for (const label of [
+            "Question",
+            "Harmony / Target",
+            "Result",
+            "Time",
+            "Replays",
+        ]) {
+            const cell = node("th", label);
+            cell.scope = "col";
+            header.append(cell);
+        }
+        head.append(header);
+        list.append(head);
+        const body = node("tbody");
         session.records.forEach((record) => {
-            const row = node("li", `${record.questionIndex !== undefined ? "Q" + (record.questionIndex + 1) + ": " : ""}${record.chords.join(" > ")} / ${record.targets.join(", ")} = ${record.actualNotes.join(", ")} / ${record.grade} (${record.gradingSource}${record.referenceAssisted ? ", reference-assisted" : ""}) / ${record.responseLatency.toFixed(1)}s / ${record.replayCount} replays${record.selectedDegrees ? " / selected: " + record.selectedDegrees.join(", ") : ""}`);
-            list.append(row);
+            const row = node("tr");
+            const harmony = node("td");
+            harmony.append(node("strong", record.chords.join(" > ")), node("small", `${record.targets.join(", ")} = ${record.actualNotes.join(", ")}${record.selectedDegrees ? " / selected: " + record.selectedDegrees.join(", ") : ""}`));
+            const result = node("td");
+            result.append(node("span", record.grade, `status-badge ${record.grade}`), node("small", record.referenceAssisted
+                ? "Reference-assisted"
+                : record.gradingSource === "self"
+                    ? "Self-assessment"
+                    : "Recognition"));
+            row.append(node("td", record.questionIndex !== undefined
+                ? String(record.questionIndex + 1)
+                : "--"), harmony, result, node("td", `${record.responseLatency.toFixed(1)}s`), node("td", String(record.replayCount)));
+            body.append(row);
         });
-        details.append(list);
+        list.append(body);
+        scroll.append(list);
+        details.append(scroll);
         holder.append(details);
     }
     function renderHistory() {
@@ -954,8 +1198,10 @@ export function installFlow(engine) {
         if (!sessions.length)
             holder.append(node("p", "No sessions match these filters."));
         sessions.forEach((session) => {
-            const row = node("article", "", "config-item");
-            row.append(node("h3", `${exerciseNames[session.mode]} / ${new Date(session.timestamp).toLocaleString()}`), node("p", `${sessionStatus(session)} / ${session.completedCount} of ${session.questionCount || "Endless"} / ${Math.round(session.totalTime)} seconds${session.timeSource !== "active-session" ? " recorded response time" : " active"}`));
+            const row = node("article", "", "config-item history-row");
+            const body = node("div", "", "config-main");
+            body.append(node("span", sessionStatus(session), `status-badge ${sessionStatus(session)}`), node("h3", exerciseNames[session.mode]), node("p", `${relativeDate(session.timestamp)} / ${session.completedCount} of ${session.questionCount || "Endless"} / ${duration(session.totalTime)} ${session.timeSource !== "active-session" ? "response time" : "active"}`, "config-meta"));
+            row.append(body);
             const controls = node("div", "", "actions");
             controls.append(action("Repeat Session Config", () => begin(session.config, session.customSnapshot ?? engine.getCustoms(), "history")), action("View Summary", () => showSummary(session.id)));
             if (["active", "paused"].includes(sessionStatus(session)) &&
@@ -963,11 +1209,12 @@ export function installFlow(engine) {
                 controls.append(action("Resume", () => go(`session/${session.id}`), false));
             row.append(controls);
             const details = node("details");
+            details.className = "config-details";
             details.append(node("summary", "Session details"));
-            const body = node("div");
-            configDetails(body, session.config);
-            appendResults(body, session);
-            details.append(body);
+            const detailBody = node("div");
+            configDetails(detailBody, session.config);
+            appendResults(detailBody, session);
+            details.append(detailBody);
             row.append(details);
             holder.append(row);
         });
@@ -1013,17 +1260,24 @@ export function installFlow(engine) {
             ["history", "history"],
             ["insights", "insights"],
             ["review", "review"],
-        ])
+        ]) {
             $(tab + "-tab").setAttribute("aria-selected", String(value === route || (tab === "free" && route.startsWith("setup/"))));
+            $(tab + "-tab").tabIndex =
+                $(tab + "-tab").getAttribute("aria-selected") === "true" ? 0 : -1;
+        }
+        $("free-tab").setAttribute("aria-controls", route.startsWith("setup/") ? "wizard-view" : "dashboard-view");
         document.body.classList.toggle("in-session", navigation.hidden);
+        document.body.classList.toggle("in-wizard", route.startsWith("setup/"));
         if (!navigation.hidden)
             $("session-count").textContent = "Practice saved locally";
         $("flow-status").textContent = "";
+        $("flow-status").dataset.tone = "info";
         if (route.startsWith("setup/")) {
             $("wizard-view").hidden = false;
             wizardStep = Math.max(0, Math.min(4, Number(route.split("/")[1]) - 1 || 0));
             maxStep = Math.max(maxStep, wizardStep);
             updateWizard();
+            document.querySelector(".wizard-body").scrollTop = 0;
         }
         else if (route.startsWith("session/")) {
             const id = route.split("/")[1];
@@ -1075,6 +1329,23 @@ export function installFlow(engine) {
             return;
         $("session-progress").textContent = $("session-count").textContent;
         const phase = $("phase").textContent;
+        icon($("pause"), phase === "PAUSED" ? "play" : "pause", true);
+        icon($("favorite"), "bookmark", true);
+        const meter = $("session-meter");
+        meter.hidden = !session.questionCount;
+        meter.max = Math.max(1, session.questionCount);
+        meter.value = session.completedCount;
+        const stage = phase === "READY" || phase === "ESTABLISH CONTEXT"
+            ? "listen"
+            : phase === "REFERENCE"
+                ? "compare"
+                : phase === "GRADED"
+                    ? "assess"
+                    : "imagine";
+        document.querySelectorAll("[data-phase]").forEach((item) => {
+            item.classList.toggle("active", phase !== "PAUSED" && item.dataset.phase === stage);
+            item.setAttribute("aria-current", item.dataset.phase === stage ? "step" : "false");
+        });
         if (phase === "PAUSED") {
             clearInterval(prepareTimer);
             prepareTimer = 0;
@@ -1082,6 +1353,50 @@ export function installFlow(engine) {
         }
         if (phase === "GRADED")
             $("next").focus({ preventScroll: true });
+    }
+    new MutationObserver(updateSession).observe($("phase"), {
+        childList: true,
+        characterData: true,
+        subtree: true,
+    });
+    document.addEventListener("click", (event) => {
+        document
+            .querySelectorAll(".row-menu[open]")
+            .forEach((menu) => {
+            if (!menu.contains(event.target))
+                menu.open = false;
+        });
+    });
+    document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape")
+            document
+                .querySelectorAll(".row-menu[open]")
+                .forEach((menu) => {
+                menu.open = false;
+                menu.querySelector("summary").focus();
+            });
+    });
+    for (const group of [
+        navigation,
+        document.querySelector(".dashboard-tabs"),
+    ]) {
+        group.addEventListener("keydown", (event) => {
+            if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key))
+                return;
+            const buttons = Array.from(group.querySelectorAll('button[role="tab"]'));
+            const index = buttons.indexOf(document.activeElement);
+            if (index < 0)
+                return;
+            const next = event.key === "Home"
+                ? 0
+                : event.key === "End"
+                    ? buttons.length - 1
+                    : (index + (event.key === "ArrowRight" ? 1 : -1) + buttons.length) %
+                        buttons.length;
+            event.preventDefault();
+            buttons[next].focus();
+            buttons[next].click();
+        });
     }
     $("start-practicing").onclick = () => {
         try {
@@ -1136,6 +1451,7 @@ export function installFlow(engine) {
             readDraft();
             draftSave();
             $("flow-status").textContent = "Draft saved.";
+            $("flow-status").dataset.tone = "info";
         }
         catch (error) {
             showError(error);
@@ -1300,6 +1616,9 @@ export function installFlow(engine) {
         updateWizard();
     });
     $("wizard-view").insertBefore(reset, $("wizard-validation"));
+    const wizardBody = node("div", "", "wizard-body");
+    $("wizard-view").insertBefore(wizardBody, document.querySelector(".wizard-footer"));
+    wizardBody.append($("exercise-step"), $("wizard-options"), $("review-config"), reset, $("wizard-validation"));
     const originalCustomSave = $("custom-form").onsubmit;
     $("custom-form").onsubmit = (event) => {
         originalCustomSave?.call($("custom-form"), event);

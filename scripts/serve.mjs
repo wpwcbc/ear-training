@@ -8,6 +8,7 @@ const mime = {
   ".js": "text/javascript; charset=utf-8",
   ".css": "text/css; charset=utf-8",
   ".json": "application/json",
+  ".svg": "image/svg+xml",
 };
 const port = Number(process.env.PORT || 4173);
 createServer(async (req, res) => {

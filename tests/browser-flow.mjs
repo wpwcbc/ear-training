@@ -195,6 +195,7 @@ try {
     () =>
       JSON.parse(localStorage.getItem("jazzEarLab:v1:savedPresets"))[0].config,
   );
+  await page.locator("#configuration-list .row-menu > summary").click();
   await page
     .getByRole("button", { name: "Edit & Practice", exact: true })
     .click();
@@ -213,8 +214,10 @@ try {
   );
   await page.locator("#free-tab").click();
   await page.locator("[data-dashboard=saved]").click();
+  await page.locator("#configuration-list .row-menu > summary").click();
   page.once("dialog", (dialog) => dialog.accept("Renamed"));
   await page.getByRole("button", { name: "Rename", exact: true }).click();
+  await page.locator("#configuration-list .row-menu > summary").click();
   page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "Delete", exact: true }).click();
   assert.deepEqual(
