@@ -1,5 +1,5 @@
 export const policy = Object.freeze({
-  version: "insights-2.1",
+  version: "insights-2.2",
   days: 28,
   minimum: 30,
   sessions: 3,

@@ -1,4 +1,8 @@
 import * as audio from "./audio.js";
+import { legacyLogger } from '../analytics/legacy.js';
+const analytics=legacyLogger('chord-quality');
+let exactQuestions:Question[]|undefined;
+let runVersion=0;
 import { dom } from "./dom.js";
 import {
 	FIVE_NOTE_QUALITIES,
@@ -227,6 +231,7 @@ const handleAnswer = (selectedQuality: QualityId): void => {
 		return;
 	}
 	state.attempts += 1;
+	analytics.answer([{quality:selectedQuality}]);
 	dom.elAttemptsLabel.textContent = String(state.attempts);
 
 	if (selectedQuality === state.currentQuestion.quality) {
@@ -245,7 +250,9 @@ const handleAnswer = (selectedQuality: QualityId): void => {
 		Array.from(dom.elAnswers.querySelectorAll("button")).forEach((btn) => {
 			(btn as HTMLButtonElement).disabled = true;
 		});
+		const version=runVersion;
 		window.setTimeout(() => {
+			if(version!==runVersion)return;
 			state.questionIndex += 1;
 			loadQuestion();
 		}, 600);
@@ -255,6 +262,8 @@ const handleAnswer = (selectedQuality: QualityId): void => {
 };
 
 const finishTest = (): void => {
+	analytics.end('completed');
+	setTestRunning(false);
 	stopTimer();
 	state.currentQuestion = null;
 	dom.btnReplay.disabled = true;
@@ -329,26 +338,32 @@ const loadQuestion = (): void => {
 	if (!state.lastConfig) {
 		return;
 	}
-	state.currentQuestion = buildQuestion(base, state.lastConfig);
+	state.currentQuestion = exactQuestions?.[state.questionIndex] ? structuredClone(exactQuestions[state.questionIndex]) : buildQuestion(base, state.lastConfig);
+	analytics.present(state.currentQuestion,[{quality:state.currentQuestion.quality}],state.enabledQualities);
 	renderQuestion(state.currentQuestion);
 	startTimer();
 	dom.btnReplay.disabled = false;
 	audio.schedulePlayback(state.currentQuestion);
 };
 
-export const startTest = (config: Config): void => {
+export const startTest = (config: Config,exact?:Question[]): void => {
+	exactQuestions=exact;analytics.start(config,'quality',exact?'exact-review':'fresh');
+	runVersion++;setTestRunning(true);
 	state.lastConfig = config;
 	state.enabledQualities = config.enabledQualities;
 	state.enabledVoicings = config.enabledVoicings;
 	state.enabledInversions = config.enabledInversions;
 	state.questionQueue = buildQueue(config);
 	state.questionIndex = 0;
+	if(exact)state.questionQueue=exact.map(q=>structuredClone(q));
 	dom.elCompletionPanel.classList.add("hidden");
 	dom.elRerunControls.innerHTML = "";
 	loadQuestion();
 };
 
 export const stopTest = (): void => {
+	analytics.end('stopped');
+	runVersion++;setTestRunning(false);
 	stopTimer();
 	state.questionQueue = [];
 	state.questionIndex = 0;

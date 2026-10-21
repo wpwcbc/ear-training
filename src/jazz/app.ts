@@ -8,7 +8,7 @@ import {
 } from "./theory.js";
 import { phrases, phraseNoteName } from "./phrases.js";
 import { drawBass, drawScore } from "./views.js";
-import { bassTarget } from "./bass.js";
+import { bassTarget, bassPositions } from "./bass.js";
 import { progressionBank, parseProgression } from "./progressions.js";
 import { skillStats, confusions, type Grouping } from "./insights.js";
 import {
@@ -83,6 +83,7 @@ let sessionStarted = 0,
   sessionPausedAt = 0,
   sessionPausedMs = 0;
 let hasPlayed = false;
+let performanceRunId = "";
 let autoTimer = 0;
 let flow: ReturnType<typeof installFlow> | undefined;
 let playbackOverrides: Partial<Config> = {};
@@ -94,6 +95,8 @@ const button = (id: string, enabled: boolean) => {
   el<HTMLButtonElement>(id).disabled = !enabled;
 };
 function stopAudio(): void {
+  if (performanceRunning && performanceRunId)
+    capture?.event("performance_interrupted", { runId: performanceRunId });
   window.clearTimeout(autoTimer);
   autoTimer = 0;
   performanceRunning = false;
@@ -161,6 +164,13 @@ function startPerformance(): void {
   if (!challenge) return;
   contextPending = false;
   performanceRunning = true;
+  performanceRunId = crypto.randomUUID();
+  capture?.event("performance_started", {
+    runId: performanceRunId,
+    config: playbackConfig(),
+    source: session?.source,
+    assistance: referenceAssisted ? "reference" : "none",
+  });
   revealed = false;
   audio.play(challenge.targets, playbackConfig(), true, false, {
     countIn: config.countIn,
@@ -176,6 +186,11 @@ function followPerformance(): void {
     const position = audio.position,
       events = audio.plan.events;
     if (position >= audio.plan.duration) {
+      capture?.event("performance_completed", {
+        runId: performanceRunId,
+        scheduledDuration: audio.plan.duration,
+      });
+      capture?.event("reference_revealed", { reason: "continuous-schedule" });
       performanceRunning = false;
       revealed = true;
       referenceSeen = true;
@@ -246,6 +261,11 @@ function renderPhrase(): void {
     phraseStage === 6
       ? "Apply next variation"
       : stages[Math.min(6, phraseStage + 1)];
+  if (config.phraseFocus && !revealed)
+    button.textContent =
+      phraseStage === 0
+        ? "Begin " + config.phraseFocus + " focus"
+        : "Compare focus";
   const holder = el("phrase-marks");
   holder.replaceChildren();
   if (phraseStage === 2) {
@@ -325,6 +345,7 @@ function renderBassTask(): void {
         render();
         store();
       },
+      config.bassString,
     );
   el("bass-result").textContent = !revealed
     ? bassSelection === undefined
@@ -335,6 +356,10 @@ function renderBassTask(): void {
       : bassSelection % 12 === target.midi % 12
         ? "Selected pitch class matches the reference. Self-assess your playing."
         : "Selected pitch class differs from the reference. Compare and try again.";
+  const locked = capture?.value.position;
+  if (locked)
+    el("bass-result").textContent =
+      `Locked: ${locked.string} string / fret ${locked.fret}${revealed ? (locked.midi === target.midi ? " · Exact MIDI match." : locked.midi % 12 === target.midi % 12 ? " · Pitch class matches; octave differs." : " · Mapping differs.") : ""} Physical playing is self-assessed.`;
 }
 function renderReferences(): void {
   const holder = el("reference-tools");
@@ -540,6 +565,8 @@ function readConfig(): Config {
 }
 function render(): void {
   const active = !!challenge;
+  if (active && config.mode === "m6" && hasPlayed && !contextPending && !paused)
+    capture?.stage(phraseStage);
   let stageRatings = document.getElementById("stage-ratings");
   if (!stageRatings) {
     stageRatings = document.createElement("div");
@@ -547,10 +574,79 @@ function render(): void {
     el("phrase-step").after(stageRatings);
   }
   stageRatings.replaceChildren();
+  let trouble = document.getElementById("trouble-steps");
+  if (!trouble) {
+    trouble = document.createElement("fieldset");
+    trouble.id = "trouble-steps";
+    el("grading").before(trouble);
+  }
+  trouble.replaceChildren();
+  trouble.hidden = !(
+    active &&
+    revealed &&
+    !graded &&
+    !paused &&
+    (config.mode === "m1" ||
+      continuous() ||
+      (config.mode === "m3" && !isRecognition(config)))
+  );
+  el("answer").after(trouble);
+  if (!trouble.hidden && challenge) {
+    const legend = document.createElement("legend");
+    legend.textContent = "Self-reported trouble spots";
+    trouble.append(legend);
+    if (config.mode === "m1") {
+      for (const tag of [
+        "Could not imagine",
+        "Octave / register",
+        "Unsure degree",
+        "Execution",
+      ]) {
+        const label = document.createElement("label"),
+          input = document.createElement("input");
+        input.type = "checkbox";
+        input.checked = capture?.value.difficultyTags?.includes(tag) ?? false;
+        input.onchange = () => {
+          if (capture) {
+            const tags = new Set(capture.value.difficultyTags ?? []);
+            if (input.checked) tags.add(tag);
+            else tags.delete(tag);
+            capture.value.difficultyTags = [...tags];
+            capture.event("difficulty_tags_committed", { tags: [...tags] });
+            store();
+          }
+        };
+        label.append(input, tag);
+        trouble.append(label);
+      }
+    } else
+      challenge.targets.forEach((target, i) => {
+        const label = document.createElement("label"),
+          input = document.createElement("input");
+        input.type = "checkbox";
+        input.checked = capture?.value.troubleSteps?.includes(i) ?? false;
+        input.onchange = () => {
+          if (capture) {
+            const selected = new Set(capture.value.troubleSteps ?? []);
+            if (input.checked) selected.add(i);
+            else selected.delete(i);
+            capture.value.troubleSteps = [...selected];
+            capture.event("trouble_steps_committed", { steps: [...selected] });
+            store();
+          }
+        };
+        label.append(
+          input,
+          ` Change ${i + 1}: ${target.chord.symbol}${target.bar ? " / bar " + target.bar : ""}`,
+        );
+        trouble!.append(label);
+      });
+  }
   if (
     active &&
     config.mode === "m6" &&
-    [1, 3, 5].includes(phraseStage) &&
+    !config.phraseFocus &&
+    [1, 3, 5, 6].includes(phraseStage) &&
     hasPlayed &&
     !contextPending &&
     !paused
@@ -571,6 +667,12 @@ function render(): void {
             stage: phraseStage,
             grade,
             committedAt: new Date().toISOString(),
+            activeMs: capture.stageOutcome(
+              phraseStage,
+              grade,
+              "self",
+              referenceAssisted,
+            ),
           };
           capture.value.stageRatings.push(rating);
           capture.event("stage_self_grade_submitted", rating);
@@ -615,11 +717,39 @@ function render(): void {
     lock.textContent = "Lock position";
     lock.onclick = () => {
       if (capture && selectedBassPosition && challenge && !revealed) {
+        const selectedPosition = selectedBassPosition;
+        if (
+          !bassPositions(
+            selectedPosition.midi,
+            config.fretLow,
+            config.fretHigh,
+          ).some(
+            (p) =>
+              p.string === selectedPosition.string &&
+              p.fret === selectedPosition.fret &&
+              (!config.bassString || p.string === config.bassString),
+          )
+        ) {
+          status(
+            "Choose a position inside the current string and fret limits.",
+          );
+          return;
+        }
         capture.value.position = {
           ...selectedBassPosition,
           expectedMidi: challenge.targets[0].midi,
+          committedAt: new Date().toISOString(),
+        };
+        capture.value.mappingContext = {
+          tuningVersion: "standard-four-string-1",
+          validPositions: bassPositions(
+            challenge.targets[0].midi,
+            config.fretLow,
+            config.fretHigh,
+          ).filter((p) => !config.bassString || p.string === config.bassString),
         };
         capture.event("position_committed", capture.value.position);
+        capture.mappingOutcome(referenceAssisted);
         render();
         store();
       }
@@ -668,7 +798,12 @@ function render(): void {
     button("replay", false);
     button("context-only", false);
   }
-  if (config.mode === "m6" && phraseStage < 3) button("reveal", false);
+  if (
+    config.mode === "m6" &&
+    phraseStage < 3 &&
+    (!config.phraseFocus || phraseStage === 0)
+  )
+    button("reveal", false);
   if (
     config.mode === "m7" &&
     bassStage === 0 &&
@@ -884,6 +1019,7 @@ function newQuestion(play = true): void {
       ? sessionQuestion(session, index)
       : generate(config, index, customs));
   pendingReview = null;
+  if (session) config = { ...session.config, ...challenge.presentation };
   step = isSequential(config) ? 1 : 0;
   revealed = false;
   graded = false;
@@ -975,7 +1111,7 @@ async function start(): Promise<void> {
 function record(grade: Grade, source: "self" | "automatic"): void {
   if (!challenge || !session || graded) return;
   if (grade === "skipped") capture?.commit("opportunity_skipped", true);
-  if (continuous() || config.mode === "m6")
+  if (continuous() || (config.mode === "m6" && !config.phraseFocus))
     capture?.interrupt("whole-activity-no-reaction-time");
   const targets = (
     isSequential(config) && !continuous()
@@ -1050,10 +1186,39 @@ function record(grade: Grade, source: "self" | "automatic"): void {
       if (graded && !paused) safe(next)();
     }, 1200);
 }
+function commitPhraseMarks(): void {
+  if (
+    phraseStage !== 2 ||
+    !capture ||
+    !challenge?.phrase ||
+    capture.value.marks
+  )
+    return;
+  capture.value.marks = {
+    expected: challenge.phrase.notes.flatMap((n, i) => (n.target ? [i] : [])),
+    selected: [...marks],
+  };
+  const committed = capture.value.marks;
+  capture.event("marks_committed", committed);
+  capture.stageOutcome(
+    2,
+    committed.expected.length === committed.selected.length &&
+      committed.expected.every((i) => committed.selected.includes(i))
+      ? "correct"
+      : "missed",
+    "automatic",
+    referenceAssisted,
+  );
+}
 async function reveal(): Promise<void> {
   if (!challenge || !hasPlayed || revealed || paused || phaseTimer) return;
   if (performanceRunning) return;
-  if (config.mode === "m6" && phraseStage < 3) return;
+  if (
+    config.mode === "m6" &&
+    phraseStage < 3 &&
+    (!config.phraseFocus || phraseStage === 0)
+  )
+    return;
   if (
     config.mode === "m7" &&
     bassStage === 0 &&
@@ -1067,6 +1232,7 @@ async function reveal(): Promise<void> {
   const currentChallenge = challenge;
   await audio.ready();
   if (challenge !== currentChallenge || paused || revealed) return;
+  if (config.mode === "m6") commitPhraseMarks();
   stopAudio();
   elapsed += Math.max(0, performance.now() - started) / 1000;
   if (capture) {
@@ -1160,6 +1326,7 @@ function next(): void {
       session.status = "completed";
       session.endedAt = new Date().toISOString();
       saveSession(localStorage, session);
+      capture?.lifecycle("session_ended");
       flow?.showSummary(session.id);
     }
     renderHistory();
@@ -1169,7 +1336,7 @@ function next(): void {
 }
 async function togglePause(): Promise<void> {
   if (!challenge) return;
-  if (!paused) capture?.suspend("session_paused");
+  if (!paused) capture?.suspend("decision_window_suspended");
   else if (!contextPending && !revealed) capture?.open();
   if (!paused) sessionPausedAt = performance.now();
   else if (sessionPausedAt) {
@@ -1189,6 +1356,7 @@ async function togglePause(): Promise<void> {
     render();
     status(paused ? "Performance paused." : "Performance resumed.");
     if (session) session.status = paused ? "paused" : "active";
+    capture?.lifecycle(paused ? "session_paused" : "session_resumed");
     store();
     return;
   }
@@ -1210,6 +1378,7 @@ async function togglePause(): Promise<void> {
   }
   render();
   if (session) session.status = paused ? "paused" : "active";
+  capture?.lifecycle(paused ? "session_paused" : "session_resumed");
   store();
   status(
     paused
@@ -1232,6 +1401,9 @@ function resetChallenge(): void {
   pendingReview = null;
   phraseStage = 0;
   bassStage = 0;
+  bassSelection = undefined;
+  selectedBassPosition = undefined;
+  capture = null;
   el("phrase-score").replaceChildren();
   el("fretboard").replaceChildren();
   el("reference-tools").replaceChildren();
@@ -1542,7 +1714,7 @@ el("recommended-start").onclick = () => {
 el("insight-group").onchange = () => renderInsights(loadSessions(localStorage));
 el("phrase-step").onclick = safe(async () => {
   if (!challenge?.phrase || paused) return;
-  if (phraseStage === 6) {
+  if (phraseStage === 6 && !(config.phraseFocus && !revealed)) {
     const variants = ["rhythm", "approach", "enclosure", "original"] as const;
     const next =
       variants[
@@ -1561,16 +1733,25 @@ el("phrase-step").onclick = safe(async () => {
     return;
   }
   stopAudio();
-  if (phraseStage === 2 && capture) {
-    capture.value.marks = {
-      expected: challenge.phrase.notes.flatMap((n, i) => (n.target ? [i] : [])),
-      selected: [...marks],
-    };
-    capture.event("marks_committed", capture.value.marks);
+  commitPhraseMarks();
+  if (config.phraseFocus) {
+    capture?.suspend("stage_ended");
+    if (phraseStage === 0) {
+      phraseStage = (
+        { sing: 1, mark: 2, predict: 3, bass: 5, vary: 6 } as const
+      )[config.phraseFocus];
+      capture?.restartWindow();
+      if (phraseStage === 3) {
+        hasPlayed = false;
+        playContext();
+      } else render();
+    } else await reveal();
+    return;
   }
   phraseStage = Math.min(6, phraseStage + 1);
   if (phraseStage === 3) {
     revealed = false;
+    hasPlayed = false;
     playContext();
   } else render();
 });
@@ -1583,7 +1764,8 @@ el("context-only").onclick = safe(async () => {
   const current = challenge;
   await audio.ready();
   if (challenge !== current || paused) return;
-  capture?.interrupt("reference-context-playback");
+  if (!revealed) capture?.interrupt("reference-context-playback");
+  else capture?.event("context_replayed", { afterResponse: true });
   stopAudio();
   audio.play(
     isSequential(config)
@@ -1694,7 +1876,10 @@ el("mode").onchange = () => {
   store();
 };
 document.addEventListener("visibilitychange", () => {
-  if (document.hidden && challenge && !paused) togglePause();
+  if (document.hidden && challenge && !paused) {
+    capture?.interrupt("visibility_interrupted");
+    void togglePause();
+  }
 });
 window.addEventListener("pagehide", () => {
   stopAudio();
@@ -1767,6 +1952,7 @@ flow = installFlow({
     const p = session.progress;
     index = p?.index ?? 0;
     challenge = sessionQuestion(session, index);
+    config = { ...session.config, ...challenge.presentation };
     step = p?.step ?? (isSequential(config) ? 1 : 0);
     capture = new AttemptCapture(
       session,
@@ -1795,6 +1981,7 @@ flow = installFlow({
     contextPending = false;
     paused = false;
     session.status = "active";
+    capture?.lifecycle("session_resumed");
     sessionStarted = performance.now() - session.totalTime * 1000;
     sessionPausedMs = 0;
     sessionPausedAt = 0;
@@ -1818,7 +2005,7 @@ flow = installFlow({
     status("Session restored. Replay context when ready.");
   },
   leave(end = false) {
-    capture?.suspend(end ? "session_ended" : "session_paused");
+    capture?.suspend("lifecycle_suspended");
     operation++;
     stopAudio();
     if (
@@ -1834,6 +2021,7 @@ flow = installFlow({
         paused = true;
       }
       session.status = end ? "abandoned" : "paused";
+      capture?.lifecycle(end ? "session_ended" : "session_paused");
       if (end) session.endedAt = new Date().toISOString();
       store();
     }

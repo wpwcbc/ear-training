@@ -1,3 +1,4 @@
+import { legacyLogger } from '../analytics/legacy.js';
 const audioState = {
     chordSynth: null,
     leadSynth: null,
@@ -37,7 +38,7 @@ export async function ensureAudioReady() {
     audioState.leadSynth.volume.value = -4;
     audioState.audioReady = true;
 }
-export function schedulePlayback(question) {
+function schedulePlaybackAudio(question) {
     const now = Tone.now();
     const chordDuration = question.playChord ? 1.05 : 0;
     const gap = 0.08;
@@ -49,17 +50,27 @@ export function schedulePlayback(question) {
     }
     const startTime = now + (question.playChord ? chordDuration + gap : 0);
     const velocity = question.leadVelocity ?? 1;
+    const scheduledMs = ((question.playChord ? chordDuration + gap : 0) + (question.intervalMode === 'harmonic' ? .9 : 1.48) + .5) * 1000;
     const [noteA, noteB] = question.intervalNotes;
     if (question.intervalMode === "harmonic") {
         audioState.leadSynth.triggerAttackRelease(noteA, 0.9, startTime, velocity);
         audioState.leadSynth.triggerAttackRelease(noteB, 0.9, startTime, velocity);
+        legacyLogger('interval').play(scheduledMs);
         return;
     }
     const firstNote = question.melodicDirection === "up" ? noteA : noteB;
     const secondNote = question.melodicDirection === "up" ? noteB : noteA;
     audioState.leadSynth.triggerAttackRelease(firstNote, 0.7, startTime, velocity);
     audioState.leadSynth.triggerAttackRelease(secondNote, 0.7, startTime + 0.7 + gap, velocity);
+    legacyLogger('interval').play(scheduledMs);
 }
+export function schedulePlayback(question) { const logger = legacyLogger('interval'); logger.beginPlayback(); try {
+    schedulePlaybackAudio(question);
+}
+catch (error) {
+    logger.audioFailed();
+    throw error;
+} }
 export function isReady() {
     return audioState.audioReady;
 }

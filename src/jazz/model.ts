@@ -24,6 +24,9 @@ import { normalize } from "./analytics/adapters.js";
 import { priorities } from "./analytics/metrics.js";
 export type Mode = "m1" | "m2" | "m3" | "m4" | "m5" | "m6" | "m7";
 export interface Config {
+  heldMidi?: number;
+  phraseFocus?: "sing" | "mark" | "predict" | "bass" | "vary";
+  bassString?: string;
   qualityPool?: string[];
   degreePool?: string[];
   progressionPool?: string[];
@@ -136,6 +139,18 @@ export interface Target {
   secondDegree?: string;
 }
 export interface Challenge {
+  presentation?: Partial<Config>;
+  focus?: {
+    kind:
+      | "held-pitch"
+      | "transition"
+      | "section"
+      | "phrase-stage"
+      | "bass-position";
+    sourceIndices?: number[];
+    stage?: Config["phraseFocus"];
+    position?: { string: string; fret: number; midi: number };
+  };
   targets: Target[];
   progressionId: string;
   phrase?: ReturnType<typeof transformPhrase>;
@@ -264,6 +279,7 @@ export function generate(
                   config.bassHigh,
                   config.fretLow,
                   config.fretHigh,
+                  config.bassString,
                 )
               : inRange(targetPc(chord, degree), config.low, config.high),
         },
@@ -311,7 +327,8 @@ export function generate(
           }, 0);
         return score(b) - score(a) || a - b;
       })[0];
-  const commonMidi = inRange(commonPc, config.low, config.high);
+  const commonMidi =
+    config.heldMidi ?? inRange(commonPc, config.low, config.high);
   let beatPosition = 0;
   return {
     progressionId: progression.id,
@@ -475,6 +492,25 @@ export function validateConfig(
   customs: Progression[] = [],
 ): Config {
   const next = { ...config };
+  if (
+    next.heldMidi !== undefined &&
+    (!Number.isInteger(next.heldMidi) ||
+      next.heldMidi < next.low ||
+      next.heldMidi > next.high ||
+      next.mode !== "m3")
+  )
+    throw new Error("Held pitch must be inside the selected M3 register.");
+  if (
+    next.phraseFocus !== undefined &&
+    (next.mode !== "m6" ||
+      !["sing", "mark", "predict", "bass", "vary"].includes(next.phraseFocus))
+  )
+    throw new Error("Choose a valid phrase stage.");
+  if (
+    next.bassString !== undefined &&
+    (next.mode !== "m7" || !["E", "A", "D", "G"].includes(next.bassString))
+  )
+    throw new Error("Choose a valid bass string.");
   if (
     next.predictionUnit &&
     !["seconds", "beats"].includes(next.predictionUnit)
@@ -760,7 +796,7 @@ export function recommendation(sessions: Session[]): {
   const focus = priorities(
     evidence,
     Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
-  ).find((p) => p.stats.eligibleCount > 0 && p.rank < 3);
+  ).find((p) => p.stats.eligibleCount > 0 && p.rank < 4);
   if (focus) {
     const row = focus.rows[0];
     return {

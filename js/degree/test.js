@@ -1,4 +1,8 @@
 import { MIN_CHORD_ROOT_MIDI, RANDOM_ROOTS, } from "../core/constants.js";
+import { legacyLogger } from '../analytics/legacy.js';
+const analytics = legacyLogger('degree');
+let exactQuestions;
+let runVersion = 0;
 import * as theory from "../core/theory.js";
 import * as audio from "./audio.js";
 import { dom } from "./dom.js";
@@ -198,6 +202,7 @@ const handleAnswer = (selectedDegree) => {
         return;
     }
     state.attempts += 1;
+    analytics.answer([{ degree: selectedDegree }]);
     dom.elAttemptsLabel.textContent = String(state.attempts);
     if (selectedDegree === state.currentQuestion.correctUpperDegree) {
         const elapsedSeconds = (performance.now() - state.startPerfMs) / 1000;
@@ -221,7 +226,10 @@ const handleAnswer = (selectedDegree) => {
         Array.from(dom.elAnswers.querySelectorAll("button")).forEach((btn) => {
             btn.disabled = true;
         });
+        const version = runVersion;
         window.setTimeout(() => {
+            if (version !== runVersion)
+                return;
             state.questionIndex += 1;
             loadQuestion();
         }, 600);
@@ -235,13 +243,15 @@ const loadQuestion = () => {
         finishTest();
         return;
     }
-    state.currentQuestion = buildQuestion(state.questionQueue[state.questionIndex]);
+    state.currentQuestion = exactQuestions?.[state.questionIndex] ? structuredClone(exactQuestions[state.questionIndex]) : buildQuestion(state.questionQueue[state.questionIndex]);
+    analytics.present(state.currentQuestion, [{ degree: state.currentQuestion.correctUpperDegree }], state.currentQuestion.allowedUpperDegrees);
     renderQuestion(state.currentQuestion);
     startTimer();
     dom.btnReplay.disabled = false;
     audio.schedulePlayback(state.currentQuestion);
 };
 const finishTest = () => {
+    analytics.end('completed');
     stopTimer();
     state.currentQuestion = null;
     dom.btnReplay.disabled = true;
@@ -310,7 +320,10 @@ const finishTest = () => {
         dom.elRerunControls.appendChild(btnAgain);
     }
 };
-export const startTest = (config, mode) => {
+export const startTest = (config, mode, exact) => {
+    exactQuestions = exact;
+    analytics.start(config, mode, exact ? 'exact-review' : 'fresh');
+    runVersion++;
     state.activeMode = mode;
     state.currentQuestionRecords = [];
     currentTestName =
@@ -322,6 +335,8 @@ export const startTest = (config, mode) => {
             ? buildMode1Queue(config)
             : buildMode2Queue(config);
     state.questionIndex = 0;
+    if (exact)
+        state.questionQueue = exact.map(q => structuredClone(q));
     dom.elCompletionPanel.classList.add("hidden");
     dom.elRerunControls.innerHTML = "";
     setTestRunning(true);
@@ -346,6 +361,8 @@ export const rerunMode1 = (shiftSemis) => {
     startTest(newConfig, "mode1");
 };
 export const stopTest = () => {
+    analytics.end('stopped');
+    runVersion++;
     stopTimer();
     state.currentQuestion = null;
     state.questionQueue = [];

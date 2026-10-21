@@ -48,9 +48,11 @@ export function renderTrend(
   ctx.font = "14px Segoe UI";
   ctx.fillStyle = "#253a32";
   ctx.fillText(
-    rows[0].source === "self"
-      ? "Self-rated correct / submitted ratings"
-      : "Exact recognition / submitted answers",
+    rows[0].source === "visual"
+      ? "Exact visual mapping / committed positions"
+      : rows[0].source === "self"
+        ? "Self-rated correct / submitted ratings"
+        : "Exact recognition / submitted answers",
     20,
     25,
   );

@@ -2,6 +2,7 @@ import type { Config, Challenge, RecordEntry, Session } from "../model.js";
 export type Grain =
   "answer" | "sequence" | "transition" | "target-pair" | "run" | "phrase-stage";
 export interface Capture {
+  assessmentSource?: "visual";
   id: string;
   questionId: string;
   attemptOrdinal: number;
@@ -19,12 +20,20 @@ export interface Capture {
     stage: number;
     grade: "correct" | "close" | "missed";
     committedAt: string;
+    activeMs?: number | null;
   }[];
+  troubleSteps?: number[];
+  difficultyTags?: string[];
+  mappingContext?: {
+    tuningVersion: string;
+    validPositions: { string: string; fret: number; midi: number }[];
+  };
   position?: {
     string: string;
     fret: number;
     midi: number;
     expectedMidi: number;
+    committedAt?: string;
   };
   answerOptions?: string[][];
 }
@@ -38,7 +47,7 @@ export interface Evidence {
   subtask: string;
   grain: Grain;
   createdAt: string;
-  source: "self" | "automatic";
+  source: "self" | "automatic" | "visual";
   exposure: "fresh" | "targeted" | "exact-review";
   assistance: "none" | "reference" | "unknown";
   attemptOrdinal: number;
@@ -86,7 +95,9 @@ export function task(config: Config): string {
     case "m7":
       return config.bassTask;
     case "m6":
-      return "whole-activity";
+      return config.phraseFocus
+        ? "stage-" + config.phraseFocus
+        : "whole-activity";
     default:
       return config.mode === "m4" ? config.revealMode : "produce";
   }
@@ -103,7 +114,9 @@ export function grain(config: Config): Grain {
             ? "target-pair"
             : "transition"
         : config.mode === "m6"
-          ? "run"
+          ? config.phraseFocus
+            ? "phrase-stage"
+            : "run"
           : "answer";
 }
 export function analyticsCohortKey(
@@ -118,7 +131,7 @@ export function analyticsCohortKey(
   for (const key of ["volume", "count", "autoAdvance", "prepareSeconds"])
     delete normalized[key];
   return stable({
-    version: 1,
+    version: 2,
     config: normalized,
     material,
     source,

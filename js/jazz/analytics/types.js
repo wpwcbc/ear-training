@@ -27,7 +27,9 @@ export function task(config) {
         case "m7":
             return config.bassTask;
         case "m6":
-            return "whole-activity";
+            return config.phraseFocus
+                ? "stage-" + config.phraseFocus
+                : "whole-activity";
         default:
             return config.mode === "m4" ? config.revealMode : "produce";
     }
@@ -44,7 +46,9 @@ export function grain(config) {
                         ? "target-pair"
                         : "transition"
                 : config.mode === "m6"
-                    ? "run"
+                    ? config.phraseFocus
+                        ? "phrase-stage"
+                        : "run"
                     : "answer";
 }
 export function analyticsCohortKey(config, material, source, exposure, version, options) {
@@ -52,7 +56,7 @@ export function analyticsCohortKey(config, material, source, exposure, version, 
     for (const key of ["volume", "count", "autoAdvance", "prepareSeconds"])
         delete normalized[key];
     return stable({
-        version: 1,
+        version: 2,
         config: normalized,
         material,
         source,

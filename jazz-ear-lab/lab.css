@@ -1766,6 +1766,50 @@ button.fret.picked {
   margin-block: 8px;
   font-weight: 600;
 }
+.matrix-value {
+  background: transparent;
+  color: #34483e;
+  border: 1px solid #d4dfd9;
+  text-align: left;
+  min-height: 44px;
+  white-space: normal;
+  max-width: 260px;
+}
+.matrix-value:hover {
+  background: #edf2ef;
+}
+#trouble-steps {
+  border: 1px solid #cbd4d0;
+  padding: 12px;
+  margin-block: 12px;
+}
+#trouble-steps label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  margin-right: 16px;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+#trouble-steps input {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+#stage-ratings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+#legacy-save-error,
+#insights-save-error {
+  padding: 16px;
+  background: #fff2d6;
+  color: #682e14;
+  border: 1px solid #b98943;
+}
 .insight-health input {
   max-width: 100%;
 }

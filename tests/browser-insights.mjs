@@ -95,7 +95,9 @@ try {
   await page.locator("#reveal").click();
   await page.locator("[data-grade=close]").click();
   await navigate(page, "insights/m7?task=hear-play");
-  await page.getByText("Visual mapping", { exact: true }).waitFor();
+  await page
+    .getByRole("heading", { name: "Visual mapping", exact: true })
+    .waitFor();
   assert.match(
     await page.locator("#analytics-content").innerText(),
     /Exact MIDI/,

@@ -36,13 +36,15 @@ export function aggregate(rows, timezone = "UTC", now = Date.now()) {
         Number.isFinite(e.record.analytics.activeMs) &&
         e.record.analytics.activeMs >= 0 &&
         !(e.mode === "m5" && e.config.runMode === "continuous") &&
-        e.mode !== "m6" &&
+        (e.mode !== "m6" || e.grain === "phrase-stage") &&
         (e.source === "self" || e.record.grade === "correct"));
     const times = timingSample.map((e) => e.record.analytics.activeMs);
     return {
-        metricId: rows[0]?.source === "automatic"
-            ? "first-exact-recognition"
-            : "self-rating-consistency",
+        metricId: rows[0]?.source === "visual"
+            ? "visual-mapping-exactness"
+            : rows[0]?.source === "automatic"
+                ? "first-exact-recognition"
+                : "self-rating-consistency",
         definitionVersion: policy.version,
         unit: rows[0]?.grain ?? "answer",
         eligibleCount: sample.length,
@@ -104,7 +106,8 @@ export function cells(rows) {
     }
     return [...groups.values()];
 }
-export function priorities(rows, timezone, now = Date.now()) {
+export function priorities(rows, timezone, now = Date.now(), baselineRows = rows) {
+    const trends = new Map(matchedTrends(baselineRows, timezone, now).map((t) => [t.key, t]));
     return cells(rows.filter((e) => Date.parse(e.createdAt) >= now - policy.days * 86400000))
         .map((cell) => {
         const stats = aggregate(cell.rows, timezone, now), rate = stats.eligibleCount ? stats.correct / stats.eligibleCount : null;
@@ -116,22 +119,31 @@ export function priorities(rows, timezone, now = Date.now()) {
                     stats.interval[1] < policy.target
                     ? cell.rows[0].source === "self"
                         ? "Frequently self-rated close/missed"
-                        : "Recognition priority"
+                        : cell.rows[0].source === "visual"
+                            ? "Visual mapping priority"
+                            : "Recognition priority"
                     : rate < policy.target
                         ? "Possible difficulty"
-                        : stats.label === "Enough to guide practice" &&
-                            stats.replayCount / stats.eligibleCount >
-                                policy.replayThreshold
-                            ? "Replay-dependent"
-                            : "Collect broader evidence";
+                        : trends
+                            .get(cell.rows[0].cohortKey)
+                            ?.speedLabel.startsWith("Correct but slower")
+                            ? "Correct but slow"
+                            : stats.label === "Enough to guide practice" &&
+                                stats.replayCount / stats.eligibleCount >
+                                    policy.replayThreshold
+                                ? "Replay-dependent"
+                                : "Collect broader evidence";
         const rank = category === "Recognition priority" ||
+            category === "Visual mapping priority" ||
             category === "Frequently self-rated close/missed"
             ? 0
             : category === "Possible difficulty"
                 ? 1
-                : category === "Replay-dependent"
+                : category === "Correct but slow"
                     ? 2
-                    : 3;
+                    : category === "Replay-dependent"
+                        ? 3
+                        : 4;
         return { ...cell, stats, category, rank };
     })
         .sort((a, b) => a.rank - b.rank ||

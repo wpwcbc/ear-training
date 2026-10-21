@@ -5,6 +5,8 @@ import { initRecords } from "./records.js";
 import { initChordQualityControls, readConfig } from "./setup.js";
 import { resetLiveDisplay, setStatus, startTest, stopTest, replayCurrent } from "./test.js";
 import { state } from "./state.js";
+import { installLegacyLaunch } from '../analytics/legacy.js';
+installLegacyLaunch('chord-quality', async (launch) => { await audio.ensureAudioReady(); startTest(launch.config, launch.question ? Array.from({ length: 10 }, () => structuredClone(launch.question)) : undefined); });
 dom.btnStartAudio.addEventListener("click", async () => {
     try {
         await audio.ensureAudioReady();

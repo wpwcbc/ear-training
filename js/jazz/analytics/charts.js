@@ -33,9 +33,11 @@ export function renderTrend(parent, rows, timezone, now = Date.now()) {
     ctx.fillRect(0, 0, 900, 320);
     ctx.font = "14px Segoe UI";
     ctx.fillStyle = "#253a32";
-    ctx.fillText(rows[0].source === "self"
-        ? "Self-rated correct / submitted ratings"
-        : "Exact recognition / submitted answers", 20, 25);
+    ctx.fillText(rows[0].source === "visual"
+        ? "Exact visual mapping / committed positions"
+        : rows[0].source === "self"
+            ? "Self-rated correct / submitted ratings"
+            : "Exact recognition / submitted answers", 20, 25);
     ctx.fillText("Active decision median (seconds), valid new capture only", 20, 177);
     const first = now - 56 * 86400000, x = (time) => 90 + ((time - first) / (56 * 86400000)) * 780;
     ctx.strokeStyle = "#cbd4d0";

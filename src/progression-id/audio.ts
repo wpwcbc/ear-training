@@ -1,4 +1,5 @@
 declare const Tone: any;
+import { legacyLogger } from '../analytics/legacy.js';
 
 export interface PlaybackQuestion {
 	chordNotes: string[];
@@ -28,7 +29,7 @@ export const ensureAudioReady = async (): Promise<void> => {
 	audioReady = true;
 };
 
-export const schedulePlayback = (chords: PlaybackQuestion[]): void => {
+const schedulePlaybackAudio = (chords: PlaybackQuestion[]): void => {
 	if (!chordSynth) {
 		return;
 	}
@@ -42,4 +43,6 @@ export const schedulePlayback = (chords: PlaybackQuestion[]): void => {
 		});
 		time += chordDuration + gap;
 	});
+	legacyLogger('progression-id').play(((chords.length-1)*(chordDuration+gap)+chordDuration+.8)*1000);
 };
+export const schedulePlayback=(chords:PlaybackQuestion[]):void=>{const logger=legacyLogger('progression-id');logger.beginPlayback();try{schedulePlaybackAudio(chords);}catch(error){logger.audioFailed();throw error;}};

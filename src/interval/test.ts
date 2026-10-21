@@ -3,6 +3,10 @@ import {
 	RANDOM_ROOTS,
 	type ChordQuality,
 } from "../core/constants.js";
+import { legacyLogger } from '../analytics/legacy.js';
+const analytics=legacyLogger('interval');
+let exactQuestions:Question[]|undefined;
+let runVersion=0;
 import * as theory from "../core/theory.js";
 import * as audio from "./audio.js";
 import { dom } from "./dom.js";
@@ -277,6 +281,7 @@ const handleAnswer = (selectedInterval: string): void => {
 		return;
 	}
 	state.attempts += 1;
+	analytics.answer([{label:selectedInterval}]);
 	dom.elAttemptsLabel.textContent = String(state.attempts);
 
 	if (selectedInterval === state.currentQuestion.intervalLabel) {
@@ -305,7 +310,9 @@ const handleAnswer = (selectedInterval: string): void => {
 		Array.from(dom.elAnswers.querySelectorAll("button")).forEach((btn) => {
 			(btn as HTMLButtonElement).disabled = true;
 		});
+		const version=runVersion;
 		window.setTimeout(() => {
+			if(version!==runVersion)return;
 			state.questionIndex += 1;
 			loadQuestion();
 		}, 600);
@@ -319,7 +326,8 @@ const loadQuestion = (): void => {
 		finishTest();
 		return;
 	}
-	state.currentQuestion = buildQuestion(state.questionQueue[state.questionIndex]);
+	state.currentQuestion = exactQuestions?.[state.questionIndex] ? structuredClone(exactQuestions[state.questionIndex]) : buildQuestion(state.questionQueue[state.questionIndex]);
+	analytics.present(state.currentQuestion,[{label:state.currentQuestion.intervalLabel}],INTERVAL_LABELS.map(item=>item.label));
 	renderQuestion(state.currentQuestion);
 	startTimer();
 	dom.btnReplay.disabled = false;
@@ -327,6 +335,7 @@ const loadQuestion = (): void => {
 };
 
 const finishTest = (): void => {
+	analytics.end('completed');
 	stopTimer();
 	state.currentQuestion = null;
 	dom.btnReplay.disabled = true;
@@ -409,7 +418,9 @@ const finishTest = (): void => {
 	}
 };
 
-export const startTest = (config: Mode1Config | Mode2Config, mode: ActiveMode): void => {
+export const startTest = (config: Mode1Config | Mode2Config, mode: ActiveMode, exact?:Question[]): void => {
+	exactQuestions=exact;analytics.start(config,mode,exact?'exact-review':'fresh');
+	runVersion++;
 	state.activeMode = mode;
 	state.currentQuestionRecords = [];
 	currentTestName =
@@ -421,6 +432,7 @@ export const startTest = (config: Mode1Config | Mode2Config, mode: ActiveMode): 
 			? buildMode1Queue(config as Mode1Config)
 			: buildMode2Queue(config as Mode2Config);
 	state.questionIndex = 0;
+	if(exact)state.questionQueue=exact.map(q=>structuredClone(q));
 	dom.elCompletionPanel.classList.add("hidden");
 	dom.elRerunControls.innerHTML = "";
 	setTestRunning(true);
@@ -450,6 +462,8 @@ export const rerunMode1 = (shiftSemis: number): void => {
 };
 
 export const stopTest = (): void => {
+	analytics.end('stopped');
+	runVersion++;
 	stopTimer();
 	state.currentQuestion = null;
 	state.questionQueue = [];

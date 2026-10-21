@@ -1,7 +1,7 @@
 import { strings } from "./bass.js";
 import { phraseNoteName } from "./phrases.js";
 const names = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"];
-export function drawBass(container, low, high, showNames, target, selected, onSelect) {
+export function drawBass(container, low, high, showNames, target, selected, onSelect, requiredString) {
     container.replaceChildren();
     const table = document.createElement("table");
     table.className = "fretboard";
@@ -35,6 +35,7 @@ export function drawBass(container, low, high, showNames, target, selected, onSe
                         ? "·"
                         : "";
             button.setAttribute("aria-label", `${string.name} string, fret ${fret}${showNames ? ", " + names[midi % 12] : ""}`);
+            button.disabled = !!requiredString && requiredString !== string.name;
             button.onclick = () => onSelect(midi, { string: string.name, fret, midi });
             cell.append(button);
             row.append(cell);

@@ -18,11 +18,11 @@ export function bassPositions(midi, low = 0, high = 12) {
             : [];
     });
 }
-export function bassTarget(pc, low, high, fretLow, fretHigh) {
+export function bassTarget(pc, low, high, fretLow, fretHigh, requiredString) {
     const candidates = Array.from({ length: 128 }, (_, n) => n).filter((n) => n >= low &&
         n <= high &&
         n % 12 === pc &&
-        bassPositions(n, fretLow, fretHigh).length);
+        bassPositions(n, fretLow, fretHigh).some((p) => !requiredString || p.string === requiredString));
     if (!candidates.length)
         throw new Error("This pitch is outside the selected bass position and register. Widen the fret or bass range.");
     return candidates.sort((a, b) => Math.abs(a - (low + high) / 2) - Math.abs(b - (low + high) / 2))[0];

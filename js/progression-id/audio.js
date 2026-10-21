@@ -1,3 +1,4 @@
+import { legacyLogger } from '../analytics/legacy.js';
 let chordSynth = null;
 let audioReady = false;
 export const ensureAudioReady = async () => {
@@ -17,7 +18,7 @@ export const ensureAudioReady = async () => {
     chordSynth.volume.value = -8;
     audioReady = true;
 };
-export const schedulePlayback = (chords) => {
+const schedulePlaybackAudio = (chords) => {
     if (!chordSynth) {
         return;
     }
@@ -31,4 +32,12 @@ export const schedulePlayback = (chords) => {
         });
         time += chordDuration + gap;
     });
+    legacyLogger('progression-id').play(((chords.length - 1) * (chordDuration + gap) + chordDuration + .8) * 1000);
 };
+export const schedulePlayback = (chords) => { const logger = legacyLogger('progression-id'); logger.beginPlayback(); try {
+    schedulePlaybackAudio(chords);
+}
+catch (error) {
+    logger.audioFailed();
+    throw error;
+} };

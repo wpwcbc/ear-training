@@ -14,8 +14,19 @@ export let persistenceError = "";
 let connection;
 function failure(error) {
     persistenceError = `Insights could not save: ${String(error)}. Existing data is preserved. Export your data before closing.`;
-    if (typeof window !== "undefined")
+    if (typeof window !== "undefined") {
         window.dispatchEvent(new CustomEvent("insights-storage-error", { detail: persistenceError }));
+        if (!document.querySelector("#analytics-save-error,#legacy-save-error")) {
+            let notice = document.getElementById("insights-save-error");
+            if (!notice) {
+                notice = document.createElement("p");
+                notice.id = "insights-save-error";
+                notice.setAttribute("role", "alert");
+                document.body.prepend(notice);
+            }
+            notice.textContent = persistenceError;
+        }
+    }
 }
 function open() {
     return (connection ?? (connection = new Promise((resolve, reject) => {
@@ -112,9 +123,11 @@ export function captureAssessment(session, index) {
             id: evidence.id + ":submitted",
             ...{
                 schemaVersion: 2,
-                type: evidence.source === "self"
-                    ? "self_grade_submitted"
-                    : "answer_committed",
+                type: evidence.source === "visual"
+                    ? "visual_mapping_assessed"
+                    : evidence.source === "self"
+                        ? "self_grade_submitted"
+                        : "answer_committed",
                 sessionId: session.id,
                 questionId: evidence.questionId,
                 occurredAt: evidence.createdAt,

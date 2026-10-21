@@ -58,6 +58,8 @@ export function normalize(
       ? "targeted"
       : "fresh";
   const version = capture ? "standard" : "historical";
+  const source =
+    capture?.assessmentSource === "visual" ? "visual" : record.gradingSource;
   return {
     schemaVersion: 2,
     stimulusHash: hash(
@@ -74,7 +76,7 @@ export function normalize(
     subtask: task(config),
     grain: grain(config),
     createdAt: record.timestamp,
-    source: record.gradingSource,
+    source,
     exposure,
     assistance:
       record.referenceAssisted === undefined
@@ -97,6 +99,15 @@ export function normalize(
       config,
       {
         generator: session.generatorVersion ?? "legacy",
+        assessedScope:
+          record.mode === "m4" ||
+          (record.mode === "m5" && config.runMode === "step")
+            ? {
+                step: record.chordStep,
+                chords: record.chords,
+                targets: record.targets,
+              }
+            : grain(config),
         material: challenge ?? {
           chords: record.chords,
           targets: record.targets,
@@ -104,7 +115,7 @@ export function normalize(
         },
         customs: session.customSnapshot ?? [],
       },
-      record.gradingSource,
+      source,
       exposure,
       capture?.timingVersion ?? "legacy-seconds",
       capture?.answerOptions,

@@ -1,4 +1,9 @@
 import * as audio from "./audio.js";
+import { legacyLogger } from '../analytics/legacy.js';
+const analytics = legacyLogger('progression-id');
+let exactQuestions;
+let runVersion = 0;
+function running(value) { state.isTestRunning = value; dom.btnStartTest.disabled = value; dom.btnStopTest.disabled = !value; }
 import { dom } from "./dom.js";
 import { addRecord, addRecords, renderRecords } from "./records.js";
 import { state, STORAGE_KEYS } from "./state.js";
@@ -175,6 +180,7 @@ const handleAnswer = () => {
     dom.elAttemptsLabel.textContent = String(state.attempts);
     const targetA = state.currentQuestion.progression[1];
     const targetB = state.currentQuestion.progression[2];
+    analytics.answer([{ degree: selectedDegreeA, quality: selectedQualityA }, { degree: selectedDegreeB, quality: selectedQualityB }]);
     if (targetA &&
         targetB &&
         selectedDegreeA === targetA.degree &&
@@ -200,7 +206,10 @@ const handleAnswer = () => {
         setStatus("Correct. Great work!", "ok");
         dom.btnReplay.disabled = true;
         dom.btnSubmitAnswer.disabled = true;
+        const version = runVersion;
         window.setTimeout(() => {
+            if (version !== runVersion)
+                return;
             state.questionIndex += 1;
             loadQuestion();
         }, 600);
@@ -210,6 +219,8 @@ const handleAnswer = () => {
     }
 };
 const finishTest = () => {
+    analytics.end('completed');
+    running(false);
     stopTimer();
     state.currentQuestion = null;
     dom.btnReplay.disabled = true;
@@ -250,7 +261,8 @@ const loadQuestion = () => {
         return;
     }
     const base = state.questionQueue[state.questionIndex];
-    state.currentQuestion = buildQuestion(base, state.lastConfig);
+    state.currentQuestion = exactQuestions?.[state.questionIndex] ? structuredClone(exactQuestions[state.questionIndex]) : buildQuestion(base, state.lastConfig);
+    analytics.present(state.currentQuestion, state.currentQuestion.progression.slice(1, 3).map(c => ({ degree: c.degree, quality: c.quality })), { degrees: DEGREE_OPTIONS, qualities: ANSWER_QUALITIES });
     renderQuestion(state.currentQuestion);
     startTimer();
     dom.btnReplay.disabled = false;
@@ -261,15 +273,24 @@ const loadQuestion = () => {
     }));
     audio.schedulePlayback(playbackChords);
 };
-export const startTest = (config) => {
+export const startTest = (config, exact) => {
+    exactQuestions = exact;
+    analytics.start(config, 'joint-progression', exact ? 'exact-review' : 'fresh');
+    runVersion++;
+    running(true);
     state.lastConfig = config;
     state.questionQueue = buildQueue(config);
     state.questionIndex = 0;
+    if (exact)
+        state.questionQueue = exact.map(q => structuredClone(q));
     dom.elCompletionPanel.classList.add("hidden");
     dom.elRerunControls.innerHTML = "";
     loadQuestion();
 };
 export const stopTest = () => {
+    analytics.end('stopped');
+    runVersion++;
+    running(false);
     stopTimer();
     state.questionQueue = [];
     state.questionIndex = 0;

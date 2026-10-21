@@ -1,4 +1,8 @@
 import * as audio from "./audio.js";
+import { legacyLogger } from '../analytics/legacy.js';
+const analytics = legacyLogger('chord-quality');
+let exactQuestions;
+let runVersion = 0;
 import { dom } from "./dom.js";
 import { FIVE_NOTE_QUALITIES, QUALITY_OPTIONS, getQualityOption, getVoicingOption, } from "./options.js";
 import { addRecord, addRecords, renderRecords } from "./records.js";
@@ -164,6 +168,7 @@ const handleAnswer = (selectedQuality) => {
         return;
     }
     state.attempts += 1;
+    analytics.answer([{ quality: selectedQuality }]);
     dom.elAttemptsLabel.textContent = String(state.attempts);
     if (selectedQuality === state.currentQuestion.quality) {
         const elapsedSeconds = (performance.now() - state.startPerfMs) / 1000;
@@ -181,7 +186,10 @@ const handleAnswer = (selectedQuality) => {
         Array.from(dom.elAnswers.querySelectorAll("button")).forEach((btn) => {
             btn.disabled = true;
         });
+        const version = runVersion;
         window.setTimeout(() => {
+            if (version !== runVersion)
+                return;
             state.questionIndex += 1;
             loadQuestion();
         }, 600);
@@ -191,6 +199,8 @@ const handleAnswer = (selectedQuality) => {
     }
 };
 const finishTest = () => {
+    analytics.end('completed');
+    setTestRunning(false);
     stopTimer();
     state.currentQuestion = null;
     dom.btnReplay.disabled = true;
@@ -251,24 +261,34 @@ const loadQuestion = () => {
     if (!state.lastConfig) {
         return;
     }
-    state.currentQuestion = buildQuestion(base, state.lastConfig);
+    state.currentQuestion = exactQuestions?.[state.questionIndex] ? structuredClone(exactQuestions[state.questionIndex]) : buildQuestion(base, state.lastConfig);
+    analytics.present(state.currentQuestion, [{ quality: state.currentQuestion.quality }], state.enabledQualities);
     renderQuestion(state.currentQuestion);
     startTimer();
     dom.btnReplay.disabled = false;
     audio.schedulePlayback(state.currentQuestion);
 };
-export const startTest = (config) => {
+export const startTest = (config, exact) => {
+    exactQuestions = exact;
+    analytics.start(config, 'quality', exact ? 'exact-review' : 'fresh');
+    runVersion++;
+    setTestRunning(true);
     state.lastConfig = config;
     state.enabledQualities = config.enabledQualities;
     state.enabledVoicings = config.enabledVoicings;
     state.enabledInversions = config.enabledInversions;
     state.questionQueue = buildQueue(config);
     state.questionIndex = 0;
+    if (exact)
+        state.questionQueue = exact.map(q => structuredClone(q));
     dom.elCompletionPanel.classList.add("hidden");
     dom.elRerunControls.innerHTML = "";
     loadQuestion();
 };
 export const stopTest = () => {
+    analytics.end('stopped');
+    runVersion++;
+    setTestRunning(false);
     stopTimer();
     state.questionQueue = [];
     state.questionIndex = 0;

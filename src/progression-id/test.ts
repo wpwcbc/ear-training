@@ -1,4 +1,9 @@
 import * as audio from "./audio.js";
+import { legacyLogger } from '../analytics/legacy.js';
+const analytics=legacyLogger('progression-id');
+let exactQuestions:Question[]|undefined;
+let runVersion=0;
+function running(value:boolean){state.isTestRunning=value;dom.btnStartTest.disabled=value;dom.btnStopTest.disabled=!value;}
 import { dom } from "./dom.js";
 import { addRecord, addRecords, renderRecords } from "./records.js";
 import { state, STORAGE_KEYS } from "./state.js";
@@ -197,6 +202,7 @@ const handleAnswer = (): void => {
 
 	const targetA = state.currentQuestion.progression[1];
 	const targetB = state.currentQuestion.progression[2];
+	analytics.answer([{degree:selectedDegreeA,quality:selectedQualityA},{degree:selectedDegreeB,quality:selectedQualityB}]);
 
 	if (
 		targetA &&
@@ -230,7 +236,9 @@ const handleAnswer = (): void => {
 		setStatus("Correct. Great work!", "ok");
 		dom.btnReplay.disabled = true;
 		dom.btnSubmitAnswer.disabled = true;
+		const version=runVersion;
 		window.setTimeout(() => {
+			if(version!==runVersion)return;
 			state.questionIndex += 1;
 			loadQuestion();
 		}, 600);
@@ -240,6 +248,8 @@ const handleAnswer = (): void => {
 };
 
 const finishTest = (): void => {
+	analytics.end('completed');
+	running(false);
 	stopTimer();
 	state.currentQuestion = null;
 	dom.btnReplay.disabled = true;
@@ -289,7 +299,8 @@ const loadQuestion = (): void => {
 		return;
 	}
 	const base = state.questionQueue[state.questionIndex];
-	state.currentQuestion = buildQuestion(base, state.lastConfig);
+	state.currentQuestion = exactQuestions?.[state.questionIndex] ? structuredClone(exactQuestions[state.questionIndex]) : buildQuestion(base, state.lastConfig);
+	analytics.present(state.currentQuestion,state.currentQuestion.progression.slice(1,3).map(c=>({degree:c.degree,quality:c.quality})),{degrees:DEGREE_OPTIONS,qualities:ANSWER_QUALITIES});
 	renderQuestion(state.currentQuestion);
 	startTimer();
 	dom.btnReplay.disabled = false;
@@ -303,16 +314,21 @@ const loadQuestion = (): void => {
 	audio.schedulePlayback(playbackChords);
 };
 
-export const startTest = (config: Config): void => {
+export const startTest = (config: Config,exact?:Question[]): void => {
+	exactQuestions=exact;analytics.start(config,'joint-progression',exact?'exact-review':'fresh');
+	runVersion++;running(true);
 	state.lastConfig = config;
 	state.questionQueue = buildQueue(config);
 	state.questionIndex = 0;
+	if(exact)state.questionQueue=exact.map(q=>structuredClone(q));
 	dom.elCompletionPanel.classList.add("hidden");
 	dom.elRerunControls.innerHTML = "";
 	loadQuestion();
 };
 
 export const stopTest = (): void => {
+	analytics.end('stopped');
+	runVersion++;running(false);
 	stopTimer();
 	state.questionQueue = [];
 	state.questionIndex = 0;

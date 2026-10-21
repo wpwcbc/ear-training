@@ -139,7 +139,7 @@ export function generate(config, index, customs = [], random = Math.random) {
                     degree,
                     name: spellTarget(chord, degree),
                     midi: config.mode === "m7"
-                        ? bassTarget(targetPc(chord, degree), config.bassLow, config.bassHigh, config.fretLow, config.fretHigh)
+                        ? bassTarget(targetPc(chord, degree), config.bassLow, config.bassHigh, config.fretLow, config.fretHigh, config.bassString)
                         : inRange(targetPc(chord, degree), config.low, config.high),
                 },
             ],
@@ -170,7 +170,7 @@ export function generate(config, index, customs = [], random = Math.random) {
             }, 0);
             return score(b) - score(a) || a - b;
         })[0];
-    const commonMidi = inRange(commonPc, config.low, config.high);
+    const commonMidi = config.heldMidi ?? inRange(commonPc, config.low, config.high);
     let beatPosition = 0;
     return {
         progressionId: progression.id,
@@ -279,6 +279,19 @@ export function generate(config, index, customs = [], random = Math.random) {
 }
 export function validateConfig(config, customs = []) {
     const next = { ...config };
+    if (next.heldMidi !== undefined &&
+        (!Number.isInteger(next.heldMidi) ||
+            next.heldMidi < next.low ||
+            next.heldMidi > next.high ||
+            next.mode !== "m3"))
+        throw new Error("Held pitch must be inside the selected M3 register.");
+    if (next.phraseFocus !== undefined &&
+        (next.mode !== "m6" ||
+            !["sing", "mark", "predict", "bass", "vary"].includes(next.phraseFocus)))
+        throw new Error("Choose a valid phrase stage.");
+    if (next.bassString !== undefined &&
+        (next.mode !== "m7" || !["E", "A", "D", "G"].includes(next.bassString)))
+        throw new Error("Choose a valid bass string.");
     if (next.predictionUnit &&
         !["seconds", "beats"].includes(next.predictionUnit))
         throw new Error("Choose a valid prediction gap unit.");
@@ -438,7 +451,7 @@ export function recommendation(sessions) {
             return [];
         }
     }));
-    const focus = priorities(evidence, Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC").find((p) => p.stats.eligibleCount > 0 && p.rank < 3);
+    const focus = priorities(evidence, Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC").find((p) => p.stats.eligibleCount > 0 && p.rank < 4);
     if (focus) {
         const row = focus.rows[0];
         return {

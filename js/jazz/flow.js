@@ -610,6 +610,9 @@ export function installFlow(engine) {
                     }
                 }
                 draft.mode = mode;
+                delete draft.heldMidi;
+                delete draft.phraseFocus;
+                delete draft.bassString;
                 if (mode === "m5") {
                     draft.runMode = "continuous";
                     draft.path = "nearest";
@@ -716,7 +719,9 @@ export function installFlow(engine) {
                 ? engine.unlock().then(() => "", (error) => error.message ||
                     "Audio is unavailable. Press Play context to retry.")
                 : null;
-            const session = await engine.create(checked, exact && !plan ? "exact-review" : from, presetId, exact);
+            const session = await engine.create(checked, exact && (!plan || plan.selectionPolicy === "exact-review")
+                ? "exact-review"
+                : from, presetId, exact);
             if (plan) {
                 session.insightPlanId = plan.id;
                 session.insightOrigin = plan.originRoute;

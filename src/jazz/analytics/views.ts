@@ -8,6 +8,7 @@ import {
 import type { Progression } from "../progressions.js";
 import { commandIcon, icon } from "../ui.js";
 import { renderTrend } from "./charts.js";
+import { renderMatrix } from "./matrix.js";
 import {
   reconcile,
   readAll,
@@ -17,7 +18,7 @@ import {
   persistenceError,
   put,
 } from "./repository.js";
-import type { Evidence } from "./types.js";
+import { task, type Evidence } from "./types.js";
 import {
   aggregate,
   components,
@@ -31,6 +32,15 @@ import {
 import { compileDrill, compileDiagnostic, type DrillPlan } from "./drills.js";
 import { legacyData, type LegacyData } from "./adapters.js";
 import { policy } from "./policy.js";
+import {
+  legacySummary,
+  prepareLegacyLaunch,
+  type LegacyEvent,
+  type LegacySource,
+} from "../../analytics/legacy.js";
+import { bassPositions } from "../bass.js";
+import { parseChord } from "../theory.js";
+import { defaultFocusIndex } from "./focused.js";
 const names: Record<string, string> = {
   m1: "Hear a Chord Degree",
   m2: "Identify a Chord Degree",
@@ -180,6 +190,7 @@ export async function renderAnalytics(
     label: string,
     options: [string, string][],
     fallback: string,
+    container: HTMLElement = filters,
   ) => {
     const l = node("label", label),
       s = node("select");
@@ -191,7 +202,7 @@ export async function renderAnalytics(
       location.hash = "#/" + path + "?" + params.toString();
     };
     l.append(s);
-    filters.append(l);
+    container.append(l);
     return s.value;
   };
   const days = filter(
@@ -243,6 +254,7 @@ export async function renderAnalytics(
       ["all", "Separate sources"],
       ["automatic", "Recognition"],
       ["self", "Self-assessed"],
+      ["visual", "Visual mapping"],
     ],
     "all",
   );
@@ -258,7 +270,14 @@ export async function renderAnalytics(
       "continuous-two",
       "continuous-line",
     ],
-    m6: ["whole-activity"],
+    m6: [
+      "whole-activity",
+      "stage-sing",
+      "stage-mark",
+      "stage-predict",
+      "stage-bass",
+      "stage-vary",
+    ],
     m7: ["sing-play", "hear-play", "next-beat"],
   };
   const subtask = taskOptions[mode]
@@ -288,6 +307,49 @@ export async function renderAnalytics(
       (days === "all" ||
         Date.parse(e.createdAt) >= now - Number(days) * 86400000),
   );
+  const contextDetails = node("details"),
+    contextControls = node("div");
+  contextControls.className = "insight-filters";
+  contextDetails.append(node("summary", "Context filters"), contextControls);
+  const contextSettings: [keyof Config, string][] = [
+    ["context", "Harmonic context"],
+    ["hintLevel", "Hints"],
+    ["timbre", "Timbre"],
+    ["bpm", "Tempo"],
+    ["inversion", "Inversion"],
+    ["showChords", "Chord symbols"],
+    ["showProgression", "Chart visibility"],
+    ["rangePreset", "Register"],
+  ];
+  if (mode === "m7")
+    contextSettings.push(
+      ["fretNames", "Fret note names"],
+      ["bassString", "Required string"],
+    );
+  if (mode === "m6")
+    contextSettings.push(
+      ["variation", "Phrase variation"],
+      ["transpose", "Transpose"],
+    );
+  if (mode) {
+    for (const [key, label] of contextSettings) {
+      const values = [
+        ...new Set(rows.map((e) => String(e.config[key] ?? "unknown"))),
+      ].sort();
+      const selected = filter(
+        "context-" + key,
+        label,
+        [["all", "All"], ...values.map((v) => [v, v] as [string, string])],
+        "all",
+        contextControls,
+      );
+      if (selected !== "all")
+        rows = rows.filter(
+          (e) => String(e.config[key] ?? "unknown") === selected,
+        );
+    }
+    host.append(contextDetails);
+  }
   if (mode) {
     const facet = (key: string, label: string, values: string[]) =>
       filter(
@@ -325,7 +387,7 @@ export async function renderAnalytics(
     );
   }
   if (!mode) {
-    const queue = priorities(rows, timezone),
+    const queue = priorities(rows, timezone, now, evidence),
       selected = new Set<string>();
     const section = node("section");
     section.className = "insight-focus-queue";
@@ -370,7 +432,7 @@ export async function renderAnalytics(
               await put("drillPlans", plan);
               await actions.start(
                 plan.config,
-                [],
+                plan.customSnapshots,
                 "insight:" + plan.id,
                 plan.questions,
                 plan,
@@ -382,6 +444,31 @@ export async function renderAnalytics(
             actions.customize({ ...defaults, mode: id as Mode, count: 10 }, []),
           ),
         );
+      }
+      if (subset.length && ["m1", "m2", "m7"].includes(id)) {
+        const plan = compileDiagnostic(
+          subset[subset.length - 1].config,
+          route,
+          subset,
+        );
+        if (plan) {
+          const details = node("details");
+          details.append(
+            node("summary", "Check under-practised targets"),
+            node("p", plan.reason),
+            button("Practise 10", async () => {
+              await put("drillPlans", plan);
+              await actions.start(
+                plan.config,
+                plan.customSnapshots,
+                "insight:" + plan.id,
+                plan.questions,
+                plan,
+              );
+            }),
+          );
+          card.append(details);
+        }
       }
       grid.append(card);
     }
@@ -402,7 +489,7 @@ export async function renderAnalytics(
           : "Production is self-assessed. Reference notes are generated targets, not measured singing or playing.",
       ),
     );
-    for (const grading of ["automatic", "self"] as const) {
+    for (const grading of ["automatic", "self", "visual"] as const) {
       const group = rows.filter((e) => e.source === grading);
       if (!group.length) continue;
       const stats = aggregate(group, timezone),
@@ -410,9 +497,11 @@ export async function renderAnalytics(
       strip.className = "insight-kpis";
       metric(
         strip,
-        grading === "self"
-          ? "Self-ratings: correct / close / missed"
-          : "Submitted exact answers",
+        grading === "visual"
+          ? "Visual mapping: exact MIDI"
+          : grading === "self"
+            ? "Self-ratings: correct / close / missed"
+            : "Submitted exact answers",
         grading === "self"
           ? `${stats.ratings.correct} / ${stats.ratings.close} / ${stats.ratings.missed}`
           : rate(stats.ratings.correct, stats.submitted),
@@ -420,7 +509,11 @@ export async function renderAnalytics(
       metric(strip, "Independent fresh questions", String(stats.eligibleCount));
       metric(
         strip,
-        "Correct response / readiness median",
+        grading === "visual"
+          ? "Correct mapping decision median"
+          : mode === "m6"
+            ? "Stage active-time median"
+            : "Correct response / readiness median",
         stats.median === null
           ? "Unavailable"
           : `${(stats.median / 1000).toFixed(1)}s · n=${stats.timingCount}`,
@@ -455,7 +548,7 @@ export async function renderAnalytics(
         p.title = "Estimated range for these practice results";
         host.append(p);
       }
-      if (grading === "automatic") {
+      if (grading === "automatic" && ["m2", "m3"].includes(mode)) {
         const c = components(group);
         const recovery = assistedRecovery(
           evidence.filter(
@@ -505,11 +598,45 @@ export async function renderAnalytics(
         ),
       );
     host.append(node("h3", "Context and evidence"));
+    const matrixMetric = filter(
+      "metric",
+      "Context metric",
+      [
+        ["outcome", "Outcomes"],
+        ["time", "Median active time"],
+        ["sample", "Question / exposure counts"],
+      ],
+      "outcome",
+      contextControls,
+    );
+    for (const grading of ["automatic", "self", "visual"] as const)
+      renderMatrix(
+        host,
+        rows.filter((e) => e.source === grading),
+        matrixMetric,
+        (selected, index) => {
+          const section = node("section");
+          cells(selected)
+            .slice(0, 5)
+            .forEach((cell) =>
+              focus(
+                section,
+                { ...cell, focus: { targetIndex: Math.max(1, index) } },
+                route,
+                actions,
+                timezone,
+              ),
+            );
+          host.append(section);
+          section.scrollIntoView({ block: "nearest" });
+        },
+      );
     const contexts = cells(rows);
     table(
       host,
       [
         "Presented context",
+        "Assessment source",
         "Assessment unit",
         "Recorded outcomes",
         "Independent evidence",
@@ -519,6 +646,11 @@ export async function renderAnalytics(
         const s = aggregate(cell.rows, timezone);
         return [
           cell.label,
+          cell.rows[0].source === "self"
+            ? "Self-assessment"
+            : cell.rows[0].source === "visual"
+              ? "Visual mapping"
+              : "Automatic answers",
           cell.rows[0].grain,
           `${s.ratings.correct} correct / ${s.ratings.close} close / ${s.ratings.missed} missed`,
           `${s.eligibleCount} questions · ${s.label}`,
@@ -562,7 +694,13 @@ export async function renderAnalytics(
           entry.questions.add(e.questionId ?? e.id);
           if (e.source === "automatic" && e.record.selectedDegrees?.[i]) {
             entry.answered++;
-            if (e.record.selectedDegrees[i] === degree) entry.correct++;
+            if (
+              e.record.selectedDegrees[i] === degree &&
+              (!e.record.selectedQualities ||
+                e.record.selectedQualities[i] ===
+                  parseChord(e.record.chords[i]).quality)
+            )
+              entry.correct++;
           }
           coverage.set(label, entry);
         });
@@ -584,6 +722,62 @@ export async function renderAnalytics(
         ]),
       );
     }
+    if (mode === "m1")
+      table(
+        host,
+        ["Presented context", "Self-reported difficulty"],
+        rows
+          .filter((e) => e.record.analytics?.difficultyTags?.length)
+          .map((e) => [
+            e.record.chords.join(" / ") + " / " + e.record.targets.join(" / "),
+            e.record.analytics!.difficultyTags!.join(", "),
+          ]),
+      );
+    if (mode === "m3")
+      table(
+        host,
+        [
+          "Change",
+          "Held reference MIDI",
+          "Role transition",
+          "Destination result",
+          "Practice",
+        ],
+        rows.flatMap((e) =>
+          (e.challenge?.targets ?? []).flatMap((target, i) => {
+            if (!i) return [];
+            const from = e.challenge!.targets[i - 1],
+              result =
+                e.source === "self"
+                  ? "Coverage only"
+                  : e.record.selectedDegrees?.[i] === target.degree &&
+                      (!e.record.selectedQualities ||
+                        e.record.selectedQualities[i] === target.chord.quality)
+                    ? "Correct item"
+                    : "Missed item";
+            return [
+              [
+                `${i}: ${from.chord.symbol} → ${target.chord.symbol}`,
+                String(target.midi),
+                from.degree + " → " + target.degree,
+                result,
+                button("Role-pair details", () => {
+                  const section = node("section");
+                  focus(
+                    section,
+                    { ...cells([e])[0], focus: { targetIndex: i } },
+                    route,
+                    actions,
+                    timezone,
+                  );
+                  host.append(section);
+                  section.scrollIntoView({ block: "nearest" });
+                }),
+              ],
+            ];
+          }),
+        ),
+      );
     if (mode === "m4") {
       table(
         host,
@@ -616,7 +810,72 @@ export async function renderAnalytics(
       );
     }
     host.append(node("h3", "Practice priorities"));
-    priorities(rows, timezone)
+    if (
+      mode === "m5" &&
+      subtask.startsWith("continuous") &&
+      (source === "all" || source === "self")
+    ) {
+      const events = await readAll<{
+        type: string;
+        occurredAt: string;
+        payload?: {
+          runId?: string;
+          config?: Config;
+          source?: string;
+          assistance?: string;
+        };
+      }>("events");
+      if (host.dataset.route !== route) return;
+      const starts = events.filter((e) => {
+        const origin = e.payload?.source,
+          kind = origin?.includes("review")
+            ? "exact-review"
+            : origin?.startsWith("insight:")
+              ? "targeted"
+              : "fresh";
+        return (
+          e.type === "performance_started" &&
+          e.payload?.config?.mode === "m5" &&
+          `${e.payload.config.runMode}-${e.payload.config.targetPattern}` ===
+            subtask &&
+          (exposure === "all" || kind === exposure) &&
+          (assistance === "all" || e.payload.assistance === assistance) &&
+          contextSettings.every(
+            ([key]) =>
+              !params.get("context-" + key) ||
+              params.get("context-" + key) === "all" ||
+              String(e.payload?.config?.[key] ?? "unknown") ===
+                params.get("context-" + key),
+          ) &&
+          Date.parse(e.occurredAt) <= now &&
+          (days === "all" ||
+            Date.parse(e.occurredAt) >= now - Number(days) * 86400000)
+        );
+      });
+      const completed = new Set(
+          events
+            .filter((e) => e.type === "performance_completed")
+            .map((e) => e.payload?.runId),
+        ),
+        interrupted = new Set(
+          events
+            .filter((e) => e.type === "performance_interrupted")
+            .map((e) => e.payload?.runId),
+        );
+      const done = starts.filter((e) => completed.has(e.payload?.runId)).length,
+        stopped = starts.filter(
+          (e) =>
+            interrupted.has(e.payload?.runId) &&
+            !completed.has(e.payload?.runId),
+        ).length;
+      host.append(
+        node(
+          "p",
+          `Playback run completion: ${rate(done, done + stopped)} terminal run attempts; ${stopped} interrupted, ${starts.length - done - stopped} unresolved. This records playback completion, not note or rhythm accuracy.`,
+        ),
+      );
+    }
+    priorities(rows, timezone, now, evidence)
       .slice(0, 3)
       .forEach((cell) => focus(host, cell, route, actions, timezone));
     if (mode === "m6") {
@@ -672,7 +931,14 @@ export async function renderAnalytics(
         host,
         ["Position", "Pitch class", "Exact MIDI"],
         rows
-          .filter((e) => e.capabilities.position)
+          .filter(
+            (e) =>
+              e.capabilities.position &&
+              (e.source === "visual" ||
+                !rows.some(
+                  (v) => v.source === "visual" && v.questionId === e.questionId,
+                )),
+          )
           .map((e) => {
             const p = e.record.analytics!.position!;
             return [
@@ -761,12 +1027,87 @@ function focus(
     node("h3", `${cell.rows[0].mode.toUpperCase()} · ${cell.label}`),
     node(
       "p",
-      `${rank?.category ?? "Historical context"} · ${stats.label}. ${stats.correct}/${stats.eligibleCount} independent fresh questions; ${stats.sessions} sessions / ${stats.days} days.`,
+      `${cell.category ?? rank?.category ?? "Historical context"} · ${stats.label}. ${stats.correct}/${stats.eligibleCount} independent fresh questions; ${stats.sessions} sessions / ${stats.days} days.`,
     ),
   );
   const result = compileDrill(cell, route);
+  const e = cell.rows[0];
+  box.append(
+    node(
+      "p",
+      `${e.source === "self" ? "Self-assessed production" : e.source === "visual" ? "Visual mapping" : "Automatic answers"} · ${e.grain}`,
+    ),
+  );
+  if (e.challenge && ["m3", "m4", "m5", "m6", "m7"].includes(e.mode)) {
+    const label = node(
+        "label",
+        e.mode === "m6"
+          ? "Stage focus"
+          : e.mode === "m7"
+            ? "Position focus"
+            : "Change focus",
+      ),
+      select = node("select");
+    select.setAttribute("aria-label", label.textContent!);
+    if (e.mode === "m6") {
+      for (const stage of ["sing", "mark", "predict", "bass", "vary"])
+        select.add(new Option(stage, stage));
+      select.value = cell.focus?.stage ?? e.config.phraseFocus ?? "sing";
+    } else if (e.mode === "m7") {
+      select.add(new Option("Current task", ""));
+      for (const p of bassPositions(
+        e.challenge.targets[0].midi,
+        e.config.fretLow,
+        e.config.fretHigh,
+      ))
+        select.add(
+          new Option(
+            `${p.string} string / fret ${p.fret}${e.record.analytics?.position?.string === p.string && e.record.analytics.position.fret === p.fret ? " (last committed)" : ""}`,
+            JSON.stringify(p),
+          ),
+        );
+      select.value = cell.focus?.position
+        ? JSON.stringify(cell.focus.position)
+        : "";
+    } else {
+      e.challenge.targets.forEach((t, i) => {
+        if (i)
+          select.add(
+            new Option(
+              `${i}: ${e.challenge!.targets[i - 1].chord.symbol} → ${t.chord.symbol}`,
+              String(i),
+            ),
+          );
+      });
+      select.value = String(cell.focus?.targetIndex ?? defaultFocusIndex(e));
+      if (!select.value) select.value = "1";
+    }
+    select.onchange = () => {
+      const next: Cell = {
+        ...cell,
+        focus:
+          e.mode === "m6"
+            ? { stage: select.value as Config["phraseFocus"] }
+            : e.mode === "m7"
+              ? select.value
+                ? { position: JSON.parse(select.value) }
+                : {}
+              : { targetIndex: Number(select.value) },
+      };
+      const replacement = node("div");
+      focus(replacement, next, route, actions, timezone);
+      box.replaceWith(...Array.from(replacement.children));
+    };
+    label.append(select);
+    box.append(label);
+  }
   if (result.plan) {
     const plan = result.plan;
+    if (cell.category === "Replay-dependent") {
+      plan.config.replayLimit = 1;
+      plan.reason += " · one-context-replay experiment";
+      plan.changedDifficulty.push("Context replay limit: one");
+    }
     box.append(
       node("p", plan.reason),
       button("Practise 10", async () => {
@@ -780,6 +1121,26 @@ function focus(
         );
       }),
     );
+    const preview = node("details");
+    preview.append(node("summary", "Scheduled targets and settings"));
+    table(
+      preview,
+      ["Question", "Actual targets", "Task / tempo / repeats"],
+      plan.questions.map((q, i) => {
+        const config = { ...plan.config, ...q.presentation };
+        return [
+          String(i + 1),
+          q.targets
+            .map(
+              (t) =>
+                `${t.chord.symbol}/${t.degree} · MIDI ${t.midi}${t.secondDegree ? " + " + t.secondDegree + " · MIDI " + t.secondMidi : ""}`,
+            )
+            .join(" → "),
+          `${task(config)} / ${config.bpm} BPM / ${config.repeats}`,
+        ];
+      }),
+    );
+    box.append(preview);
   } else box.append(node("p", result.unsupportedReason));
   box.append(
     button("Customize", () =>
@@ -821,7 +1182,17 @@ function evidenceTable(
       .map((e) => [
         `${e.createdAt} / ${e.sessionId.slice(0, 8)}`,
         e.record.chords
-          .map((c, i) => c + "/" + e.record.targets[i])
+          .map(
+            (c, i) =>
+              c +
+              "/" +
+              e.record.targets[i] +
+              " = " +
+              (e.record.actualNotes?.[i] ?? "reference unavailable") +
+              (e.record.actualMidis?.[i] !== undefined
+                ? " (MIDI " + e.record.actualMidis[i] + ")"
+                : ""),
+          )
           .join(" → "),
         `${e.record.grade} / ${e.source} / ${e.grain}`,
         `${e.exposure} / ${e.assistance}`,
@@ -845,12 +1216,15 @@ function evidenceTable(
   parent.append(details);
 }
 async function renderLegacy(host: HTMLElement) {
+  const routeToken = host.dataset.route;
   const imports = await readAll<{ id: string; legacy?: LegacyData[] }>(
     "imports",
   );
   const data =
     imports.find((i) => i.id === "historical-v1")?.legacy ??
     legacyData(localStorage);
+  const events = await readAll<LegacyEvent>("events");
+  if (host.dataset.route !== routeToken) return;
   host.append(
     node(
       "p",
@@ -901,14 +1275,96 @@ async function renderLegacy(host: HTMLElement) {
           ? "interval-trainer"
           : legacy.id;
     section.append(link("Configure drill", `../${directory}/`));
+    const live = legacySummary(events, legacy.id as LegacySource);
+    section.append(
+      node("h3", "New recorded trials"),
+      node(
+        "p",
+        `First committed answer, fresh practice: ${rate(live.correct, live.count)}. ${live.unresolved} presented questions without a committed answer; ${live.trials.filter((t) => t.exposure === "exact-review").length} exact-review attempts shown separately. Settings may differ.`,
+      ),
+    );
+    table(
+      section,
+      ["Expected", "Selected", "First-answer confusions"],
+      live.confusions.map((c) => [c.expected, c.selected, String(c.count)]),
+    );
+    table(
+      section,
+      [
+        "Date / task",
+        "Attempt / exposure",
+        "Expected → selected",
+        "Result",
+        "Active decision time",
+        "Practice",
+      ],
+      live.trials
+        .slice()
+        .sort((a, b) => Date.parse(b.committedAt) - Date.parse(a.committedAt))
+        .map((trial) => {
+          const controls = node("div");
+          controls.append(
+            button("Same settings", () => {
+              location.href = prepareLegacyLaunch(trial, false);
+            }),
+            button("Exact review", () => {
+              location.href = prepareLegacyLaunch(trial, true);
+            }),
+          );
+          return [
+            trial.committedAt + " / " + trial.task,
+            `${trial.ordinal} / ${trial.exposure}`,
+            trial.expected.map((i) => Object.values(i).join(" ")).join(" / ") +
+              " → " +
+              trial.selected.map((i) => Object.values(i).join(" ")).join(" / "),
+            trial.correct ? "Correct" : "Missed",
+            trial.responseActiveMs === null
+              ? "Unavailable / interrupted"
+              : (trial.responseActiveMs / 1000).toFixed(1) + "s",
+            controls,
+          ];
+        }),
+    );
     host.append(section);
   }
+  host.append(node("h3", "Drone"));
+  const activity = events.filter(
+    (e) => e.type === "drone_activity_segment",
+  ) as unknown as {
+    occurredAt: string;
+    payload: { activeMs: number; context: unknown };
+  }[];
+  const valid = activity.filter(
+    (e) => Number.isFinite(e.payload?.activeMs) && e.payload.activeMs >= 0,
+  );
   host.append(
-    node("h3", "Drone"),
-    node("p", "Practice activity not recorded yet."),
+    node(
+      "p",
+      valid.length
+        ? `${(valid.reduce((n, e) => n + e.payload.activeMs, 0) / 60000).toFixed(1)} minutes of foreground playback across ${valid.length} context segments. Activity only; no graded outcome.`
+        : "Practice activity not recorded yet.",
+    ),
+  );
+  table(
+    host,
+    ["Date", "Foreground playback", "Context"],
+    valid.map((e) => {
+      const context = e.payload.context as {
+        chord?: { notes?: string[] };
+        event?: { quality?: string };
+      };
+      return [
+        e.occurredAt,
+        (e.payload.activeMs / 1000).toFixed(1) + "s",
+        [context?.event?.quality, ...(context?.chord?.notes ?? [])]
+          .filter(Boolean)
+          .join(" / ") || "Recorded playback context",
+      ];
+    }),
   );
 }
 async function health(host: HTMLElement, evidence: Evidence[]) {
+  const routeToken = host.dataset.route;
   const details = node("details");
   details.className = "insight-health";
   details.append(node("summary", "Data quality and local backup"));
@@ -919,6 +1375,7 @@ async function health(host: HTMLElement, evidence: Evidence[]) {
       legacy?: LegacyData[];
     }>("imports"),
     metadata = await readAll<{ id: string; at?: string }>("metadata");
+  if (host.dataset.route !== routeToken) return;
   details.append(
     node(
       "p",

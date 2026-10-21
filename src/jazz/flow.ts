@@ -759,6 +759,9 @@ export function installFlow(engine: Bridge) {
             }
           }
           draft.mode = mode;
+          delete draft.heldMidi;
+          delete draft.phraseFocus;
+          delete draft.bassString;
           if (mode === "m5") {
             draft.runMode = "continuous";
             draft.path = "nearest";
@@ -902,7 +905,9 @@ export function installFlow(engine: Bridge) {
           : null;
       const session = await engine.create(
         checked,
-        exact && !plan ? "exact-review" : from,
+        exact && (!plan || plan.selectionPolicy === "exact-review")
+          ? "exact-review"
+          : from,
         presetId,
         exact,
       );

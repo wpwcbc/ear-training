@@ -12,6 +12,7 @@ export function drawBass(
     midi: number,
     position: { string: string; fret: number; midi: number },
   ) => void,
+  requiredString?: string,
 ): void {
   container.replaceChildren();
   const table = document.createElement("table");
@@ -52,6 +53,7 @@ export function drawBass(
         "aria-label",
         `${string.name} string, fret ${fret}${showNames ? ", " + names[midi % 12] : ""}`,
       );
+      button.disabled = !!requiredString && requiredString !== string.name;
       button.onclick = () =>
         onSelect(midi, { string: string.name, fret, midi });
       cell.append(button);

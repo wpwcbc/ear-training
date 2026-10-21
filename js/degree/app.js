@@ -3,6 +3,11 @@ import * as audio from "./audio.js";
 import { initFullscreenLive } from "../core/fullscreen.js";
 import { dom } from "./dom.js";
 import { state } from "./state.js";
+import { installLegacyLaunch } from '../analytics/legacy.js';
+installLegacyLaunch('degree', async (launch) => { await audio.ensureAudioReady(); const mode = launch.task === 'mode1' ? 'mode1' : 'mode2'; const config = launch.config; if (mode === 'mode1')
+    state.lastMode1Config = config;
+else
+    state.lastMode2Config = config; startTest(config, mode, launch.question ? Array.from({ length: 10 }, () => structuredClone(launch.question)) : undefined); });
 import { initVelocityControls } from "./velocity.js";
 import { initProgressions } from "./presets.js";
 import { initRecords } from "./records.js";

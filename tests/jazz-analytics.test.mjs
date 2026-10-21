@@ -195,11 +195,19 @@ test("Focused drill validates exact 7/3 allocation and does not mutate inherited
     compileDrill(cells([f.row()])[0], "insights/m1").plan.questions,
   );
 });
-test("Unsupported sequence focus gives a reason rather than broad substitution", () => {
+test("Held-pitch focus preserves the actual MIDI across pair and reverse contrasts", () => {
   const f = fixture({ mode: "m3" }),
     result = compileDrill(cells([f.row()])[0], "insights/m3");
-  assert.equal(result.supported, false);
-  assert.ok(result.unsupportedReason);
+  assert.equal(result.supported, true);
+  assert.equal(result.plan.questions.length, 10);
+  assert.equal(result.plan.config.heldMidi, f.question.targets[0].midi);
+  assert.ok(
+    result.plan.questions.every(
+      (q) =>
+        q.targets.length === 2 &&
+        q.targets.every((t) => t.midi === f.question.targets[0].midi),
+    ),
+  );
 });
 test("Sparse observations do not claim a confirmed weakness or matched improvement", () => {
   const f = fixture();

@@ -1,3 +1,4 @@
+import { legacyLogger } from '../analytics/legacy.js';
 import { CHORD_VOICE_VELOCITIES } from "../core/constants.js";
 let chordSynth = null;
 let audioReady = false;
@@ -26,22 +27,32 @@ export const ensureAudioReady = async () => {
     chordSynth.volume.value = -8;
     audioReady = true;
 };
-export const schedulePlayback = (question) => {
+const schedulePlaybackAudio = (question) => {
     if (!chordSynth) {
         return;
     }
     const now = Tone.now();
     const chordDuration = 1.15;
+    const scheduledMs = (question.playbackMode === 'arpeggiated' ? (question.chordNotes.length - 1) * .22 + .7 + .9 : chordDuration + .9) * 1000;
     if (question.playbackMode === "arpeggiated") {
         const step = 0.22;
         question.chordNotes.forEach((note, index) => {
             const velocity = question.chordVelocities?.[index] ?? 0.8;
             chordSynth?.triggerAttackRelease(note, 0.7, now + index * step, velocity);
         });
+        legacyLogger('chord-quality').play(scheduledMs);
         return;
     }
     question.chordNotes.forEach((note, index) => {
         const velocity = question.chordVelocities?.[index] ?? 0.8;
         chordSynth?.triggerAttackRelease(note, chordDuration, now, velocity);
     });
+    legacyLogger('chord-quality').play(scheduledMs);
 };
+export const schedulePlayback = (question) => { const logger = legacyLogger('chord-quality'); logger.beginPlayback(); try {
+    schedulePlaybackAudio(question);
+}
+catch (error) {
+    logger.audioFailed();
+    throw error;
+} };

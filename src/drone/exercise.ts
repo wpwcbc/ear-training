@@ -1,4 +1,5 @@
 import { RANDOM_ROOTS, type ChordQuality } from "../core/constants.js";
+import { droneActivity } from '../analytics/activity.js';
 import { closeFullscreenIfEnabled, isFullscreenOpen } from "../core/fullscreen.js";
 import * as theory from "../core/theory.js";
 import { dom } from "./dom.js";
@@ -256,6 +257,7 @@ const updateDisplayForIndex = (index: number, minRootMidi: number): void => {
 const playIndex = (index: number, minRootMidi: number): void => {
 	const event = state.questionQueue[index];
 	const chord = buildChordNotes(event, minRootMidi);
+	droneActivity.begin({event,chord,playbackMode:state.playbackMode,ambienceMode:state.ambienceMode});
 	const velocities = collectVelocitySettings();
 	const advanceHint = state.autoAdvanceEnabled
 		? `Auto-advancing every ${state.autoAdvanceSeconds}s.`
@@ -406,6 +408,7 @@ const runMetronomeBeat = (minRootMidi: number): void => {
 		],
 		state.metronomeBpm,
 	);
+	droneActivity.begin({event,chord,bpm:state.metronomeBpm,playbackMode:'metronome'},60000/state.metronomeBpm);
 
 	state.metronomeBeatIndex += 1;
 
@@ -583,6 +586,7 @@ export const endLive = (): void => {
 };
 
 export const setDroneRunning = (running: boolean): void => {
+	if(!running)droneActivity.stop();
 	state.isDroneRunning = running;
 	dom.btnStartDrone.disabled = running;
 	dom.btnStopDrone.disabled = !running;
@@ -613,6 +617,7 @@ export const startDrone = (
 	config: Mode1Config | Mode2Config,
 	mode: ActiveMode,
 ): void => {
+	droneActivity.start(config,mode);
 	if (mode === "mode1") {
 		const mode1Config = config as Mode1Config;
 		state.loopForeverActive = mode1Config.loopForever;

@@ -1,3 +1,4 @@
+import { legacyLogger } from '../analytics/legacy.js';
 const audioState = {
     chordSynth: null,
     leadSynth: null,
@@ -37,7 +38,7 @@ export async function ensureAudioReady() {
     audioState.leadSynth.volume.value = -4;
     audioState.audioReady = true;
 }
-export function schedulePlayback(question) {
+function schedulePlaybackAudio(question) {
     const now = Tone.now();
     const chordDuration = question.playChord ? 1.05 : 0;
     const gap = 0.08;
@@ -48,7 +49,15 @@ export function schedulePlayback(question) {
         });
     }
     audioState.leadSynth.triggerAttackRelease(question.upperNote, 0.85, now + (question.playChord ? chordDuration + gap : 0), question.leadVelocity ?? 1);
+    legacyLogger('degree').play(((question.playChord ? chordDuration + gap : 0) + .85 + .5) * 1000);
 }
 export function isReady() {
     return audioState.audioReady;
 }
+export function schedulePlayback(question) { const logger = legacyLogger('degree'); logger.beginPlayback(); try {
+    schedulePlaybackAudio(question);
+}
+catch (error) {
+    logger.audioFailed();
+    throw error;
+} }
