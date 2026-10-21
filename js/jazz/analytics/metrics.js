@@ -251,9 +251,17 @@ export function assistedRecovery(rows) {
     return { eligibleCount, recovered };
 }
 export function matchedTrends(rows, timezone, now = Date.now()) {
-    const span = policy.days * 86400000, keys = [...new Set(rows.map((e) => e.cohortKey))];
-    return keys.flatMap((key) => {
-        const cohort = rows.filter((e) => e.cohortKey === key && eligible(e, now));
+    const span = policy.days * 86400000, groups = new Map();
+    for (const e of rows) {
+        if (!eligible(e, now))
+            continue;
+        const group = groups.get(e.cohortKey) ?? [];
+        group.push(e);
+        groups.set(e.cohortKey, group);
+    }
+    return [...groups]
+        .sort(([a], [b]) => a.localeCompare(b))
+        .flatMap(([key, cohort]) => {
         const current = aggregate(cohort.filter((e) => Date.parse(e.createdAt) >= now - span), timezone, now);
         const prior = aggregate(cohort.filter((e) => Date.parse(e.createdAt) >= now - 2 * span &&
             Date.parse(e.createdAt) < now - span), timezone, now);

@@ -1,10 +1,9 @@
 import { defaults, loadSessions, } from "../model.js";
 import { commandIcon, icon } from "../ui.js";
 import { renderTrend } from "./charts.js";
-import { renderMatrix } from "./matrix.js";
 import { reconcile, readAll, exportData, importData, clearInsights, persistenceError, put, } from "./repository.js";
-import { task } from "./types.js";
-import { aggregate, components, cells, priorities, matchedTrends, markScore, assistedRecovery, } from "./metrics.js";
+import { task, hash } from "./types.js";
+import { aggregate, components, cells, matchedTrends, markScore, assistedRecovery, } from "./metrics.js";
 import { compileDrill, compileDiagnostic } from "./drills.js";
 import { legacyData } from "./adapters.js";
 import { policy } from "./policy.js";
@@ -12,6 +11,12 @@ import { legacySummary, prepareLegacyLaunch, } from "../../analytics/legacy.js";
 import { bassPositions } from "../bass.js";
 import { parseChord } from "../theory.js";
 import { defaultFocusIndex } from "./focused.js";
+import { validateScheduled } from "./focused.js";
+import { renderAggregateMatrix } from "./matrix.js";
+import { modeContext } from "./hierarchy.js";
+import { computeSummary, clearSummaryCache } from "./summary/client.js";
+import { summaryPolicy } from "./summary/policy.js";
+import { renderInsight, renderTemplate, } from "./summary/templates.js";
 const names = {
     m1: "Hear a Chord Degree",
     m2: "Identify a Chord Degree",
@@ -38,25 +43,49 @@ function button(text, action) {
     commandIcon(b);
     if (text.startsWith("Practise"))
         icon(b, "play");
+    const failed = (error) => {
+        const p = node("p", String(error));
+        p.setAttribute("role", "alert");
+        b.after(p);
+    };
     b.onclick = () => {
-        Promise.resolve()
-            .then(action)
-            .catch((error) => {
-            const p = node("p", String(error));
-            p.setAttribute("role", "alert");
-            b.after(p);
-        });
+        if (b.disabled)
+            return;
+        try {
+            const result = action();
+            if (result &&
+                typeof result.then === "function") {
+                b.disabled = true;
+                Promise.resolve(result)
+                    .catch(failed)
+                    .finally(() => {
+                    b.disabled = false;
+                });
+            }
+        }
+        catch (error) {
+            failed(error);
+        }
     };
     return b;
 }
 function table(parent, headers, rows, id) {
+    if (rows.length > 25) {
+        const region = node("div");
+        if (id)
+            region.id = id;
+        paginatedTable(region, headers, rows, (r) => r, 25, "Rows");
+        parent.append(region);
+        return;
+    }
     const wrap = node("div");
     wrap.className = "table-scroll";
+    wrap.tabIndex = 0;
+    wrap.setAttribute("role", "region");
+    wrap.setAttribute("aria-label", headers.join(" / "));
     if (id)
         wrap.id = id;
     if (!rows.length) {
-        wrap.append(node("p", "No eligible observations for these filters."));
-        parent.append(wrap);
         return;
     }
     const t = node("table"), head = node("thead"), tr = node("tr");
@@ -88,36 +117,44 @@ function metric(parent, label, value) {
     parent.append(item);
 }
 export async function renderAnalytics(host, route, actions) {
-    const token = route;
-    host.dataset.route = token;
+    host.dataset.route = route;
     host.replaceChildren(node("p", "Loading local evidence..."));
     let evidence;
     try {
         evidence = await reconcile(loadSessions(localStorage));
     }
     catch (error) {
-        host.replaceChildren(node("h2", "Insights"), node("p", `Local evidence unavailable: ${String(error)}. Existing data has not been changed.`));
+        host.replaceChildren(node("h2", "Insights"), node("p", "Local evidence unavailable: " +
+            String(error) +
+            ". Original data preserved."));
         return;
     }
-    if (host.dataset.route !== token)
+    if (host.dataset.route !== route)
         return;
     host.replaceChildren();
     host.classList.add("analytics");
-    const [path, query = ""] = route.split("?"), mode = path.split("/")[1] ?? "", params = new URLSearchParams(query);
-    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+    const [path, search = ""] = route.split("?"), params = new URLSearchParams(search);
+    let mode = path.split("/")[1] ?? "";
+    const warnings = [];
+    if (mode && mode !== "legacy" && !names[mode]) {
+        mode = "";
+        warnings.push("Unknown mode; showing Overview.");
+    }
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC", now = Date.now();
     const nav = node("nav");
     nav.className = "insight-nav";
     nav.setAttribute("aria-label", "Insight sources");
-    nav.append(link("Overview", "#/insights"));
-    for (const m of Object.keys(names))
-        nav.append(link(m.toUpperCase(), "#/insights/" + m));
-    nav.append(link("Legacy", "#/insights/legacy"));
-    Array.from(nav.querySelectorAll("a")).forEach((a) => {
-        if (a.hash === "#/" + path)
+    for (const [id, label] of [
+        ["", "Overview"],
+        ...Object.keys(names).map((m) => [m, m.toUpperCase()]),
+        ["legacy", "Legacy"],
+    ]) {
+        const a = link(label, "#/insights" + (id ? "/" + id : ""));
+        if (id === mode)
             a.setAttribute("aria-current", "page");
-    });
-    host.append(nav);
-    host.append(node("h2", mode === "legacy"
+        nav.append(a);
+    }
+    host.append(nav, node("h2", mode === "legacy"
         ? "Legacy practice"
         : (names[mode] ?? "What to practise next")));
     if (mode === "legacy") {
@@ -125,50 +162,42 @@ export async function renderAnalytics(host, route, actions) {
         await health(host, evidence);
         return;
     }
-    const filters = node("div");
+    const header = node("div"), advanced = node("details"), filters = node("div");
+    header.className = "insight-primary";
+    advanced.className = "insight-advanced";
     filters.className = "insight-filters";
-    const filter = (name, label, options, fallback, container = filters) => {
-        const l = node("label", label), s = node("select");
-        s.setAttribute("aria-label", label);
-        options.forEach(([value, text]) => s.add(new Option(text, value)));
-        s.value = params.get(name) ?? fallback;
-        s.onchange = () => {
-            params.set(name, s.value);
-            location.hash = "#/" + path + "?" + params.toString();
+    advanced.append(node("summary", "Filters"), filters);
+    const change = () => {
+        location.hash = "#/" + path + "?" + params.toString();
+    };
+    const filter = (key, label, options, fallback, container = filters) => {
+        let value = params.get(key) ?? fallback;
+        if (!options.some((o) => o[0] === value)) {
+            value = fallback;
+            warnings.push("Unsupported " + label + "; using " + fallback + ".");
+        }
+        const l = node("label", label), select = node("select");
+        select.setAttribute("aria-label", label);
+        options.forEach(([v, t]) => select.add(new Option(t, v)));
+        select.value = value;
+        select.onchange = () => {
+            params.set(key, select.value);
+            if (key !== "lang") {
+                params.delete("cell");
+                params.delete("cellRoot");
+            }
+            change();
         };
-        l.append(s);
+        l.append(select);
         container.append(l);
-        return s.value;
+        return value;
     };
     const days = filter("days", "Period", [
         ["28", "Last 28 days"],
         ["7", "Last 7 days"],
         ["all", "All retained"],
-    ], "28");
-    const exposure = filter("exposure", "Practice", [
-        ["fresh", "Fresh practice"],
-        ["targeted", "Targeted practice"],
-        ["exact-review", "Exact review"],
-        ["all", "All practice"],
-    ], "fresh");
-    const assistance = filter("assistance", "Assistance", [
-        ["none", "Known unassisted"],
-        ["reference", "Reference-assisted"],
-        ["unknown", "Unknown exposure"],
-        ["all", "All assistance"],
-    ], "none");
-    const version = filter("version", "Data version", [
-        ["all", "All versions"],
-        ["standard", "New capture"],
-        ["historical", "Historical v1"],
-    ], "all");
-    const source = filter("source", "Assessment", [
-        ["all", "Separate sources"],
-        ["automatic", "Recognition"],
-        ["self", "Self-assessed"],
-        ["visual", "Visual mapping"],
-    ], "all");
-    const taskOptions = {
+    ], "28", header);
+    const tasks = {
         m2: ["visible", "hidden"],
         m3: ["recognize", "produce"],
         m4: ["manual", "timed"],
@@ -190,26 +219,57 @@ export async function renderAnalytics(host, route, actions) {
         ],
         m7: ["sing-play", "hear-play", "next-beat"],
     };
-    const subtask = taskOptions[mode]
-        ? filter("task", "Task", taskOptions[mode].map((t) => [t, t]), taskOptions[mode][0])
+    const subtask = tasks[mode]
+        ? filter("task", "Task", tasks[mode].map((t) => [t, t]), tasks[mode][0], header)
         : "";
-    filters.append(link("Reset", "#/" + path));
-    host.append(filters, node("p", `${timezone} · retained browser data · policy ${policy.version}`));
-    const now = Date.now();
-    let rows = evidence.filter((e) => (!mode || e.mode === mode) &&
-        (!subtask || e.subtask === subtask) &&
-        (exposure === "all" || e.exposure === exposure) &&
+    const exposure = filter("exposure", "Practice", [
+        ["fresh", "Fresh practice"],
+        ["targeted", "Targeted practice"],
+        ["exact-review", "Exact review"],
+        ["all", "All practice"],
+    ], "fresh");
+    const assistance = filter("assistance", "Assistance", [
+        ["none", "Known unassisted"],
+        ["reference", "Reference-assisted"],
+        ["unknown", "Unknown assistance"],
+        ["all", "All assistance"],
+    ], "none");
+    const source = filter("source", "Assessment", [
+        ["all", "Separate sources"],
+        ["automatic", "Recognition"],
+        ["self", "Self-assessed"],
+        ["visual", "Visual mapping"],
+    ], "all");
+    const version = filter("version", "Data version", [
+        ["all", "All versions"],
+        ["standard", "New capture"],
+        ["historical", "Historical v1"],
+    ], "all");
+    const locale = filter("lang", "Summary language", [
+        ["en", "English"],
+        ["zh-Hant", "繁體中文"],
+    ], navigator.language.startsWith("zh") ? "zh-Hant" : "en");
+    const matrixMetric = filter("metric", "Context metric", [
+        ["outcome", "Outcomes"],
+        ["sample", "Question / exposure counts"],
+        ["time", "Median active time"],
+    ], "outcome");
+    const localStart = new Date(now);
+    localStart.setHours(0, 0, 0, 0);
+    localStart.setDate(localStart.getDate() - (days === "all" ? 0 : Number(days) - 1));
+    const localEnd = new Date(now);
+    localEnd.setHours(24, 0, 0, 0);
+    const start = days === "all" ? null : localStart.toISOString();
+    const scoped = evidence.filter((e) => (!mode || e.mode === mode) && (!subtask || e.subtask === subtask));
+    let rows = scoped.filter((e) => (exposure === "all" || e.exposure === exposure) &&
         (assistance === "all" || e.assistance === assistance) &&
-        (version === "all" || e.version === version) &&
         (source === "all" || e.source === source) &&
+        (version === "all" || e.version === version) &&
         Number.isFinite(Date.parse(e.createdAt)) &&
         Date.parse(e.createdAt) <= now &&
-        (days === "all" ||
-            Date.parse(e.createdAt) >= now - Number(days) * 86400000));
-    const contextDetails = node("details"), contextControls = node("div");
-    contextControls.className = "insight-filters";
-    contextDetails.append(node("summary", "Context filters"), contextControls);
-    const contextSettings = [
+        (!start || e.createdAt >= start));
+    const contextFilters = {};
+    const keys = [
         ["context", "Harmonic context"],
         ["hintLevel", "Hints"],
         ["timbre", "Timbre"],
@@ -220,393 +280,701 @@ export async function renderAnalytics(host, route, actions) {
         ["rangePreset", "Register"],
     ];
     if (mode === "m7")
-        contextSettings.push(["fretNames", "Fret note names"], ["bassString", "Required string"]);
+        keys.push(["fretNames", "Fret note names"], ["bassString", "Required string"]);
     if (mode === "m6")
-        contextSettings.push(["variation", "Phrase variation"], ["transpose", "Transpose"]);
-    if (mode) {
-        for (const [key, label] of contextSettings) {
-            const values = [
-                ...new Set(rows.map((e) => String(e.config[key] ?? "unknown"))),
-            ].sort();
-            const selected = filter("context-" + key, label, [["all", "All"], ...values.map((v) => [v, v])], "all", contextControls);
-            if (selected !== "all")
-                rows = rows.filter((e) => String(e.config[key] ?? "unknown") === selected);
+        keys.push(["variation", "Phrase variation"], ["transpose", "Transpose"]);
+    for (const [key, label] of mode ? keys : []) {
+        const values = [
+            ...new Set(scoped.map((e) => String(e.config[key] ?? "unknown"))),
+        ].sort();
+        const chosen = filter("context-" + key, label, [["all", "All"], ...values.map((v) => [v, v])], "all");
+        if (chosen !== "all") {
+            contextFilters[key] = [chosen];
+            rows = rows.filter((e) => String(e.config[key] ?? "unknown") === chosen);
         }
-        host.append(contextDetails);
     }
-    if (mode) {
-        const facet = (key, label, values) => filter(key, label, [
+    for (const [key, label, values] of mode
+        ? [
+            [
+                "root",
+                "Presented root",
+                scoped.flatMap((e) => e.record.chords.map((c) => parseChord(c).root)),
+            ],
+            ["quality", "Presented chord", scoped.flatMap((e) => e.record.chords)],
+            ["degree", "Presented degree", scoped.flatMap((e) => e.record.targets)],
+        ]
+        : []) {
+        const chosen = filter(key, label, [
             ["all", "All"],
             ...[...new Set(values)].sort().map((v) => [v, v]),
         ], "all");
-        const root = facet("root", "Presented root", rows.flatMap((e) => e.record.chords.map((c) => c.match(/^[A-G][b#]?/)?.[0] ?? "Unknown")));
-        const quality = facet("quality", "Presented chord", rows.flatMap((e) => e.record.chords));
-        const degree = facet("degree", "Presented degree", rows.flatMap((e) => e.record.targets));
-        rows = rows.filter((e) => (root === "all" ||
-            e.record.chords.some((c) => c.match(/^[A-G][b#]?/)?.[0] === root)) &&
-            (quality === "all" || e.record.chords.includes(quality)) &&
-            (degree === "all" || e.record.targets.includes(degree)));
-    }
-    if (!mode) {
-        const queue = priorities(rows, timezone, now, evidence), selected = new Set();
-        const section = node("section");
-        section.className = "insight-focus-queue";
-        section.append(node("h3", "Suggested focus"));
-        for (const cell of queue) {
-            if (selected.has(cell.rows[0].mode) || selected.size === 3)
-                continue;
-            selected.add(cell.rows[0].mode);
-            focus(section, cell, route, actions, timezone);
+        if (chosen !== "all") {
+            contextFilters[key] = [chosen];
+            rows = rows.filter((e) => key === "root"
+                ? e.record.chords.some((c) => parseChord(c).root === chosen)
+                : key === "quality"
+                    ? e.record.chords.includes(chosen)
+                    : e.record.targets.includes(chosen));
         }
-        if (!selected.size)
-            section.append(node("p", "Not enough practice data to identify a difficulty. Start a diagnostic set or inspect historical evidence."));
-        host.append(section);
+    }
+    const allowedParams = new Set([
+        "days",
+        "task",
+        "exposure",
+        "assistance",
+        "source",
+        "version",
+        "lang",
+        "metric",
+        "root",
+        "quality",
+        "degree",
+        "cell",
+        "cellRoot",
+        "level",
+        ...keys.map(([k]) => "context-" + k),
+    ]);
+    params.forEach((_, key) => {
+        if (!allowedParams.has(key))
+            warnings.push("Unknown filter " + key + " ignored.");
+    });
+    if (params.has("level") &&
+        ![
+            "degree",
+            "quality-degree",
+            "root-quality-degree",
+            "mode-specific",
+        ].includes(params.get("level")))
+        warnings.push("Unsupported aggregation level; using the selected cell's actual level.");
+    filters.append(link("Reset filters", "#/" + path));
+    const chips = node("p", exposure +
+        " · " +
+        (assistance === "none" ? "Known unassisted" : assistance) +
+        " · " +
+        (days === "all" ? "All retained" : days + " days") +
+        (params.get("root") && params.get("root") !== "all"
+            ? " · Root: " + params.get("root")
+            : ""));
+    chips.className = "insight-scope";
+    host.append(header, chips, advanced);
+    if (warnings.length)
+        host.append(node("p", warnings.join(" ")));
+    host.append(node("p", timezone + " · retained browser data · " + summaryPolicy.version));
+    const query = {
+        mode,
+        subtask,
+        source,
+        metricId: matrixMetric,
+        startInclusive: start,
+        endExclusive: localEnd.toISOString(),
+        timezone,
+        exposure,
+        assistance,
+        dataVersions: version === "all" ? ["standard", "historical"] : [version],
+        contextFilters,
+    };
+    // The revision covers all retained authority, including prior-period comparison evidence.
+    const progress = node("p", "Preparing local summary and evidence…");
+    progress.setAttribute("role", "status");
+    host.append(progress);
+    let model;
+    try {
+        model = await computeSummary(rows, query, now, evidence);
+    }
+    catch (error) {
+        progress.textContent = String(error);
+        return;
+    }
+    if (host.dataset.route !== route)
+        return;
+    progress.remove();
+    const revision = model.revision;
+    const announce = node("p", rows.length + " selected assessments");
+    announce.className = "sr-only";
+    announce.setAttribute("role", "status");
+    host.append(announce);
+    const openEvidence = (refId) => {
+        const ref = model.refs.get(refId), panel = node("section");
+        panel.className = "insight-evidence-panel";
+        panel.tabIndex = -1;
+        const origin = document.activeElement;
+        panel.append(node("h3", "Evidence reference"));
+        panel.append(button("Close evidence", () => {
+            panel.remove();
+            origin?.focus();
+        }));
+        if (!ref || ref.dataRevision !== revision) {
+            panel.append(node("p", "Evidence changed; refresh summary."));
+        }
+        else {
+            const cited = evidence.filter((e) => ref.assessmentIds.includes(e.id));
+            if (cited.length !== ref.assessmentIds.length)
+                panel.append(node("p", "Evidence changed; refresh summary."));
+            else {
+                panel.append(node("p", ref.id +
+                    " · " +
+                    ref.metricId +
+                    " · " +
+                    ref.definitionVersion +
+                    " · " +
+                    ref.policyVersion), node("p", ref.assessmentIds.length +
+                    " assessments → " +
+                    ref.diagnosticQuestionIds.length +
+                    " diagnostic questions. Exclusions below are exclusive within each stage."));
+                const details = node("details");
+                details.append(node("summary", "IDs, query and provenance"));
+                const pre = node("pre", JSON.stringify(ref, null, 2));
+                details.append(pre);
+                panel.append(details);
+                table(panel, ["Exclusion reason", "Count"], Object.entries(ref.exclusions).map(([k, v]) => [k, String(v)]));
+                evidenceTable(panel, cited, actions, true);
+                const download = button("Export evidence reference", () => {
+                    const url = URL.createObjectURL(new Blob([JSON.stringify(ref, null, 2)], {
+                        type: "application/json",
+                    }));
+                    const a = link("Download", url);
+                    a.download = ref.id + ".json";
+                    a.click();
+                    setTimeout(() => URL.revokeObjectURL(url), 1000);
+                });
+                panel.append(download);
+            }
+        }
+        const close = (e) => {
+            if (e.key === "Escape") {
+                panel.remove();
+                origin?.focus();
+            }
+        };
+        panel.addEventListener("keydown", close);
+        host.append(panel);
+        panel.focus();
+        panel.scrollIntoView({ block: "nearest" });
+    };
+    const summary = node("section");
+    summary.className = "smart-summary";
+    summary.setAttribute("aria-label", "Smart Insights Summary");
+    summary.append(node("h3", "Smart Insights Summary"), node("p", locale === "zh-Hant"
+        ? "規則式摘要 · 根據你保留的練習紀錄"
+        : "Rule-based summary · based on your retained practice"));
+    if (!rows.length) {
+        summary.append(node("p", scoped.length
+            ? scoped.length +
+                " retained assessments are outside the active selection. This is not zero accuracy."
+            : "No recorded outcomes for this task."));
+        summary.append(scoped.length
+            ? link("Reset filters", "#/" + path)
+            : button("Configure diagnostic set", () => actions.customize({ ...defaults, mode: (mode || "m1"), count: 10 }, [])));
+    }
+    else
+        for (const [index, insight] of model.statements.entries()) {
+            const statement = node("div");
+            statement.className = "insight-statement";
+            statement.append(node("p", renderInsight(insight, locale) ?? "Evidence unavailable."));
+            insight.evidenceRefIds.forEach((ref, j) => statement.append(button("View Evidence [E" +
+                (index + 1) +
+                (j ? String.fromCharCode(97 + j) : "") +
+                "]", () => openEvidence(ref))));
+            summary.append(statement);
+        }
+    host.append(summary);
+    const queue = node("section");
+    queue.className = "insight-focus-queue";
+    queue.append(node("h3", "Practise next"));
+    const headings = {
+        supported: "Supported priorities",
+        tentative: "Tentative signals",
+        coverage: "Collect more evidence",
+        descriptive: "Collect more evidence",
+    };
+    for (const insight of model.recommendations) {
+        const c = model.cells.find((c) => c.id === insight.cellId);
+        if (!c)
+            continue;
+        const wrapper = node("div");
+        wrapper.className = "insight-recommendation";
+        wrapper.dataset.certainty = insight.certainty;
+        wrapper.append(node("h4", headings[insight.certainty]));
+        const sampleRows = c.sample.length
+            ? [...new Map(c.sample.map((o) => [o.row.id, o.row])).values()]
+            : c.rows;
+        const cell = {
+            id: c.id,
+            label: c.label,
+            quality: c.quality,
+            degree: c.degree,
+            rows: sampleRows,
+            category: headings[insight.certainty],
+            diagnosticStats: {
+                correct: c.numerator ?? 0,
+                eligibleCount: c.denominator ?? 0,
+                sessions: c.sessions,
+                days: c.localDays,
+                label: c.reliability,
+            },
+            metricLabel: c.metricId,
+            focus: insight.category === "confusion"
+                ? {
+                    component: insight.params.component,
+                    selected: String(insight.params.selected),
+                }
+                : c.mode === "m3" && c.subtask === "recognize"
+                    ? { targetIndex: Math.max(1, c.sample[0]?.index ?? 1) }
+                    : undefined,
+        };
+        if (insight.category === "coverage") {
+            const card = node("article");
+            card.className = "insight-focus";
+            card.append(node("h3", c.mode.toUpperCase() + " · " + c.label), node("p", c.reliability +
+                " · " +
+                (c.independentQuestionCount ?? "Unknown") +
+                " independent questions"));
+            const plan = compileDiagnostic(c.rows[0].config, route, c.rows);
+            if (plan) {
+                card.append(node("p", plan.reason), button("Practise 10", () => launchPlan(plan, route, actions)));
+            }
+            else
+                card.append(button("Customize", () => actions.customize(c.rows[0].config, c.rows[0].session.customSnapshot ?? [])));
+            card.append(button("View Evidence", () => openEvidence(c.evidenceRefId)));
+            wrapper.append(card);
+        }
+        else {
+            focus(wrapper, cell, route, actions, timezone, true);
+            wrapper
+                .querySelector("article")
+                ?.append(button("View Evidence", () => openEvidence(c.evidenceRefId)));
+        }
+        queue.append(wrapper);
+    }
+    if (!mode && model.recommendations.length)
+        host.append(queue);
+    if (!mode) {
+        host.append(node("h3", "Mode status"));
         const grid = node("div");
         grid.className = "insight-mode-grid";
         for (const [id, title] of Object.entries(names)) {
-            const subset = rows.filter((e) => e.mode === id), card = node("article");
-            card.append(node("h3", id.toUpperCase() + " · " + title), node("p", subset.length
-                ? `${subset.length} retained assessments · ${id === "m2" ? "Recognition" : id === "m3" ? "Recognition and self-ratings shown separately" : "Self-assessed production"}`
-                : "Not enough practice data"), link("Details", "#/insights/" + id));
-            if (!subset.length) {
-                const plan = compileDiagnostic({ ...defaults, mode: id, count: 10 }, route);
-                if (plan)
-                    card.append(node("p", plan.reason), button("Practise 10", async () => {
-                        await put("drillPlans", plan);
-                        await actions.start(plan.config, plan.customSnapshots, "insight:" + plan.id, plan.questions, plan);
-                    }));
-                card.append(button("Configure diagnostic set", () => actions.customize({ ...defaults, mode: id, count: 10 }, [])));
+            const group = rows.filter((e) => e.mode === id), status = node("article");
+            status.append(node("h4", id.toUpperCase() + " · " + title));
+            for (const s of ["self", "automatic", "visual"]) {
+                const r = group.filter((e) => e.source === s);
+                if (r.length)
+                    status.append(node("p", s +
+                        ": " +
+                        aggregate(r, timezone, now).eligibleCount +
+                        " eligible questions · " +
+                        r.length +
+                        " assessments"));
             }
-            if (subset.length && ["m1", "m2", "m7"].includes(id)) {
-                const plan = compileDiagnostic(subset[subset.length - 1].config, route, subset);
-                if (plan) {
-                    const details = node("details");
-                    details.append(node("summary", "Check under-practised targets"), node("p", plan.reason), button("Practise 10", async () => {
-                        await put("drillPlans", plan);
-                        await actions.start(plan.config, plan.customSnapshots, "insight:" + plan.id, plan.questions, plan);
-                    }));
-                    card.append(details);
-                }
-            }
-            grid.append(card);
+            if (!group.length)
+                status.append(node("p", "No recorded outcomes"));
+            status.append(link("Details", "#/insights/" + id));
+            if (!group.length)
+                status.append(button("Configure diagnostic set", () => actions.customize({ ...defaults, mode: id, count: 10 }, [])));
+            grid.append(status);
         }
-        host.append(grid);
-        host.append(node("h3", "Check unexplored areas"), node("p", "Coverage describes the material you selected, not all jazz skills. Unpractised modes and roots need new observations, not a zero score."));
+        host.append(grid, node("h3", "Explore evidence"), link("Legacy trainers and Drone", "#/insights/legacy"));
+        const changes = model.statements
+            .filter((i) => i.category === "comparable-trend")
+            .slice(0, 2);
+        for (const i of changes)
+            host.append(button(i.mode.toUpperCase() + " · Comparable change", () => openEvidence(i.evidenceRefIds[0])));
     }
-    else {
+    else if (rows.length) {
         host.append(node("p", mode === "m2" || (mode === "m3" && subtask === "recognize")
-            ? "Recognition outcomes describe submitted choices, not singing or instrument performance."
+            ? "Recognition measures submitted choices, not singing or instrument performance."
             : "Production is self-assessed. Reference notes are generated targets, not measured singing or playing."));
-        for (const grading of ["automatic", "self", "visual"]) {
-            const group = rows.filter((e) => e.source === grading);
+        for (const s of ["self", "automatic", "visual"]) {
+            const group = rows.filter((e) => e.source === s);
             if (!group.length)
                 continue;
-            const stats = aggregate(group, timezone), strip = node("div");
+            const stats = aggregate(group, timezone, now), strip = node("div");
             strip.className = "insight-kpis";
-            metric(strip, grading === "visual"
-                ? "Visual mapping: exact MIDI"
-                : grading === "self"
-                    ? "Self-ratings: correct / close / missed"
-                    : "Submitted exact answers", grading === "self"
-                ? `${stats.ratings.correct} / ${stats.ratings.close} / ${stats.ratings.missed}`
+            metric(strip, s === "self"
+                ? "Retained self-ratings: correct / close / missed"
+                : s === "visual"
+                    ? "Visual mapping: exact MIDI"
+                    : "Retained exact answers", s === "self"
+                ? stats.ratings.correct +
+                    " / " +
+                    stats.ratings.close +
+                    " / " +
+                    stats.ratings.missed
                 : rate(stats.ratings.correct, stats.submitted));
             metric(strip, "Independent fresh questions", String(stats.eligibleCount));
-            metric(strip, grading === "visual"
-                ? "Correct mapping decision median"
-                : mode === "m6"
+            if (stats.median !== null)
+                metric(strip, mode === "m6"
                     ? "Stage active-time median"
-                    : "Correct response / readiness median", stats.median === null
-                ? "Unavailable"
-                : `${(stats.median / 1000).toFixed(1)}s · n=${stats.timingCount}`);
-            metric(strip, "Context replay before response", rate(stats.replayCount, stats.sample.filter((e) => e.version === "standard").length));
+                    : "Recorded response / readiness median", (stats.median / 1000).toFixed(1) + "s · valid n=" + stats.timingCount);
             host.append(strip);
-            host.append(node("p", `${stats.label}${stats.stale ? " · Stale evidence" : ""} · ${stats.sessions} sessions / ${stats.days} local days. ${stats.excluded.skipped} recorded skips. Historical response time uses the old lifecycle and is excluded from standardized timing.`));
-            if (new Set(group.map((e) => e.cohortKey)).size > 1)
-                host.append(node("p", "Mixed practice settings: totals are descriptive. Inspect a context below for a comparable evidence sample."));
-            if (stats.interval && new Set(group.map((e) => e.cohortKey)).size === 1) {
-                const p = node("p", `Estimated range for these practice results: ${Math.round(stats.interval[0] * 100)}–${Math.round(stats.interval[1] * 100)}%. Repeated practice is correlated; this is not a population ability estimate.`);
-                p.title = "Estimated range for these practice results";
-                host.append(p);
-            }
-            if (grading === "automatic" && ["m2", "m3"].includes(mode)) {
-                const c = components(group);
-                const recovery = assistedRecovery(evidence.filter((e) => e.mode === mode &&
-                    e.subtask === subtask &&
-                    group.some((r) => r.questionId === e.questionId)));
-                host.append(node("p", `Assisted recovery: ${rate(recovery.recovered, recovery.eligibleCount)} initially unsuccessful questions with a reference-assisted follow-up. Separate from first-attempt results; follow-up selection is not random.`));
-                table(host, ["Component", "Answer items"], [
-                    ["Degree", rate(c.degree, c.degreeN)],
-                    ["Quality (hidden chords)", rate(c.quality, c.qualityN)],
-                    [
-                        "Degree when quality correct",
-                        rate(c.conditional, c.conditionalN),
-                    ],
-                ]);
-                host.append(node("h3", "Recognition confusions"));
-                table(host, ["Component", "Expected", "Selected", "Row rate"], c.confusion.map((c) => [
-                    c.component,
-                    c.expected,
-                    c.selected,
-                    rate(c.count, c.denominator),
-                ]), "confusions");
-            }
         }
-        if (!rows.length)
-            host.append(node("p", "No eligible observations for these filters. Unknown exposure is available under Assistance; it is not treated as unassisted."));
-        host.append(node("h3", "Context and evidence"));
-        const matrixMetric = filter("metric", "Context metric", [
-            ["outcome", "Outcomes"],
-            ["time", "Median active time"],
-            ["sample", "Question / exposure counts"],
-        ], "outcome", contextControls);
-        for (const grading of ["automatic", "self", "visual"])
-            renderMatrix(host, rows.filter((e) => e.source === grading), matrixMetric, (selected, index) => {
-                const section = node("section");
-                cells(selected)
-                    .slice(0, 5)
-                    .forEach((cell) => focus(section, { ...cell, focus: { targetIndex: Math.max(1, index) } }, route, actions, timezone));
-                host.append(section);
-                section.scrollIntoView({ block: "nearest" });
-            });
-        const contexts = cells(rows);
-        table(host, [
-            "Presented context",
-            "Assessment source",
-            "Assessment unit",
-            "Recorded outcomes",
-            "Independent evidence",
-            "Details",
-        ], contexts.map((cell) => {
-            const s = aggregate(cell.rows, timezone);
-            return [
-                cell.label,
-                cell.rows[0].source === "self"
-                    ? "Self-assessment"
-                    : cell.rows[0].source === "visual"
-                        ? "Visual mapping"
-                        : "Automatic answers",
-                cell.rows[0].grain,
-                `${s.ratings.correct} correct / ${s.ratings.close} close / ${s.ratings.missed} missed`,
-                `${s.eligibleCount} questions · ${s.label}`,
-                button("Inspect", () => {
-                    const detail = node("section");
-                    focus(detail, cell, route, actions, timezone);
-                    host.append(detail);
-                    detail.scrollIntoView({ block: "nearest" });
-                }),
-            ];
-        }), "skill-stats");
-        if (["m3", "m5", "m6"].includes(mode))
-            host.append(node("p", "Whole-sequence/run ratings are counted once. Their target notes are coverage only, not independently graded notes."));
-        if (["m3", "m5", "m6"].includes(mode)) {
-            const coverage = new Map();
-            for (const e of rows)
-                e.record.targets.forEach((degree, i) => {
-                    const label = e.record.chords[i] + " / " + degree, entry = coverage.get(label) ?? {
-                        exposures: 0,
-                        questions: new Set(),
-                        correct: 0,
-                        answered: 0,
-                    };
-                    entry.exposures++;
-                    entry.questions.add(e.questionId ?? e.id);
-                    if (e.source === "automatic" && e.record.selectedDegrees?.[i]) {
-                        entry.answered++;
-                        if (e.record.selectedDegrees[i] === degree &&
-                            (!e.record.selectedQualities ||
-                                e.record.selectedQualities[i] ===
-                                    parseChord(e.record.chords[i]).quality))
-                            entry.correct++;
-                    }
-                    coverage.set(label, entry);
-                });
-            table(host, [
-                "Presented role",
-                "Coverage exposures",
-                "Questions represented",
-                "Recognition item results",
-            ], [...coverage].map(([label, c]) => [
-                label,
-                String(c.exposures),
-                String(c.questions.size),
-                c.answered
-                    ? rate(c.correct, c.answered)
-                    : "Coverage only; parent self-rating",
-            ]));
-        }
-        if (mode === "m1")
-            table(host, ["Presented context", "Self-reported difficulty"], rows
-                .filter((e) => e.record.analytics?.difficultyTags?.length)
-                .map((e) => [
-                e.record.chords.join(" / ") + " / " + e.record.targets.join(" / "),
-                e.record.analytics.difficultyTags.join(", "),
-            ]));
-        if (mode === "m3")
-            table(host, [
-                "Change",
-                "Held reference MIDI",
-                "Role transition",
-                "Destination result",
-                "Practice",
-            ], rows.flatMap((e) => (e.challenge?.targets ?? []).flatMap((target, i) => {
-                if (!i)
-                    return [];
-                const from = e.challenge.targets[i - 1], result = e.source === "self"
-                    ? "Coverage only"
-                    : e.record.selectedDegrees?.[i] === target.degree &&
-                        (!e.record.selectedQualities ||
-                            e.record.selectedQualities[i] === target.chord.quality)
-                        ? "Correct item"
-                        : "Missed item";
-                return [
-                    [
-                        `${i}: ${from.chord.symbol} → ${target.chord.symbol}`,
-                        String(target.midi),
-                        from.degree + " → " + target.degree,
-                        result,
-                        button("Role-pair details", () => {
-                            const section = node("section");
-                            focus(section, { ...cells([e])[0], focus: { targetIndex: i } }, route, actions, timezone);
-                            host.append(section);
-                            section.scrollIntoView({ block: "nearest" });
-                        }),
-                    ],
-                ];
-            })));
-        if (mode === "m4") {
-            table(host, [
-                "Source → destination",
-                "Motion",
-                "Prediction window",
-                "Ready before reference",
-            ], rows.map((e) => {
-                const step = e.record.chordStep, targets = e.challenge?.targets, from = step === undefined ? undefined : targets?.[step - 1], to = step === undefined ? undefined : targets?.[step];
-                return [
-                    from && to
-                        ? `${from.chord.symbol}/${from.degree} → ${to.chord.symbol}/${to.degree}`
-                        : "Snapshot unavailable",
-                    from && to ? `${to.midi - from.midi} semitones` : "Unavailable",
-                    e.config.predictionUnit === "beats"
-                        ? `${e.config.predictionBeats} beats`
-                        : `${e.config.predictionSeconds}s`,
-                    e.record.analytics?.ready
-                        ? "Declared"
-                        : e.version === "historical"
-                            ? "Unavailable"
-                            : "Not confirmed",
-                ];
+        if (model.recommendations.length)
+            host.append(queue);
+        const ledger = node("details");
+        ledger.append(node("summary", "How these counts reconcile"));
+        const counts = model.reconciliation;
+        ledger.append(node("p", counts.retained +
+            " retained rows → " +
+            counts.normalized +
+            " normalized assessments → " +
+            counts.nonSkipped +
+            " non-skipped ratings → " +
+            counts.eligible +
+            " eligible observations → " +
+            (counts.diagnostic ?? "unknown") +
+            " independent diagnostic questions at their task/source grain."));
+        table(ledger, ["Exclusive exclusion stage", "Count"], Object.entries(counts.exclusions).map(([k, v]) => [k, String(v)]));
+        host.append(ledger);
+        host.append(node("h3", "Explore evidence"));
+        const matrixHost = node("section");
+        matrixHost.id = "skill-stats";
+        renderAggregateMatrix(matrixHost, model.cells, matrixMetric, (cell) => {
+            params.set("cell", cell.id);
+            params.set("level", cell.level);
+            params.delete("cellRoot");
+            change();
+        });
+        host.append(matrixHost);
+        const selected = model.cells.find((c) => c.id === params.get("cell"));
+        if (selected) {
+            const panel = node("section");
+            panel.id = "selected-cell";
+            panel.className = "insight-cell-detail";
+            panel.tabIndex = -1;
+            panel.append(node("h3", mode.toUpperCase() + " → " + selected.label + " → roots"), button("Close cell", () => {
+                const id = selected.id;
+                params.delete("cell");
+                params.delete("level");
+                params.delete("cellRoot");
+                sessionStorage.setItem("insights:focus", id);
+                change();
             }));
-        }
-        host.append(node("h3", "Practice priorities"));
-        if (mode === "m5" &&
-            subtask.startsWith("continuous") &&
-            (source === "all" || source === "self")) {
-            const events = await readAll("events");
-            if (host.dataset.route !== route)
-                return;
-            const starts = events.filter((e) => {
-                const origin = e.payload?.source, kind = origin?.includes("review")
-                    ? "exact-review"
-                    : origin?.startsWith("insight:")
-                        ? "targeted"
-                        : "fresh";
-                return (e.type === "performance_started" &&
-                    e.payload?.config?.mode === "m5" &&
-                    `${e.payload.config.runMode}-${e.payload.config.targetPattern}` ===
-                        subtask &&
-                    (exposure === "all" || kind === exposure) &&
-                    (assistance === "all" || e.payload.assistance === assistance) &&
-                    contextSettings.every(([key]) => !params.get("context-" + key) ||
-                        params.get("context-" + key) === "all" ||
-                        String(e.payload?.config?.[key] ?? "unknown") ===
-                            params.get("context-" + key)) &&
-                    Date.parse(e.occurredAt) <= now &&
-                    (days === "all" ||
-                        Date.parse(e.occurredAt) >= now - Number(days) * 86400000));
+            panel.append(node("p", selected.reliability +
+                " · " +
+                selected.contextState +
+                " · " +
+                selected.rows.length +
+                " assessments · " +
+                selected.independentQuestionCount +
+                " independent questions · " +
+                selected.sessions +
+                " sessions / " +
+                selected.localDays +
+                " days"));
+            selected.capabilityReasons.forEach((r) => panel.append(node("p", r)));
+            panel.append(button("View Evidence", () => openEvidence(selected.evidenceRefId)));
+            table(panel, ["Observed root", "Independent questions"], selected.roots.map((r) => [r.root, String(r.questionCount)]));
+            const rootLabel = node("label", "Root drilldown"), root = node("select");
+            root.setAttribute("aria-label", "Root drilldown");
+            root.add(new Option("All observed roots", "all"));
+            selected.roots.forEach((r) => root.add(new Option(r.root, r.root)));
+            root.value = params.get("cellRoot") ?? "all";
+            if (!root.value)
+                root.value = "all";
+            root.onchange = () => {
+                params.set("cellRoot", root.value);
+                change();
+            };
+            rootLabel.append(root);
+            panel.append(rootLabel);
+            const subset = selected.rows.filter((e) => root.value === "all" ||
+                e.record.chords.some((c) => parseChord(c).root === root.value));
+            const exact = cells(subset);
+            paginatedTable(panel, ["Exact context", "Outcome counts", "Independent questions", "Action"], exact, (cell) => {
+                const s = aggregate(cell.rows, timezone, now);
+                return [
+                    cell.label,
+                    s.ratings.correct +
+                        " correct / " +
+                        s.ratings.close +
+                        " close / " +
+                        s.ratings.missed +
+                        " missed",
+                    String(s.eligibleCount),
+                    button("Inspect", () => {
+                        const region = node("section");
+                        focus(region, cell, route, actions, timezone);
+                        panel.append(region);
+                    }),
+                ];
+            }, 12, "Exact contexts");
+            panel.addEventListener("keydown", (e) => {
+                if (e.key === "Escape") {
+                    params.delete("cell");
+                    params.delete("cellRoot");
+                    sessionStorage.setItem("insights:focus", selected.id);
+                    change();
+                }
             });
-            const completed = new Set(events
-                .filter((e) => e.type === "performance_completed")
-                .map((e) => e.payload?.runId)), interrupted = new Set(events
-                .filter((e) => e.type === "performance_interrupted")
-                .map((e) => e.payload?.runId));
-            const done = starts.filter((e) => completed.has(e.payload?.runId)).length, stopped = starts.filter((e) => interrupted.has(e.payload?.runId) &&
-                !completed.has(e.payload?.runId)).length;
-            host.append(node("p", `Playback run completion: ${rate(done, done + stopped)} terminal run attempts; ${stopped} interrupted, ${starts.length - done - stopped} unresolved. This records playback completion, not note or rhythm accuracy.`));
+            host.append(panel);
         }
-        priorities(rows, timezone, now, evidence)
-            .slice(0, 3)
-            .forEach((cell) => focus(host, cell, route, actions, timezone));
+        else if (params.has("cell"))
+            host.append(node("p", "Selected cell is unavailable after the evidence or filters changed. Select a matrix cell again."));
+        if (mode === "m2" || (mode === "m3" && subtask === "recognize")) {
+            const detail = node("details");
+            detail.append(node("summary", "Recognition components and confusions"));
+            const c = components(rows);
+            const selectedQuestions = new Set(rows.map((e) => e.questionId));
+            const recovery = assistedRecovery(evidence.filter((e) => e.mode === mode &&
+                e.subtask === subtask &&
+                selectedQuestions.has(e.questionId)));
+            if (recovery.eligibleCount)
+                detail.append(node("p", "Reference-assisted recovery: " +
+                    rate(recovery.recovered, recovery.eligibleCount) +
+                    ". Separate from first answers."));
+            table(detail, ["Component", "Descriptive answer items"], [
+                ["Degree", rate(c.degree, c.degreeN)],
+                ["Quality (hidden chords)", rate(c.quality, c.qualityN)],
+                ["Degree when quality correct", rate(c.conditional, c.conditionalN)],
+            ]);
+            table(detail, ["Component", "Expected", "Selected", "Expected-row rate"], c.confusion.map((c) => [
+                c.component,
+                c.expected,
+                c.selected,
+                rate(c.count, c.denominator),
+            ]), "confusions");
+            host.append(detail);
+        }
         if (mode === "m6") {
-            host.append(node("h3", "Phrase stages"), node("p", "Historical data supports overall activity ratings only. Stage visits are not stage mastery."));
-            table(host, ["Phrase", "Selected targets", "Precision", "Recall"], rows
+            const detail = node("details");
+            detail.append(node("summary", "Phrase stages"));
+            table(detail, ["Phrase", "Selected targets", "Precision", "Recall"], rows
                 .filter((e) => e.capabilities.marks)
                 .map((e) => {
                 const m = e.record.analytics.marks, s = markScore(m.expected, m.selected);
                 return [
                     e.config.phraseId,
-                    `${s.hits} correct selected`,
-                    s.precision === null ? "Unavailable" : rate(s.hits, s.selected),
+                    String(s.hits),
+                    s.precision === null ? "Not recorded" : rate(s.hits, s.selected),
                     rate(s.hits, s.expected),
                 ];
             }));
-            table(host, ["Phrase", "Stage", "Self-rating"], rows.flatMap((e) => (e.record.analytics?.stageRatings ?? []).map((r) => [
-                e.config.phraseId,
-                { 1: "Sing back", 3: "Predict", 5: "Bass transfer" }[r.stage] ?? String(r.stage),
-                r.grade,
-            ])));
+            if (!rows.some((e) => e.grain === "phrase-stage"))
+                detail.append(node("p", "Whole-activity ratings cannot locate stage difficulty."));
+            host.append(detail);
         }
         if (mode === "m7") {
-            host.append(node("h3", "Visual mapping"), node("p", "A locked diagram position measures visual mapping, separately from the physical self-rating. Old MIDI selections have unknown exposure."));
+            host.append(node("h3", "Visual mapping"));
             table(host, ["Position", "Pitch class", "Exact MIDI"], rows
-                .filter((e) => e.capabilities.position &&
-                (e.source === "visual" ||
-                    !rows.some((v) => v.source === "visual" && v.questionId === e.questionId)))
+                .filter((e) => e.source === "visual" && e.capabilities.position)
                 .map((e) => {
                 const p = e.record.analytics.position;
                 return [
-                    `${p.string} string / fret ${p.fret}`,
+                    p.string + " string / fret " + p.fret,
                     p.midi % 12 === p.expectedMidi % 12 ? "Match" : "Mismatch",
                     p.midi === p.expectedMidi ? "Match" : "Mismatch",
                 ];
             }));
         }
-        host.append(node("h3", "Comparable periods"));
-        const trends = matchedTrends(evidence.filter((e) => e.mode === mode && rows.some((row) => row.cohortKey === e.cohortKey)), timezone);
-        const currentMatched = trends.reduce((n, t) => n + t.current.eligibleCount, 0), priorMatched = trends.reduce((n, t) => n + t.prior.eligibleCount, 0);
-        host.append(node("p", `Matched coverage: ${currentMatched} current and ${priorMatched} prior independent questions across ${trends.length} comparable cohorts. Unmatched cohorts are excluded.`));
-        trends.slice(0, 2).forEach((trend) => renderTrend(host, evidence.filter((e) => e.cohortKey === trend.key), timezone));
-        table(host, ["Previous 28 days", "Current 28 days", "Difference", "Interpretation"], trends.map((t) => [
-            rate(t.prior.correct, t.prior.eligibleCount),
-            rate(t.current.correct, t.current.eligibleCount),
-            `${(t.delta * 100).toFixed(1)} percentage points`,
-            t.label,
-        ]));
-        host.append(node("p", "Only matching task, settings, measurement version and fresh-practice cohorts are compared. Targeted and exact-review practice do not improve this baseline. Unmatched settings are not evidence of improvement."));
-        table(host, [
-            "Previous median / valid n",
-            "Current median / valid n",
-            "Recorded decision time",
-        ], trends.map((t) => [
-            t.prior.median === null
-                ? "Unavailable"
-                : `${(t.prior.median / 1000).toFixed(1)}s / ${t.prior.timingCount}`,
-            t.current.median === null
-                ? "Unavailable"
-                : `${(t.current.median / 1000).toFixed(1)}s / ${t.current.timingCount}`,
-            t.speedLabel,
-        ]));
+        if (mode === "m4") {
+            const detail = node("details");
+            detail.append(node("summary", "Transition readiness"));
+            table(detail, ["Source → destination", "Ready before reference"], rows.map((e) => [
+                modeContext(e),
+                e.record.analytics?.ready
+                    ? "Declared"
+                    : e.version === "historical"
+                        ? "Not recorded"
+                        : "Not confirmed",
+            ]));
+            host.append(detail);
+        }
+        const reported = rows.filter((e) => e.record.analytics?.difficultyTags?.length ||
+            e.record.analytics?.troubleSteps?.length);
+        if (reported.length) {
+            const detail = node("details");
+            detail.append(node("summary", "User-reported difficulty"));
+            paginatedTable(detail, ["Context", "You reported"], reported, (e) => [
+                modeContext(e),
+                [
+                    ...(e.record.analytics?.difficultyTags ?? []),
+                    ...(e.record.analytics?.troubleSteps ?? []).map((n) => "Trouble position " + n),
+                ].join(", "),
+            ], 12, "Reported observations");
+            host.append(detail);
+        }
+        if (mode === "m5" && subtask.startsWith("continuous")) {
+            const events = await readAll("events");
+            if (host.dataset.route !== route)
+                return;
+            const starts = events.filter((e) => {
+                const config = e.payload?.config, origin = e.payload?.source, kind = origin?.includes("review")
+                    ? "exact-review"
+                    : origin?.startsWith("insight:")
+                        ? "targeted"
+                        : "fresh";
+                return (e.type === "performance_started" &&
+                    config?.mode === "m5" &&
+                    config.runMode + "-" + config.targetPattern === subtask &&
+                    (exposure === "all" || kind === exposure) &&
+                    (assistance === "all" || e.payload?.assistance === assistance) &&
+                    (!start || e.occurredAt >= start) &&
+                    Date.parse(e.occurredAt) <= now &&
+                    keys.every(([k]) => !contextFilters[k] ||
+                        contextFilters[k].includes(String(config[k] ?? "unknown"))));
+            });
+            const done = new Set(events
+                .filter((e) => e.type === "performance_completed")
+                .map((e) => e.payload?.runId)), stopped = new Set(events
+                .filter((e) => e.type === "performance_interrupted")
+                .map((e) => e.payload?.runId));
+            const complete = starts.filter((e) => done.has(e.payload?.runId)).length, interrupted = starts.filter((e) => !done.has(e.payload?.runId) && stopped.has(e.payload?.runId)).length;
+            const detail = node("details");
+            detail.append(node("summary", "Playback run completion"), node("p", complete +
+                " completed / " +
+                interrupted +
+                " interrupted / " +
+                (starts.length - complete - interrupted) +
+                " unresolved. Playback activity only; not note or rhythm accuracy."));
+            host.append(detail);
+        }
+        renderComparisons(host, rows, evidence, timezone, now);
         evidenceTable(host, rows, actions);
+        const diagnostics = node("details");
+        diagnostics.append(node("summary", "Summary rule diagnostics"));
+        diagnostics.append(node("pre", JSON.stringify({
+            policy: summaryPolicy.version,
+            candidates: model.candidates.map((i) => ({
+                id: i.id,
+                category: i.category,
+                certainty: i.certainty,
+                suppressedBy: i.suppressedBy,
+                reason: i.suppressionReason,
+            })),
+            comparisons: model.comparisons,
+        }, null, 2)));
+        host.append(diagnostics);
     }
     await health(host, evidence);
+    const focusId = sessionStorage.getItem("insights:focus");
+    if (focusId) {
+        host
+            .querySelector('[data-cell-id="' + focusId + '"]')
+            ?.focus();
+        sessionStorage.removeItem("insights:focus");
+    }
 }
-function focus(parent, cell, route, actions, timezone) {
+function renderComparisons(host, rows, evidence, timezone, now) {
+    const keys = new Set(rows.map((e) => e.cohortKey)), history = evidence.filter((e) => keys.has(e.cohortKey)), trends = matchedTrends(history, timezone, now);
+    host.append(node("h3", "Comparable periods"));
+    if (!trends.length) {
+        host.append(node("p", "Outcome results are available. No matched prior period is available for this selection."));
+        const why = node("details");
+        why.append(node("summary", "Why?"));
+        const span = policy.days * 86400000, eligibleCurrent = aggregate(history.filter((e) => Date.parse(e.createdAt) >= now - span), timezone, now), prior = aggregate(history.filter((e) => Date.parse(e.createdAt) >= now - 2 * span &&
+            Date.parse(e.createdAt) < now - span), timezone, now);
+        why.append(node("p", eligibleCurrent.eligibleCount +
+            " current / " +
+            prior.eligibleCount +
+            " prior eligible questions. Exact task, settings, exposure and measurement versions must match. Targeted/review and unknown-assistance results do not enter the fresh baseline."));
+        host.append(why);
+    }
+    else {
+        host.append(node("p", "Exact matched cohorts; outcomes and timing have separate samples. Unmatched practice is excluded."));
+        trends.slice(0, 2).forEach((t) => renderTrend(host, history.filter((e) => e.cohortKey === t.key), timezone, now));
+        table(host, ["Prior / current questions", "Outcome change", "Timing interpretation"], trends.map((t) => [
+            rate(t.prior.correct, t.prior.eligibleCount) +
+                " → " +
+                rate(t.current.correct, t.current.eligibleCount),
+            (t.delta * 100).toFixed(1) + " pp · " + t.label,
+            t.speedLabel,
+        ]));
+    }
+    if (!rows.some((e) => e.capabilities.timing))
+        host.append(node("p", "Standardized timing not recorded for these results."));
+}
+async function launchPlan(plan, route, actions) {
+    if (plan.questions.length !== 10)
+        throw new Error("The plan must contain ten validated tasks.");
+    plan.questions.forEach((q) => validateScheduled(q, { ...plan.config, ...q.presentation }));
+    await put("drillPlans", plan);
+    await actions.start(plan.config, plan.customSnapshots, "insight:" + plan.id, plan.questions, plan);
+}
+function paginatedTable(parent, headers, items, row, size, label) {
+    const section = node("section"), controls = node("div"), search = node("input"), sort = node("select"), content = node("div"), status = node("p");
+    section.className = "insight-paged";
+    search.type = "search";
+    search.placeholder = "Search " + label.toLowerCase();
+    search.setAttribute("aria-label", "Search " + label.toLowerCase());
+    sort.setAttribute("aria-label", "Sort " + label.toLowerCase());
+    sort.add(new Option("Original order", "original"));
+    sort.add(new Option("Reverse order", "reverse"));
+    let page = 0;
+    const prev = button("Previous", () => {
+        page--;
+        draw();
+    }), next = button("Next", () => {
+        page++;
+        draw();
+    });
+    function draw() {
+        let filtered = search.value
+            ? items.filter((item) => {
+                const e = item;
+                const text = e.record
+                    ? [
+                        e.id,
+                        e.createdAt,
+                        e.mode,
+                        e.subtask,
+                        e.record.chords,
+                        e.record.targets,
+                        e.record.grade,
+                    ]
+                    : (e.label ?? item);
+                return JSON.stringify(text)
+                    .toLowerCase()
+                    .includes(search.value.toLowerCase());
+            })
+            : items;
+        if (sort.value === "reverse")
+            filtered = filtered.slice().reverse();
+        const pages = Math.max(1, Math.ceil(filtered.length / size));
+        page = Math.max(0, Math.min(page, pages - 1));
+        status.textContent =
+            filtered.length +
+                " of " +
+                items.length +
+                " " +
+                label.toLowerCase() +
+                " · page " +
+                (page + 1) +
+                "/" +
+                pages;
+        prev.disabled = page === 0;
+        next.disabled = page === pages - 1;
+        content.replaceChildren();
+        table(content, headers, filtered.slice(page * size, (page + 1) * size).map(row));
+    }
+    search.oninput = () => {
+        page = 0;
+        draw();
+    };
+    sort.onchange = () => {
+        page = 0;
+        draw();
+    };
+    controls.append(search, sort, prev, next);
+    section.append(status, controls, content);
+    parent.append(section);
+    draw();
+}
+function focus(parent, cell, route, actions, timezone, compact = false) {
     const box = node("article");
     box.className = "insight-focus";
-    const stats = aggregate(cell.rows, timezone), rank = priorities(cell.rows, timezone)[0];
-    box.append(node("h3", `${cell.rows[0].mode.toUpperCase()} · ${cell.label}`), node("p", `${cell.category ?? rank?.category ?? "Historical context"} · ${stats.label}. ${stats.correct}/${stats.eligibleCount} independent fresh questions; ${stats.sessions} sessions / ${stats.days} days.`));
+    const stats = cell.diagnosticStats ?? aggregate(cell.rows, timezone), rank = cell.category ?? "Selected evidence; not an automatic difficulty claim";
+    box.append(node("h3", `${cell.rows[0].mode.toUpperCase()} · ${cell.label}`), node("p", compact
+        ? `${stats.label} · ${stats.correct}/${stats.eligibleCount} independent questions · ${stats.sessions} sessions / ${stats.days} days.`
+        : `${rank} · ${stats.label}. ${stats.correct}/${stats.eligibleCount} independent fresh questions; ${stats.sessions} sessions / ${stats.days} days.`));
     const result = compileDrill(cell, route);
+    const extra = compact ? node("details") : box;
+    if (compact) {
+        extra.className = "insight-card-details";
+        extra.append(node("summary", "Details and settings"));
+    }
     const e = cell.rows[0];
-    box.append(node("p", `${e.source === "self" ? "Self-assessed production" : e.source === "visual" ? "Visual mapping" : "Automatic answers"} · ${e.grain}`));
+    box.append(node("p", `${e.source === "self" ? "Self-assessed production" : e.source === "visual" ? "Visual mapping" : "Automatic answers"} · ${cell.metricLabel ?? e.grain}`));
+    const settings = node("details");
+    settings.append(node("summary", "Adjust focus"));
     if (e.challenge && ["m3", "m4", "m5", "m6", "m7"].includes(e.mode)) {
         const label = node("label", e.mode === "m6"
             ? "Stage focus"
@@ -648,11 +1016,11 @@ function focus(parent, cell, route, actions, timezone) {
                         : { targetIndex: Number(select.value) },
             };
             const replacement = node("div");
-            focus(replacement, next, route, actions, timezone);
+            focus(replacement, next, route, actions, timezone, compact);
             box.replaceWith(...Array.from(replacement.children));
         };
         label.append(select);
-        box.append(label);
+        settings.append(label);
     }
     if (result.plan) {
         const plan = result.plan;
@@ -661,12 +1029,11 @@ function focus(parent, cell, route, actions, timezone) {
             plan.reason += " · one-context-replay experiment";
             plan.changedDifficulty.push("Context replay limit: one");
         }
-        box.append(node("p", plan.reason), button("Practise 10", async () => {
-            await put("drillPlans", plan);
-            await actions.start(plan.config, plan.customSnapshots, "insight:" + plan.id, plan.questions, plan);
-        }));
+        box.append(node("p", compact ? plan.reason.split(".")[0] : plan.reason), button("Practise 10", () => launchPlan(plan, route, actions)));
         const preview = node("details");
         preview.append(node("summary", "Scheduled targets and settings"));
+        if (compact)
+            preview.append(node("p", plan.reason));
         table(preview, ["Question", "Actual targets", "Task / tempo / repeats"], plan.questions.map((q, i) => {
             const config = { ...plan.config, ...q.presentation };
             return [
@@ -677,32 +1044,33 @@ function focus(parent, cell, route, actions, timezone) {
                 `${task(config)} / ${config.bpm} BPM / ${config.repeats}`,
             ];
         }));
-        box.append(preview);
+        extra.append(preview);
     }
     else
         box.append(node("p", result.unsupportedReason));
-    box.append(button("Customize", () => actions.customize(cell.rows[0].config, cell.rows[0].session.customSnapshot ?? [])));
+    settings.append(button("Customize", () => actions.customize(cell.rows[0].config, cell.rows[0].session.customSnapshot ?? [])));
+    extra.append(settings);
     const detail = node("details");
     detail.append(node("summary", "Evidence and exclusions"));
     evidenceTable(detail, cell.rows, actions);
-    box.append(detail);
+    extra.append(detail);
+    if (compact)
+        box.append(extra);
     parent.append(box);
 }
-function evidenceTable(parent, rows, actions) {
+function evidenceTable(parent, rows, actions, opened = false) {
     const details = node("details");
-    details.append(node("summary", `Evidence table (${rows.length})`));
-    table(details, [
+    details.open = opened;
+    details.append(node("summary", "Evidence table (" + rows.length + ")"));
+    paginatedTable(details, [
         "Date / session",
         "Actual material",
-        "Outcome / source",
-        "Exposure",
+        "Outcome / source / unit",
+        "Exposure / assistance",
         "Timing",
         "Review",
-    ], [...rows]
-        .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt) ||
-        a.id.localeCompare(b.id))
-        .map((e) => [
-        `${e.createdAt} / ${e.sessionId.slice(0, 8)}`,
+    ], [...rows].sort((a, b) => b.createdAt.localeCompare(a.createdAt) || a.id.localeCompare(b.id)), (e) => [
+        e.createdAt + " / " + e.sessionId.slice(0, 8),
         e.record.chords
             .map((c, i) => c +
             "/" +
@@ -713,17 +1081,22 @@ function evidenceTable(parent, rows, actions) {
                 ? " (MIDI " + e.record.actualMidis[i] + ")"
                 : ""))
             .join(" → "),
-        `${e.record.grade} / ${e.source} / ${e.grain}`,
-        `${e.exposure} / ${e.assistance}`,
+        e.record.grade + " / " + e.source + " / " + e.grain,
+        e.exposure + " / " + e.assistance,
         e.version === "historical"
-            ? `Legacy recorded response time: ${Number.isFinite(e.record.responseLatency) ? e.record.responseLatency.toFixed(1) + "s" : "unavailable"}`
-            : e.record.analytics?.activeMs == null
-                ? "Unavailable / interrupted"
-                : `${(e.record.analytics.activeMs / 1000).toFixed(1)}s active decision`,
+            ? "Legacy recorded response time: " +
+                (Number.isFinite(e.record.responseLatency)
+                    ? e.record.responseLatency.toFixed(1) + "s"
+                    : "Not recorded")
+            : e.capabilities.timing
+                ? (e.record.analytics.activeMs / 1000).toFixed(2) +
+                    "s · " +
+                    e.record.analytics.timingVersion
+                : "Not recorded / interrupted",
         e.challenge
             ? button("Exact review", () => actions.start({ ...e.config, count: 1 }, e.session.customSnapshot ?? [], "exact-review", [e.challenge]))
             : "Snapshot unavailable",
-    ]));
+    ], 25, "Assessments");
     parent.append(details);
 }
 async function renderLegacy(host) {
@@ -731,6 +1104,10 @@ async function renderLegacy(host) {
     const imports = await readAll("imports");
     const data = imports.find((i) => i.id === "historical-v1")?.legacy ??
         legacyData(localStorage);
+    const language = new URLSearchParams((routeToken ?? "").split("?")[1] ?? "").get("lang") ===
+        "zh-Hant"
+        ? "zh-Hant"
+        : "en";
     const events = await readAll("events");
     if (host.dataset.route !== routeToken)
         return;
@@ -738,6 +1115,57 @@ async function renderLegacy(host) {
     for (const legacy of data) {
         const section = node("section");
         section.append(node("h3", legacy.title));
+        const summary = node("section");
+        summary.className = "smart-summary";
+        summary.append(node("h4", "Smart Insights Summary"), node("p", "Rule-based summary · all retained solved history"));
+        const firstTry = legacy.rows.filter((r) => r.attempts === 1).length;
+        const text = legacy.id === "progression-id"
+            ? renderTemplate("legacy-progression", {}, language)
+            : legacy.rows.length
+                ? renderTemplate("legacy", { focus: legacy.title, k: firstTry, n: legacy.rows.length }, language)
+                : language === "zh-Hant"
+                    ? "沒有已保存的答題結果。"
+                    : "No retained solved outcomes.";
+        summary.append(node("p", text ?? "Evidence unavailable."));
+        if (legacy.rows.length)
+            summary.append(button("View Evidence", () => {
+                const panel = node("details");
+                panel.open = true;
+                panel.append(node("summary", legacy.title + " · import evidence"));
+                let originals = [];
+                try {
+                    const raw = JSON.parse(legacy.rawQuestions ?? "[]");
+                    if (Array.isArray(raw))
+                        originals = raw;
+                }
+                catch { }
+                const refs = originals.flatMap((r, index) => r &&
+                    typeof r === "object" &&
+                    Number.isInteger(r.attempts) &&
+                    Number(r.attempts) >= 1
+                    ? [
+                        {
+                            id: "historical-v1:" + legacy.id + ":" + index,
+                            sourceKey: legacy.key,
+                            rawIndex: index,
+                        },
+                    ]
+                    : []);
+                panel.append(node("pre", JSON.stringify({
+                    schemaVersion: 1,
+                    importBatch: "historical-v1",
+                    source: legacy.key,
+                    assessmentRefs: refs,
+                    independentQuestionCount: null,
+                    sourceRevision: hash(legacy.rawQuestions),
+                    limitations: [
+                        "undated solved-only rows",
+                        "stable adapter provenance is not independent question identity",
+                    ],
+                }, null, 2)));
+                summary.append(panel);
+            }));
+        section.append(summary);
         if (legacy.error)
             section.append(node("p", legacy.error + " · Original storage preserved."));
         section.append(node("p", legacy.id === "progression-id"
@@ -840,6 +1268,12 @@ async function health(host, evidence) {
         a.download = "jazz-insights.json";
         a.click();
         setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }));
+    details.append(button("Clear derived cache", () => {
+        clearSummaryCache();
+        const status = node("p", "Derived cache cleared. Practice history and saved presets are unchanged.");
+        status.setAttribute("role", "status");
+        details.append(status);
     }));
     const upload = node("input");
     upload.type = "file";

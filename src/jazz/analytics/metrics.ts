@@ -100,8 +100,18 @@ export function aggregate(
   };
 }
 export interface Cell {
+  diagnosticStats?: {
+    correct: number;
+    eligibleCount: number;
+    sessions: number;
+    days: number;
+    label: string;
+  };
+  metricLabel?: string;
   category?: string;
   focus?: {
+    component?: "degree" | "quality";
+    selected?: string;
     targetIndex?: number;
     stage?: import("../model.js").Config["phraseFocus"];
     position?: { string: string; fret: number; midi: number };
@@ -332,68 +342,75 @@ export function matchedTrends(
   now = Date.now(),
 ) {
   const span = policy.days * 86400000,
-    keys = [...new Set(rows.map((e) => e.cohortKey))];
-  return keys.flatMap((key) => {
-    const cohort = rows.filter((e) => e.cohortKey === key && eligible(e, now));
-    const current = aggregate(
-      cohort.filter((e) => Date.parse(e.createdAt) >= now - span),
-      timezone,
-      now,
-    );
-    const prior = aggregate(
-      cohort.filter(
-        (e) =>
-          Date.parse(e.createdAt) >= now - 2 * span &&
-          Date.parse(e.createdAt) < now - span,
-      ),
-      timezone,
-      now,
-    );
-    if (!current.eligibleCount || !prior.eligibleCount) return [];
-    const delta =
-      current.correct / current.eligibleCount -
-      prior.correct / prior.eligibleCount;
-    const supported =
-      current.label === "Enough to guide practice" &&
-      prior.label === "Enough to guide practice";
-    const separated =
-      current.interval![0] > prior.interval![1] ||
-      prior.interval![0] > current.interval![1];
-    const timingSupported = [current, prior].every(
-      (s) =>
-        s.timingCount >= policy.timingMinimum &&
-        s.timingSessions >= 3 &&
-        s.timingDays >= 3,
-    );
-    const timingChange =
-      current.median !== null && prior.median !== null && prior.median > 0
-        ? (current.median - prior.median) / prior.median
-        : null;
-    const speedLabel = !timingSupported
-      ? "Descriptive time only; more comparable timing evidence needed"
-      : timingChange !== null && timingChange <= -0.2
-        ? delta < 0
-          ? "Faster with lower outcome rate: trade-off"
-          : "Faster recorded decisions; descriptive signal"
-        : timingChange !== null &&
-            timingChange > 0.25 &&
-            current.correct / current.eligibleCount >= policy.target
-          ? "Correct but slower than this personal baseline"
-          : "No supported speed signal";
-    return [
-      {
-        key,
-        current,
-        prior,
-        delta,
-        timingSupported,
-        timingChange,
-        speedLabel,
-        label:
-          supported && separated && Math.abs(delta) >= 0.1
-            ? "Clear change in recorded performance"
-            : "Directional / uncertain",
-      },
-    ];
-  });
+    groups = new Map<string, Evidence[]>();
+  for (const e of rows) {
+    if (!eligible(e, now)) continue;
+    const group = groups.get(e.cohortKey) ?? [];
+    group.push(e);
+    groups.set(e.cohortKey, group);
+  }
+  return [...groups]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .flatMap(([key, cohort]) => {
+      const current = aggregate(
+        cohort.filter((e) => Date.parse(e.createdAt) >= now - span),
+        timezone,
+        now,
+      );
+      const prior = aggregate(
+        cohort.filter(
+          (e) =>
+            Date.parse(e.createdAt) >= now - 2 * span &&
+            Date.parse(e.createdAt) < now - span,
+        ),
+        timezone,
+        now,
+      );
+      if (!current.eligibleCount || !prior.eligibleCount) return [];
+      const delta =
+        current.correct / current.eligibleCount -
+        prior.correct / prior.eligibleCount;
+      const supported =
+        current.label === "Enough to guide practice" &&
+        prior.label === "Enough to guide practice";
+      const separated =
+        current.interval![0] > prior.interval![1] ||
+        prior.interval![0] > current.interval![1];
+      const timingSupported = [current, prior].every(
+        (s) =>
+          s.timingCount >= policy.timingMinimum &&
+          s.timingSessions >= 3 &&
+          s.timingDays >= 3,
+      );
+      const timingChange =
+        current.median !== null && prior.median !== null && prior.median > 0
+          ? (current.median - prior.median) / prior.median
+          : null;
+      const speedLabel = !timingSupported
+        ? "Descriptive time only; more comparable timing evidence needed"
+        : timingChange !== null && timingChange <= -0.2
+          ? delta < 0
+            ? "Faster with lower outcome rate: trade-off"
+            : "Faster recorded decisions; descriptive signal"
+          : timingChange !== null &&
+              timingChange > 0.25 &&
+              current.correct / current.eligibleCount >= policy.target
+            ? "Correct but slower than this personal baseline"
+            : "No supported speed signal";
+      return [
+        {
+          key,
+          current,
+          prior,
+          delta,
+          timingSupported,
+          timingChange,
+          speedLabel,
+          label:
+            supported && separated && Math.abs(delta) >= 0.1
+              ? "Clear change in recorded performance"
+              : "Directional / uncertain",
+        },
+      ];
+    });
 }

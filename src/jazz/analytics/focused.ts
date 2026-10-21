@@ -157,9 +157,12 @@ export function qualityContrast(cell: Cell, route: string): Eligibility {
   try {
     const e = cell.rows[0],
       expected = parseChord(e.record.chords[0]),
-      selected = cell.rows
-        .map((r) => r.record.selectedQualities?.[0])
-        .find((q) => q && q !== expected.quality);
+      selected =
+        cell.focus?.component === "quality"
+          ? cell.focus.selected
+          : cell.rows
+              .map((r) => r.record.selectedQualities?.[0])
+              .find((q) => q && q !== expected.quality);
     if (!selected)
       throw new Error("No committed quality contrast is available.");
     parseChord(expected.root + selected);

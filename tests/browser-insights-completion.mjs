@@ -13,14 +13,27 @@ const session = () =>
     JSON.parse(localStorage.getItem("jazzEarLab:v1:sessions")).at(-1),
   );
 async function startFocus(route) {
-  await navigate(page, route);
-  await page.locator(".insight-focus").first().waitFor();
+  await openFocus(route);
   await page
+    .locator("#selected-cell")
     .getByRole("button", { name: "Practise 10", exact: true })
     .first()
     .click();
   await page.waitForURL(/#\/session\/[^/]+$/);
   return session();
+}
+async function openFocus(route) {
+  await navigate(page, route);
+  await page.locator(".aggregate-matrix [data-cell-id]").first().click();
+  await page
+    .locator("#selected-cell")
+    .getByRole("button", { name: "Inspect", exact: true })
+    .first()
+    .click();
+  await page
+    .locator("#selected-cell")
+    .getByText("Adjust focus", { exact: true })
+    .click();
 }
 try {
   await configure(page, {
@@ -107,12 +120,13 @@ try {
   await ready(page);
   await page.locator("#reveal").click();
   await page.locator("[data-grade=close]").click();
-  await navigate(page, "insights/m6");
+  await openFocus("insights/m6");
   await page
     .getByLabel("Stage focus", { exact: true })
     .first()
     .selectOption("bass");
   await page
+    .locator("#selected-cell")
     .getByRole("button", { name: "Practise 10", exact: true })
     .first()
     .click();
@@ -133,7 +147,7 @@ try {
   await ready(page);
   await page.locator("#reveal").click();
   await page.locator("[data-grade=missed]").click();
-  await navigate(page, "insights/m7?task=hear-play");
+  await openFocus("insights/m7?task=hear-play");
   const position = page.getByLabel("Position focus", { exact: true }).first();
   await position.waitFor();
   const options = await position
@@ -142,6 +156,7 @@ try {
   assert.ok(options.length >= 2);
   await position.selectOption(options[1]);
   await page
+    .locator("#selected-cell")
     .getByRole("button", { name: "Practise 10", exact: true })
     .first()
     .click();

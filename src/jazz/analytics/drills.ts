@@ -4,7 +4,11 @@ import {
   type Challenge,
   type Config,
 } from "../model.js";
-import { allowedTargetDegrees, parseChord } from "../theory.js";
+import {
+  allowedTargetDegrees,
+  parseChord,
+  recognitionDegrees,
+} from "../theory.js";
 import { seededRandom } from "../lifecycle.js";
 import type { Cell } from "./metrics.js";
 import { hash } from "./types.js";
@@ -59,6 +63,12 @@ export function compileDrill(
       supported: false,
       unsupportedReason: "No saved context. Configure a diagnostic set.",
     };
+  if (e.mode === "m3" && cell.focus?.selected)
+    return {
+      supported: false,
+      unsupportedReason:
+        "This role confusion is recorded within a sequence. A balanced single-label contrast cannot preserve its held-pitch task; customize a role-pair diagnostic.",
+    };
   if (["m3", "m4", "m5", "m6"].includes(e.mode) || cell.focus?.position)
     return compileAdvanced(cell, route);
   if (!["m1", "m2", "m7"].includes(e.mode) || !cell.quality || !cell.degree)
@@ -69,6 +79,8 @@ export function compileDrill(
     };
   try {
     if (e.mode === "m2" && !e.config.showChords) {
+      if (cell.focus?.component === "quality")
+        return qualityContrast(cell, route);
       const qualityErrors = cell.rows.filter(
         (r) =>
           r.record.selectedQualities?.[0] &&
@@ -79,7 +91,8 @@ export function compileDrill(
           r.record.selectedDegrees?.[0] &&
           r.record.selectedDegrees[0] !== cell.degree,
       ).length;
-      if (qualityErrors > degreeErrors) return qualityContrast(cell, route);
+      if (!cell.focus?.component && qualityErrors > degreeErrors)
+        return qualityContrast(cell, route);
     }
     const config = {
       ...e.config,
@@ -101,9 +114,11 @@ export function compileDrill(
     );
     const confusion =
       e.mode === "m2"
-        ? cell.rows
-            .map((r) => r.record.selectedDegrees?.[0])
-            .find((d) => d && d !== cell.degree && choices.includes(d))
+        ? cell.focus?.component === "degree"
+          ? cell.focus.selected
+          : cell.rows
+              .map((r) => r.record.selectedDegrees?.[0])
+              .find((d) => d && d !== cell.degree && choices.includes(d))
         : undefined;
     const contrast =
       confusion ??
@@ -120,6 +135,20 @@ export function compileDrill(
         unsupportedReason:
           "No compatible nearby contrast within these settings. Customize the target pool.",
       };
+    if (e.mode === "m2") {
+      const responses = recognitionDegrees(
+        parseChord(config.root + cell.quality),
+      );
+      if (![cell.degree, contrast].every((d) => responses.includes(d)))
+        return {
+          supported: false,
+          unsupportedReason:
+            "The recorded response-choice pool cannot answer both focus and contrast targets. Customize the choices.",
+        };
+    }
+    const observedRoots = [
+      ...new Set(cell.rows.map((r) => parseChord(r.record.chords[0]).root)),
+    ].sort();
     const customs = e.session.customSnapshot ?? [],
       seed = hash([cell.id, cell.rows.map((r) => r.id)]);
     const random = seededRandom(seed, 0);
@@ -133,8 +162,9 @@ export function compileDrill(
       [allocation[i], allocation[j]] = [allocation[j], allocation[i]];
     }
     const questions = allocation.map((degree, i) => {
+      const root = observedRoots[i % observedRoots.length];
       const settings = validateConfig(
-        { ...config, degree, degreePool: [degree] },
+        { ...config, root, roots: root, degree, degreePool: [degree] },
         customs,
       );
       const question = generate(settings, i, customs, seededRandom(seed, i));
@@ -144,6 +174,7 @@ export function compileDrill(
         question.targets[0].chord.quality !== cell.quality
       )
         throw new Error("Generated target did not match the focus.");
+      question.presentation = { root, roots: root, rootOrder: "fixed" };
       return question;
     });
     config.degreePool = [cell.degree, contrast];
@@ -153,7 +184,7 @@ export function compileDrill(
       plan: {
         id: "drill-" + seed,
         version: 1,
-        reason: `${config.root}: ${focusCount} ${cell.quality}/${cell.degree}; ${10 - focusCount} ${cell.quality}/${contrast}`,
+        reason: `${observedRoots.join(", ")}: ${focusCount} ${cell.quality}/${cell.degree}; ${10 - focusCount} ${cell.quality}/${contrast}. Repeated target material is labelled targeted, not fresh independent evidence.`,
         sourceCohortKey: e.cohortKey,
         evidenceAsOf: new Date().toISOString(),
         evidenceAssessmentIds: cell.rows.map((r) => r.id),
@@ -167,7 +198,7 @@ export function compileDrill(
         baseline: e.config,
         changedDifficulty: [
           `Target sampling: ${focusCount} focus / ${10 - focusCount} contrast`,
-          `Root scope: ${config.root}`,
+          `Root scope: ${observedRoots.join(", ")}`,
         ],
       },
     };

@@ -40,7 +40,16 @@ try {
   const savedBefore = await page.evaluate(() =>
     localStorage.getItem("jazzEarLab:v1:savedPresets"),
   );
+  // A lone miss is coverage, not an automatic weakness. Explicit cell review
+  // remains available with the original 7/3 focused generator.
+  await page.locator(".aggregate-matrix [data-cell-id]").first().click();
   await page
+    .locator("#selected-cell")
+    .getByRole("button", { name: "Inspect", exact: true })
+    .first()
+    .click();
+  await page
+    .locator("#selected-cell")
     .getByRole("button", { name: "Practise 10", exact: true })
     .first()
     .click();
@@ -51,7 +60,7 @@ try {
   assert.notEqual(drill.id, first[0].sessionId);
   assert.equal(drill.questions.length, 10);
   assert.ok(drill.insightPlanId);
-  assert.equal(drill.insightOrigin, "insights/m1");
+  assert.match(drill.insightOrigin, /^insights\/m1\?cell=/);
   const focus = first[0].record.targets[0];
   assert.equal(
     drill.questions.filter((q) => q.targets[0].degree === focus).length,
@@ -109,6 +118,7 @@ try {
   await page.locator("[data-grade=correct]").click();
   await navigate(page, "insights/m4");
   await page.locator("#skill-stats table").waitFor();
+  await page.getByText("Transition readiness", { exact: true }).click();
   assert.match(
     await page.locator("#analytics-content").innerText(),
     /Declared/,
@@ -136,17 +146,21 @@ try {
     await r.put("assessments", prior);
   }, first[0]);
   await navigate(page, "insights/m1");
-  await page.locator(".insight-trend canvas").waitFor();
+  await page.locator(".insight-trend canvas").first().waitFor();
   assert.equal(
-    await page.locator(".insight-trend canvas").evaluate((canvas) => {
-      const data = canvas
-        .getContext("2d")
-        .getImageData(0, 0, canvas.width, canvas.height).data;
-      let colored = 0;
-      for (let i = 0; i < data.length; i += 4)
-        if (data[i] < 240 && data[i + 1] < 240 && data[i + 2] < 240) colored++;
-      return colored > 100;
-    }),
+    await page
+      .locator(".insight-trend canvas")
+      .first()
+      .evaluate((canvas) => {
+        const data = canvas
+          .getContext("2d")
+          .getImageData(0, 0, canvas.width, canvas.height).data;
+        let colored = 0;
+        for (let i = 0; i < data.length; i += 4)
+          if (data[i] < 240 && data[i + 1] < 240 && data[i + 2] < 240)
+            colored++;
+        return colored > 100;
+      }),
     true,
   );
   await page.screenshot({

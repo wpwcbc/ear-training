@@ -1753,6 +1753,249 @@ button.fret.picked {
   border-top: 1px solid #cbd4d0;
   padding-top: 16px;
 }
+.insight-primary {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: end;
+}
+.analytics .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+.insight-primary label {
+  display: grid;
+  gap: 4px;
+  min-width: 140px;
+  max-width: 100%;
+}
+.insight-primary select {
+  min-height: 44px;
+  max-width: 100%;
+}
+.insight-scope {
+  font-size: 14px;
+  color: #53635e;
+  overflow-wrap: anywhere;
+}
+.insight-advanced {
+  border-bottom: 1px solid #cbd4d0;
+}
+.smart-summary {
+  border-left: 3px solid #236b56;
+  padding: 4px 16px;
+  margin-block: 20px;
+}
+.smart-summary h3 {
+  margin-top: 0;
+}
+.insight-statement {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  align-items: center;
+  margin-block: 12px;
+}
+.insight-statement p {
+  flex: 1 1 320px;
+  margin: 0;
+}
+.insight-statement button {
+  background: transparent;
+  color: #175e4c;
+  border: 1px solid #b3c9c0;
+}
+.insight-focus-queue {
+  align-items: start;
+}
+.insight-recommendation {
+  min-width: 0;
+}
+.insight-recommendation h4 {
+  font-size: 14px;
+  margin: 0 0 8px;
+  color: #53635e;
+}
+.insight-recommendation .insight-focus {
+  padding: 14px;
+}
+.insight-recommendation .insight-focus p {
+  font-size: 14px;
+  line-height: 1.5;
+}
+.insight-recommendation .insight-focus > button:not(:first-of-type) {
+  background: transparent;
+  color: #175e4c;
+  border: 1px solid #b3c9c0;
+}
+.insight-card-details:not([open]) {
+  margin-block: 6px;
+}
+.analytics .insight-card-details > summary {
+  padding-block: 8px;
+}
+.lab:has(#insights-view:not([hidden])) .lab-heading {
+  margin-bottom: 12px;
+}
+.lab:has(#insights-view:not([hidden])) .lab-tabs {
+  margin-bottom: 14px;
+}
+.analytics .smart-summary {
+  margin-block: 12px;
+}
+.analytics > p {
+  margin-block: 8px;
+}
+.analytics > p:has(+ .smart-summary) {
+  font-size: 12px;
+  color: #53635e;
+}
+.analytics .insight-focus-queue h3 {
+  margin-top: 12px;
+}
+.analytics .insight-nav {
+  margin-top: 4px;
+  margin-bottom: 8px;
+}
+.insight-mode-grid {
+  display: block;
+}
+.insight-mode-grid article {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  border: 0;
+  border-bottom: 1px solid #cbd4d0;
+  border-radius: 0;
+  background: transparent;
+  padding: 12px 0;
+  margin: 0;
+}
+.insight-mode-grid h4 {
+  flex: 1 1 240px;
+  margin: 0;
+}
+.insight-mode-grid p {
+  flex: 1 1 200px;
+  margin: 0;
+  font-size: 14px;
+}
+.insight-mode-grid button {
+  font-size: 14px;
+  background: transparent;
+  color: #175e4c;
+  border: 1px solid #b3c9c0;
+}
+.insight-cell-detail,
+.insight-evidence-panel {
+  border-block: 2px solid #829d91;
+  margin-block: 20px;
+  padding-block: 16px;
+  scroll-margin-top: 16px;
+}
+.analytics pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-width: 100%;
+  font-size: 12px;
+}
+.insight-paged > div:first-of-type {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-block: 10px;
+}
+.insight-paged input,
+.insight-paged select {
+  max-width: 100%;
+  min-height: 44px;
+  flex: 1 1 150px;
+  min-width: 0;
+}
+.insight-paged button {
+  min-height: 44px;
+}
+.aggregate-matrix caption {
+  text-align: left;
+  font-size: 13px;
+  color: #53635e;
+  padding-block: 10px;
+}
+.aggregate-matrix table {
+  min-width: 100%;
+}
+.aggregate-matrix th {
+  max-width: 260px;
+  overflow-wrap: anywhere;
+}
+.aggregate-matrix .matrix-value {
+  min-width: 140px;
+  width: 100%;
+  min-height: 80px;
+  white-space: normal;
+  border-radius: 3px;
+}
+.aggregate-matrix [data-reliability="early"],
+.aggregate-matrix [data-reliability="building"] {
+  border-style: dashed;
+  background: #f7faf9;
+  color: #344d43;
+}
+.matrix-table-view .matrix-value {
+  min-height: 44px;
+  background: transparent;
+  border: 0;
+  text-align: left;
+}
+.degree-strip {
+  font-size: 14px;
+}
+.analytics :focus-visible {
+  outline: 3px solid #b7641d;
+  outline-offset: 3px;
+}
+@media (max-width: 600px) {
+  .analytics {
+    padding-inline: 0;
+  }
+  .insight-nav {
+    flex-wrap: nowrap;
+    overflow: auto;
+    max-width: 100%;
+    gap: 2px;
+  }
+  .insight-nav a {
+    flex: 0 0 auto;
+    padding: 10px;
+  }
+  .insight-focus-queue {
+    display: block;
+  }
+  .insight-recommendation {
+    margin-block: 16px;
+  }
+  .insight-mode-grid article {
+    gap: 8px;
+  }
+  .insight-mode-grid h4 {
+    flex-basis: 100%;
+  }
+  .smart-summary {
+    padding-inline: 12px;
+  }
+  .insight-statement button {
+    width: auto;
+    max-width: 100%;
+  }
+}
 .insight-trend {
   margin: 20px 0;
 }

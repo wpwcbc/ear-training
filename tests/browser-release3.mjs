@@ -30,6 +30,9 @@ try {
   await page.locator("#reveal").click();
   assert.match(await page.locator("#status").innerText(), /Correct/);
   await navigate(page, "insights/m2");
+  await page
+    .getByText("Recognition components and confusions", { exact: true })
+    .click();
   await page.locator("#confusions table").waitFor();
   assert.match(
     await page.locator("#confusions").innerText(),

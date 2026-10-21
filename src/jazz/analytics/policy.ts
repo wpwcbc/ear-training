@@ -48,11 +48,17 @@ export function quantile(values: number[], fraction: number): number | null {
     sorted[floor] + (sorted[Math.ceil(index)] - sorted[floor]) * (index - floor)
   );
 }
+const dateFormatters = new Map<string, Intl.DateTimeFormat>();
 export function dayKey(timestamp: string, timezone: string): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: timezone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date(timestamp));
+  let formatter = dateFormatters.get(timezone);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat("en-CA", {
+      timeZone: timezone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+    dateFormatters.set(timezone, formatter);
+  }
+  return formatter.format(new Date(timestamp));
 }

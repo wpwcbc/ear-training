@@ -1,0 +1,22 @@
+import { policy } from "../policy.js";
+export const summaryPolicy = Object.freeze({
+  schemaVersion: 1,
+  version: "insights-ux-summary/1",
+  baseSufficiencyPolicyVersion: policy.version,
+  maxOverviewStatements: 4,
+  maxModeStatements: 3,
+  maxRecommendations: 3,
+  rootMinimum: 3,
+  perRootQuestionMinimum: 5,
+  maxRootShare: 0.6,
+  crossQualityMinimum: 2,
+  maxQualityShare: 0.7,
+  minMatchedShare: 0.5,
+  maxStratumShareDifference: 0.2,
+  minRelativeDifferencePp: 10,
+  minConfusionErrors: 5,
+  minConfusionRowRate: 0.2,
+  contextPageSize: 12,
+  evidencePageSize: 25,
+  generatorAttemptsPerSlot: 100,
+});

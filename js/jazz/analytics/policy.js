@@ -40,11 +40,17 @@ export function quantile(values, fraction) {
     const index = (sorted.length - 1) * fraction, floor = Math.floor(index);
     return (sorted[floor] + (sorted[Math.ceil(index)] - sorted[floor]) * (index - floor));
 }
+const dateFormatters = new Map();
 export function dayKey(timestamp, timezone) {
-    return new Intl.DateTimeFormat("en-CA", {
-        timeZone: timezone,
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-    }).format(new Date(timestamp));
+    let formatter = dateFormatters.get(timezone);
+    if (!formatter) {
+        formatter = new Intl.DateTimeFormat("en-CA", {
+            timeZone: timezone,
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+        });
+        dateFormatters.set(timezone, formatter);
+    }
+    return formatter.format(new Date(timestamp));
 }

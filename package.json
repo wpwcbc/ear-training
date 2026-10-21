@@ -10,7 +10,8 @@
 		"build": "tsc -p .",
 		"dev": "node scripts/serve.mjs",
 		"test": "npm run build && node --test tests/*.test.mjs",
-		"test:browser": "node tests/browser.mjs && node tests/browser-release3.mjs && node tests/browser-release4.mjs && node tests/browser-flow.mjs && node tests/browser-design.mjs && node tests/browser-autoplay.mjs && node tests/browser-insights.mjs && node tests/browser-insights-completion.mjs && node tests/browser-legacy-insights.mjs",
+		"test:browser": "node tests/browser.mjs && node tests/browser-release3.mjs && node tests/browser-release4.mjs && node tests/browser-flow.mjs && node tests/browser-design.mjs && node tests/browser-autoplay.mjs && node tests/browser-insights.mjs && node tests/browser-insights-completion.mjs && node tests/browser-legacy-insights.mjs && node tests/browser-smart-summary.mjs",
+		"benchmark:summary": "node scripts/benchmark-summary.mjs",
 		"watch": "tsc -p . -w"
 	}
 }
