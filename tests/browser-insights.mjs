@@ -18,7 +18,7 @@ try {
   await page.locator("#reveal").click();
   await page.locator("[data-grade=missed]").click();
   await navigate(page, "insights/m1");
-  await page.locator("#skill-stats table").waitFor();
+  await page.locator(".aggregate-matrix table").first().waitFor();
   const first = await page.evaluate(async () => {
     const r = await import("/js/jazz/analytics/repository.js");
     await r.flush();
@@ -29,7 +29,7 @@ try {
   assert.equal(first[0].assistance, "none");
   assert.ok(first[0].record.analytics.activeMs >= 0);
   await page.reload();
-  await page.locator("#skill-stats table").waitFor();
+  await page.locator(".aggregate-matrix table").first().waitFor();
   assert.equal(
     await page.evaluate(async () => {
       const r = await import("/js/jazz/analytics/repository.js");
@@ -77,7 +77,7 @@ try {
   await page.locator("#reveal").click();
   await page.locator("[data-grade=correct]").click();
   await navigate(page, "insights/m1");
-  await page.locator("#skill-stats table").waitFor();
+  await page.locator(".aggregate-matrix table").first().waitFor();
   const stored = await page.evaluate(async () => {
     const r = await import("/js/jazz/analytics/repository.js");
     await r.flush();
@@ -118,7 +118,7 @@ try {
   await page.locator("#reveal").click();
   await page.locator("[data-grade=correct]").click();
   await navigate(page, "insights/m4");
-  await page.locator("#skill-stats table").waitFor();
+  await page.locator(".aggregate-matrix table").first().waitFor();
   await page.getByText("Transition readiness", { exact: true }).click();
   assert.match(
     await page.locator("#analytics-content").innerText(),
@@ -147,22 +147,11 @@ try {
     await r.put("assessments", prior);
   }, first[0]);
   await navigate(page, "insights/m1");
-  await page.locator(".insight-trend canvas").first().waitFor();
+  await page.locator(".insight-trend table").first().waitFor();
   assert.equal(
-    await page
-      .locator(".insight-trend canvas")
-      .first()
-      .evaluate((canvas) => {
-        const data = canvas
-          .getContext("2d")
-          .getImageData(0, 0, canvas.width, canvas.height).data;
-        let colored = 0;
-        for (let i = 0; i < data.length; i += 4)
-          if (data[i] < 240 && data[i + 1] < 240 && data[i + 2] < 240)
-            colored++;
-        return colored > 100;
-      }),
-    true,
+    await page.locator(".insight-trend canvas:visible").count(),
+    0,
+    "Sparse days use a daily table, not a misleading chart",
   );
   await page.screenshot({
     path: process.env.TEMP + "/jazz-insights-trends.png",

@@ -193,7 +193,7 @@ try {
   );
   await page.setViewportSize({ width: 390, height: 844 });
   await navigate(page, "insights/m6?task=stage-sing");
-  await page.locator("#skill-stats table").waitFor();
+  await page.locator(".aggregate-matrix table").first().waitFor();
   assert.equal(
     await page.evaluate(
       () => document.documentElement.scrollWidth > innerWidth,

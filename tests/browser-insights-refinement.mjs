@@ -58,10 +58,11 @@ try {
     ),
   ]);
   await navigate(page, "insights/m1?days=all");
+  await page.locator(".degree-strip summary").click();
   await page.locator(".degree-strip button").waitFor();
   assert.match(
     await page.locator(".degree-strip").innerText(),
-    /Supported across qualities/,
+    /Supported strata/,
   );
   await page.locator(".degree-strip button").focus();
   await page.keyboard.press("Enter");
@@ -72,12 +73,12 @@ try {
   await page.locator("#selected-cell").press("Escape");
   await page.locator(".mixed-history summary").click();
   const mixed = page.locator('.insight-trend[data-comparison="mixed"]').first();
+  await mixed.getByText("Daily dot plot", { exact: true }).click();
   await mixed.locator("canvas").waitFor();
   assert.match(
     await mixed.locator("figcaption").innerText(),
     /not evidence of improvement/,
   );
-  await mixed.locator("summary").click();
   assert.match(
     await mixed.locator("table").innerText(),
     /Mixed settings; descriptive only/,
@@ -132,14 +133,12 @@ try {
     ),
   );
   await navigate(page, "insights/legacy");
-  const legacy = page
-    .locator(".diagnostic-grid")
-    .filter({
-      has: page.getByRole("heading", {
-        name: "chord-quality · retained solved rows",
-        exact: true,
-      }),
-    });
+  const legacy = page.locator(".diagnostic-grid").filter({
+    has: page.getByRole("heading", {
+      name: "chord-quality · retained solved rows",
+      exact: true,
+    }),
+  });
   await legacy.waitFor();
   assert.match(await legacy.innerText(), /m6m7b5/);
   assert.match(await legacy.innerText(), /1\/2 \(50%\)/);

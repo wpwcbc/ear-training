@@ -1,5 +1,9 @@
 # Insights UX And Smart Summary
 
+Current presentation and validation:
+[Insights UI/UX Refinement](JAZZ_EAR_LAB_INSIGHTS_REFINEMENT.md).
+The older UI and performance results below are historical release notes.
+
 Implements the presentation addendum on top of Insights v2. Native TypeScript,
 static hosting, existing practice routes, original storage and v2 evidence remain
 the authority. No inference endpoint, telemetry, microphone or account is added.

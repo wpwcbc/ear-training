@@ -8,6 +8,27 @@ type Template = {
 };
 const counts = ["focus", "scope", "k", "n", "noncorrect"];
 const definitions: Record<string, Template> = {
+  "tentative-positive": {
+    keys: ["focus", "k", "n", "days", "roots", "context", "sourceLabel"],
+    en: (p) =>
+      `${p.focus}: ${p.k}/${p.n} ${p.sourceLabel} correct. A positive observation, not established mastery: ${p.days} ${Number(p.days) === 1 ? "local day" : "local days"}, roots ${p.roots}; ${p.context}.`,
+    zh: (p) =>
+      `${p.focus}：${p.k}/${p.n} 次${p.sourceLabel} correct。這是正向觀察，尚非已掌握：${p.days} 個本地日期，根音 ${p.roots}；${p.context}。`,
+  },
+  "tentative-difficulty": {
+    keys: ["focus", "k", "n", "days", "roots", "context", "sourceLabel"],
+    en: (p) =>
+      `${p.focus}: ${p.k}/${p.n} ${p.sourceLabel} correct. Worth checking with consistent settings, not an established weakness: ${p.days} local days, roots ${p.roots}; ${p.context}.`,
+    zh: (p) =>
+      `${p.focus}：${p.k}/${p.n} 次${p.sourceLabel} correct。值得用一致設定再確認，尚非確立弱項：${p.days} 個本地日期，根音 ${p.roots}；${p.context}。`,
+  },
+  "descriptive-peer": {
+    keys: ["focus", "other", "k", "n", "otherK", "otherN", "sourceLabel"],
+    en: (p) =>
+      `${p.focus}: ${p.k}/${p.n} ${p.sourceLabel} correct; ${p.other}: ${p.otherK}/${p.otherN}. Descriptive contrast only: settings or evidence do not support a like-for-like conclusion.`,
+    zh: (p) =>
+      `${p.focus}：${p.k}/${p.n} 次${p.sourceLabel} correct；${p.other}：${p.otherK}/${p.otherN}。僅為描述性對照：設定或證據尚不足以支持同條件結論。`,
+  },
   "cross-quality": {
     keys: counts,
     en: (p) =>
@@ -243,8 +264,22 @@ export function renderTemplate(
             ? "圖上選位"
             : "記錄的";
     if (params.period) localized.period = "目前與之前各 28 天";
+    if (params.context)
+      localized.context =
+        params.context === "matched"
+          ? "相同已知設定"
+          : params.context === "mixed-descriptive"
+            ? "混合設定，僅供描述"
+            : "設定不明";
     if (params.qualification)
       localized.qualification = "此比較中較不困難；兩者仍有練習空間。";
+  } else if (params.context) {
+    localized.context =
+      params.context === "matched"
+        ? "matched known settings"
+        : params.context === "mixed-descriptive"
+          ? "mixed settings; descriptive only"
+          : "unknown settings";
   }
   return (locale === "zh-Hant" ? t.zh : t.en)(localized);
 }

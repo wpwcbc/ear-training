@@ -122,7 +122,11 @@ try {
     .locator(".insight-focus-queue")
     .getByRole("button", { name: "Practise 10", exact: true })
     .first();
-  assert.ok((await primary.boundingBox()).y < 900);
+  assert.ok(
+    (await primary.boundingBox()).y >
+      (await page.locator("#skill-stats").boundingBox()).y,
+    "Targeted practice follows the matrix",
+  );
   assert.ok(
     (await page.locator("#skill-stats").boundingBox()).y < 900,
     "Aggregate evidence starts within the desktop viewport",
@@ -142,16 +146,18 @@ try {
   await page.locator(".aggregate-matrix [data-cell-id]").first().click();
   const cell = page.locator("#selected-cell");
   await cell.waitFor();
-  assert.equal(await cell.evaluate((e) => e.open && e.matches(":modal")), true);
+  assert.equal(await cell.evaluate((e) => e.tagName), "SECTION");
+  let leftInlinePanel = false;
   for (let i = 0; i < 20; i++) {
     await page.keyboard.press("Tab");
-    assert.equal(
-      await page.evaluate(
-        () => !!document.activeElement?.closest("dialog[open]"),
-      ),
-      true,
+    leftInlinePanel ||= await page.evaluate(
+      () => !document.activeElement?.closest("#selected-cell"),
     );
   }
+  assert.ok(
+    leftInlinePanel,
+    "The inline panel never traps normal Tab navigation",
+  );
   await cell
     .getByRole("button", { name: "View Evidence", exact: true })
     .first()
@@ -159,7 +165,7 @@ try {
   const evidence = page.locator(".insight-evidence-panel");
   await evidence.waitFor();
   await evidence.press("Escape");
-  assert.equal(await cell.evaluate((e) => e.open), true);
+  assert.equal(await cell.isVisible(), true);
   await cell.press("Escape");
   await page.waitForFunction(() => !document.getElementById("selected-cell"));
   await page.waitForFunction(
@@ -168,10 +174,9 @@ try {
   await page.setViewportSize({ width: 390, height: 844 });
   await noOverflow();
   await page.evaluate(() => scrollTo(0, 0));
-  const mobilePrimary = await primary.boundingBox();
   assert.ok(
-    mobilePrimary.y + mobilePrimary.height <= 844,
-    "The first practice action fits in the mobile viewport",
+    await primary.count(),
+    "Practice remains available after the matrix on mobile",
   );
   await screenshot("insights-mobile");
   await page.locator(".aggregate-matrix [data-cell-id]").first().click();
@@ -198,7 +203,7 @@ try {
   );
   assert.deepEqual(errors, []);
   console.log(
-    "UX refinement browser checks passed: direct quick starts, audio-state feedback, compact mobile controls, keyboard menus, preserved discovery routes, decision-first Insights and native modal focus/return without source mutation.",
+    "UX refinement browser checks passed: quick starts, audio state, mobile controls, keyboard menus, canonical Insights order, inline nonmodal details and nested modal evidence without source mutation.",
   );
 } finally {
   await browser.close();

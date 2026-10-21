@@ -9,11 +9,12 @@ import {
 } from "../hierarchy.js";
 import { matchedTrends } from "../metrics.js";
 import { markScore } from "../metrics.js";
-import { policy } from "../policy.js";
+import { policy, compareId } from "../policy.js";
 import { summaryPolicy as p } from "./policy.js";
 import { registry } from "./registry.js";
 import { renderInsight } from "./templates.js";
 import { qualityGeneralization } from "./generalization.js";
+import { composeEditorial } from "./editorial.js";
 import type {
   AggregateCell,
   Insight,
@@ -53,6 +54,7 @@ function fact(
     c.source,
     c.metricId,
     c.id,
+    c.queryScope,
     category,
     params,
   ]);
@@ -77,14 +79,16 @@ function fact(
 }
 const questionSets = new WeakMap<AggregateCell, Set<string | null>>();
 function contains(parent: AggregateCell, child: AggregateCell) {
-  if (!(
-    parent.mode === child.mode &&
-    parent.subtask === child.subtask &&
-    parent.source === child.source &&
-    parent.metricId === child.metricId &&
-    parent.quality === child.quality &&
-    parent.degree === child.degree
-  ))
+  if (
+    !(
+      parent.mode === child.mode &&
+      parent.subtask === child.subtask &&
+      parent.source === child.source &&
+      parent.metricId === child.metricId &&
+      parent.quality === child.quality &&
+      parent.degree === child.degree
+    )
+  )
     return false;
   let questions = questionSets.get(parent);
   if (!questions) {
@@ -303,20 +307,29 @@ export function buildSummary(
         ),
       );
     else if (
-      c.contextState === "matched" &&
+      !c.stratum &&
+      c.independentQuestionCount !== null &&
+      c.contextState !== "unknown" &&
       !c.stale &&
       n &&
       (n >= 5 || noncorrect >= 2) &&
       k / n < policy.target
     )
       candidates.push(
-        fact(
-          c,
-          "specific-difficulty",
-          "tentative",
-          registry(c).templateId,
-          params,
-        ),
+        fact(c, "specific-difficulty", "tentative", "tentative-difficulty", {
+          focus: c.label,
+          k,
+          n,
+          days: c.localDays,
+          roots: c.roots.map((r) => r.root).join(", "),
+          context: c.contextState,
+          sourceLabel:
+            c.source === "self"
+              ? "self-rated"
+              : c.source === "visual"
+                ? "visually mapped"
+                : "recorded",
+        }),
       );
     if (supported(c) && c.wilson95![0] >= policy.target)
       candidates.push(
@@ -370,12 +383,70 @@ export function buildSummary(
       }
     }
   }
+  for (const c of relevant.filter(
+    (c) =>
+      !c.stratum &&
+      c.level !== "degree" &&
+      c.level !== "root-quality-degree" &&
+      c.independentQuestionCount !== null &&
+      !c.stale &&
+      c.contextState !== "unknown" &&
+      (c.denominator ?? 0) >= 10 &&
+      c.numerator! / c.denominator! >= policy.target &&
+      !supported(c),
+  )) {
+    candidates.push(
+      fact(c, "tentative-positive", "tentative", "tentative-positive", {
+        focus: c.label,
+        k: c.numerator!,
+        n: c.denominator!,
+        days: c.localDays,
+        roots: c.roots.map((r) => r.root).join(", "),
+        context: c.contextState,
+        sourceLabel:
+          c.source === "self"
+            ? "self-rated"
+            : c.source === "visual"
+              ? "visually mapped"
+              : "recorded",
+      }),
+    );
+  }
   // Prefer sufficient parents. Sparse exact children remain available only in drilldown.
+  for (const i of candidates.filter(
+    (i) =>
+      i.certainty === "supported" &&
+      ["weakness", "specific-difficulty"].includes(i.category),
+  )) {
+    const parent = cellIndex.get(i.cellId)!;
+    if (parent.level !== "quality-degree") continue;
+    const child = candidates
+      .filter(
+        (j) =>
+          j.certainty === "supported" && j.category === "specific-difficulty",
+      )
+      .find((j) => {
+        const c = cellIndex.get(j.cellId)!;
+        return (
+          c.level === "root-quality-degree" &&
+          contains(parent, c) &&
+          c.numerator! / c.denominator! <
+            parent.numerator! / parent.denominator! - 0.1
+        );
+      });
+    if (child) {
+      i.suppressedBy = child.id;
+      i.suppressionReason =
+        "A sufficient root-specific child adds material context.";
+    }
+  }
   for (const i of candidates) {
+    if (i.suppressedBy) continue;
     const c = cellIndex.get(i.cellId)!;
     const replacement = candidates.find(
       (j) =>
         j.id !== i.id &&
+        !j.suppressedBy &&
         j.certainty === "supported" &&
         j.category !== "relative-strength" &&
         j.category !== "comparable-trend" &&
@@ -463,6 +534,92 @@ export function buildSummary(
       candidates.push(insight);
     }
   const selectedCohorts = new Set(rows.map((e) => e.cohortKey));
+  const descriptiveParents = cells.filter(
+    (c) =>
+      !c.stratum &&
+      c.level === "quality-degree" &&
+      !c.stale &&
+      c.independentQuestionCount !== null &&
+      c.contextState !== "unknown" &&
+      (c.denominator ?? 0) >= 10,
+  );
+  const descriptivePairs: {
+    a: AggregateCell;
+    b: AggregateCell;
+    gap: number;
+  }[] = [];
+  for (let i = 0; i < descriptiveParents.length; i++)
+    for (let j = i + 1; j < descriptiveParents.length; j++) {
+      const a = descriptiveParents[i],
+        b = descriptiveParents[j];
+      const gap = Math.abs(
+        a.numerator! / a.denominator! - b.numerator! / b.denominator!,
+      );
+      if (
+        a.mode === b.mode &&
+        a.subtask === b.subtask &&
+        a.source === b.source &&
+        a.grain === b.grain &&
+        a.metricId === b.metricId &&
+        a.quality === b.quality &&
+        gap >= 0.1 &&
+        !candidates.some(
+          (c) =>
+            c.category === "relative-strength" &&
+            c.certainty === "supported" &&
+            [a.id, b.id].includes(c.cellId),
+        )
+      )
+        descriptivePairs.push({ a, b, gap });
+    }
+  descriptivePairs.sort(
+    (x, y) =>
+      Math.min(y.a.denominator!, y.b.denominator!) -
+        Math.min(x.a.denominator!, x.b.denominator!) ||
+      y.gap - x.gap ||
+      compareId([x.a.id, x.b.id].sort().join(), [y.a.id, y.b.id].sort().join()),
+  );
+  for (const { a, b } of descriptivePairs) {
+    const result = comparePeers(a, b, query, revision, now);
+    // A descriptive pair cites original samples, never the failed matched subsets.
+    const descriptiveComparison = {
+      ...result.comparison,
+      id: "descriptive-comparison-" + hash([a.id, b.id, query]),
+      familyVersion: "descriptive-peer-1",
+      compatible: false,
+      leftEvidenceRefId: a.evidenceRefId,
+      rightEvidenceRefId: b.evidenceRefId,
+      vetoReasons: [
+        ...result.comparison.vetoReasons,
+        "Descriptive contrast only; no supported peer conclusion.",
+      ],
+    };
+    comparisons.push(descriptiveComparison);
+    candidates.push(
+      fact(
+        a,
+        "descriptive-peer",
+        "descriptive",
+        "descriptive-peer",
+        {
+          focus: a.label,
+          other: b.label,
+          k: a.numerator!,
+          n: a.denominator!,
+          otherK: b.numerator!,
+          otherN: b.denominator!,
+          sourceLabel:
+            a.source === "self"
+              ? "self-rated"
+              : a.source === "visual"
+                ? "visually mapped"
+                : "recorded",
+        },
+        [a.evidenceRefId, b.evidenceRefId],
+      ),
+    );
+    candidates[candidates.length - 1].comparisonId = descriptiveComparison.id;
+  }
   for (const trend of matchedTrends(
     history.filter((e) => selectedCohorts.has(e.cohortKey)),
     query.timezone,
@@ -565,8 +722,7 @@ export function buildSummary(
           !i.suppressedBy &&
           i.mode === c.mode &&
           i.subtask === c.subtask &&
-          i.source === c.source &&
-          i.category !== "relative-strength",
+          i.source === c.source,
       )
     )
       continue;
@@ -587,49 +743,11 @@ export function buildSummary(
       ),
     );
   }
-  const rank = (i: Insight) =>
-    i.category === "coverage"
-      ? 5
-      : i.certainty === "tentative"
-        ? 4
-        : i.category === "comparable-trend"
-          ? 2
-          : i.category === "relative-strength"
-            ? 3
-            : 0;
-  candidates.sort(
-    (a, b) =>
-      rank(a) - rank(b) ||
-      (cellIndex.get(a.cellId)?.numerator ?? 0) /
-        (cellIndex.get(a.cellId)?.denominator || 1) -
-        (cellIndex.get(b.cellId)?.numerator ?? 0) /
-          (cellIndex.get(b.cellId)?.denominator || 1) ||
-      (cellIndex.get(b.cellId)?.denominator ?? 0) -
-        (cellIndex.get(a.cellId)?.denominator ?? 0) ||
-      (cellIndex.get(b.cellId)?.last ?? 0) -
-        (cellIndex.get(a.cellId)?.last ?? 0) ||
-      a.id.localeCompare(b.id),
+  const editorial = composeEditorial(
+    candidates.filter((i) => renderInsight(i) !== null),
+    cells,
+    !query.mode,
   );
-  const visible = candidates.filter(
-    (i) => !i.suppressedBy && renderInsight(i) !== null,
-  );
-  const diverse = (items: Insight[], limit: number) => {
-    const picked: Insight[] = [],
-      modes = new Set<string>();
-    for (const i of items)
-      if (!modes.has(i.mode) && picked.length < limit) {
-        picked.push(i);
-        modes.add(i.mode);
-      }
-    for (const i of items)
-      if (
-        picked.length < limit &&
-        !picked.includes(i) &&
-        !picked.some((j) => j.cellId === i.cellId)
-      )
-        picked.push(i);
-    return picked;
-  };
   return {
     revision,
     query,
@@ -637,20 +755,8 @@ export function buildSummary(
     refs,
     candidates,
     comparisons,
-    statements: diverse(
-      visible,
-      query.mode ? p.maxModeStatements : p.maxOverviewStatements,
-    ),
-    recommendations: diverse(
-      visible.filter(
-        (i) =>
-          cellIndex.get(i.cellId)?.level !== "degree" &&
-          i.certainty !== "descriptive" &&
-          i.category !== "relative-strength" &&
-          i.category !== "comparable-trend",
-      ),
-      p.maxRecommendations,
-    ),
+    statements: editorial.statements,
+    recommendations: editorial.recommendations,
     reconciliation: reconciliation(rows, now),
   };
 }
@@ -668,6 +774,7 @@ export function cachedSummary(
     p.version,
     policy.version,
     "insights-schedule-1",
+    now,
     new Date(now).toISOString().slice(0, 10),
     Intl.DateTimeFormat("en-CA", {
       timeZone: query.timezone,

@@ -107,7 +107,7 @@ try {
   await page.reload();
   assert.equal(await page.locator("#progression").inputValue(), customId);
   await navigate(page, "insights/m5");
-  await page.locator("#skill-stats table").waitFor();
+  await page.locator(".aggregate-matrix table").first().waitFor();
   assert.match(await page.locator("#skill-stats").innerText(), /transition/);
   await page.setViewportSize({ width: 390, height: 844 });
   assert.equal(

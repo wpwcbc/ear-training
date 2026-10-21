@@ -1,12 +1,13 @@
 import { defaults, loadSessions, } from "../model.js";
 import { commandIcon, icon } from "../ui.js";
 import { renderTrend } from "./charts.js";
-import { reconcile, readAll, exportData, importData, clearInsights, persistenceError, put, } from "./repository.js";
+import { resolveWindow, inWindow, dailyResults, } from "./windows.js";
+import { reconcile, readAll, exportData, importData, previewImport, clearInsights, persistenceError, put, } from "./repository.js";
 import { task, hash } from "./types.js";
 import { aggregate, components, cells, matchedTrends, markScore, assistedRecovery, } from "./metrics.js";
 import { compileDrill, compileDiagnostic } from "./drills.js";
 import { legacyData } from "./adapters.js";
-import { policy } from "./policy.js";
+import { policy, dayKey } from "./policy.js";
 import { legacySummary, prepareLegacyLaunch, } from "../../analytics/legacy.js";
 import { bassPositions } from "../bass.js";
 import { parseChord } from "../theory.js";
@@ -14,7 +15,7 @@ import { defaultFocusIndex } from "./focused.js";
 import { validateScheduled } from "./focused.js";
 import { renderAggregateMatrix } from "./matrix.js";
 import { confusionGrids, legacyGrid, renderGrid } from "./grids.js";
-import { modeContext } from "./hierarchy.js";
+import { modeContext, makeCell, comparisonFamily, dataRevision, } from "./hierarchy.js";
 import { computeSummary, clearSummaryCache } from "./summary/client.js";
 import { summaryPolicy } from "./summary/policy.js";
 import { renderInsight, renderTemplate, } from "./summary/templates.js";
@@ -27,6 +28,7 @@ const names = {
     m6: "Bebop Phrase Lab",
     m7: "Ear to Bass",
 };
+let lastRuleDiagnostics = null;
 const node = (tag, text) => {
     const n = document.createElement(tag);
     if (text)
@@ -148,7 +150,7 @@ function metric(parent, label, value) {
     item.append(node("span", label), node("strong", value));
     parent.append(item);
 }
-export async function renderAnalytics(host, route, actions) {
+export async function renderAnalytics(host, route, actions, workspaceMode) {
     host.dataset.route = route;
     host.replaceChildren(node("p", "Loading local evidence..."));
     let evidence;
@@ -167,6 +169,13 @@ export async function renderAnalytics(host, route, actions) {
     host.classList.add("analytics");
     const [path, search = ""] = route.split("?"), params = new URLSearchParams(search);
     let mode = path.split("/")[1] ?? "";
+    if (mode === "data" || mode === "settings") {
+        host.append(link("Return to Insights", sessionStorage.getItem("insights:return") ?? "#/insights"), node("h2", "Settings · Data & Diagnostics"));
+        await health(host, evidence);
+        return;
+    }
+    if (workspaceMode)
+        mode = workspaceMode;
     const warnings = [];
     if (mode && mode !== "legacy" && !names[mode]) {
         mode = "";
@@ -198,12 +207,15 @@ export async function renderAnalytics(host, route, actions) {
     };
     exerciseLabel.append(exerciseSelect);
     nav.append(overviewLink, exerciseLabel);
+    const dataLink = link("Data & Diagnostics", "#/insights/data");
+    icon(dataLink, "sliders-horizontal", true);
+    nav.append(dataLink);
     host.append(nav, node("h2", mode === "legacy"
         ? "Legacy practice"
         : (names[mode] ?? "What to practise next")));
     if (mode === "legacy") {
         await renderLegacy(host);
-        await health(host, evidence);
+        host.append(link("Settings · Data & Diagnostics", "#/insights/data"));
         return;
     }
     const header = node("div"), advanced = node("details"), filters = node("div");
@@ -233,6 +245,8 @@ export async function renderAnalytics(host, route, actions) {
             if (key !== "lang") {
                 params.delete("cell");
                 params.delete("cellRoot");
+                params.delete("missingQuality");
+                params.delete("missingDegree");
             }
             change();
         };
@@ -327,20 +341,15 @@ export async function renderAnalytics(host, route, actions) {
         ["sample", "Question / exposure counts"],
         ["time", "Median active time"],
     ], "outcome");
-    const localStart = new Date(now);
-    localStart.setHours(0, 0, 0, 0);
-    localStart.setDate(localStart.getDate() - (days === "all" ? 0 : Number(days) - 1));
-    const localEnd = new Date(now);
-    localEnd.setHours(24, 0, 0, 0);
-    const start = days === "all" ? null : localStart.toISOString();
+    const window = resolveWindow(now, timezone, days === "all" ? null : Number(days));
+    const start = window.startInclusive;
     const scoped = evidence.filter((e) => (!mode || e.mode === mode) && (!subtask || e.subtask === subtask));
     let rows = scoped.filter((e) => (exposure === "all" || e.exposure === exposure) &&
         (assistance === "all" || e.assistance === assistance) &&
         (source === "all" || e.source === source) &&
         (version === "all" || e.version === version) &&
-        Number.isFinite(Date.parse(e.createdAt)) &&
-        Date.parse(e.createdAt) <= now &&
-        (!start || e.createdAt >= start));
+        (inWindow(e.createdAt, window) ||
+            (days === "all" && !Number.isFinite(Date.parse(e.createdAt)))));
     const contextFilters = {};
     const keys = [
         ["context", "Harmonic context"],
@@ -405,6 +414,9 @@ export async function renderAnalytics(host, route, actions) {
         "cell",
         "cellRoot",
         "level",
+        "focus",
+        "missingQuality",
+        "missingDegree",
         ...keys.map(([k]) => "context-" + k),
     ]);
     params.forEach((_, key) => {
@@ -432,6 +444,17 @@ export async function renderAnalytics(host, route, actions) {
             ? " · Root: " + params.get("root")
             : ""));
     chips.className = "insight-scope";
+    chips.append(document.createTextNode(" · " +
+        (start
+            ? dayKey(start, timezone) +
+                " – " +
+                dayKey(new Date(Date.parse(window.endExclusive) - 1).toISOString(), timezone)
+            : "Valid retained dates") +
+        " · " +
+        timezone +
+        (new Set(rows.map((e) => comparisonFamily(e))).size > 1
+            ? " · Mixed settings"
+            : "")));
     header.append(advanced);
     host.append(header, chips);
     if (warnings.length)
@@ -445,7 +468,7 @@ export async function renderAnalytics(host, route, actions) {
         source,
         metricId: matrixMetric,
         startInclusive: start,
-        endExclusive: localEnd.toISOString(),
+        endExclusive: window.endExclusive,
         timezone,
         exposure,
         assistance,
@@ -468,28 +491,47 @@ export async function renderAnalytics(host, route, actions) {
         return;
     progress.remove();
     const revision = model.revision;
+    lastRuleDiagnostics = {
+        query: model.query,
+        revision: model.revision,
+        candidates: model.candidates.map((i) => ({
+            id: i.id,
+            category: i.category,
+            certainty: i.certainty,
+            params: i.params,
+            refs: i.evidenceRefIds,
+            suppressedBy: i.suppressedBy,
+            reason: i.suppressionReason,
+        })),
+        comparisons: model.comparisons,
+    };
     const announce = node("p", rows.length + " selected assessments");
     announce.className = "sr-only";
     announce.setAttribute("role", "status");
     host.append(announce);
-    const openEvidence = (refId) => {
+    const openEvidence = async (refId) => {
+        const origin = document.activeElement;
+        const current = await readAll("assessments");
+        if (host.dataset.route !== route)
+            return;
         const ref = model.refs.get(refId), panel = node("dialog");
         panel.className = "insight-evidence-panel";
         host.querySelectorAll(".insight-evidence-panel").forEach((p) => p.remove());
         panel.setAttribute("role", "dialog");
         panel.setAttribute("aria-label", "Evidence reference");
         panel.tabIndex = -1;
-        const origin = document.activeElement;
         panel.append(node("h3", "Evidence reference"));
         panel.append(button("Close evidence", () => {
             panel.remove();
             origin?.focus();
         }));
-        if (!ref || ref.dataRevision !== revision) {
+        if (!ref ||
+            ref.dataRevision !== revision ||
+            dataRevision(current) !== revision) {
             panel.append(node("p", "Evidence changed; refresh summary."));
         }
         else {
-            const cited = evidence.filter((e) => ref.assessmentIds.includes(e.id));
+            const cited = current.filter((e) => ref.assessmentIds.includes(e.id));
             if (cited.length !== ref.assessmentIds.length)
                 panel.append(node("p", "Evidence changed; refresh summary."));
             else {
@@ -503,23 +545,17 @@ export async function renderAnalytics(host, route, actions) {
                     " assessments → " +
                     ref.diagnosticQuestionIds.length +
                     " diagnostic questions. Exclusions below are exclusive within each stage."));
-                const details = node("details");
-                details.append(node("summary", "IDs, query and provenance"));
-                const pre = node("pre", JSON.stringify(ref, null, 2));
-                details.append(pre);
-                panel.append(details);
+                panel.append(node("p", "Scope: " +
+                    ref.querySnapshot.mode.toUpperCase() +
+                    " / " +
+                    ref.querySnapshot.subtask +
+                    " · " +
+                    ref.querySnapshot.source +
+                    " · " +
+                    ref.querySnapshot.timezone));
                 table(panel, ["Exclusion reason", "Count"], Object.entries(ref.exclusions).map(([k, v]) => [k, String(v)]));
                 evidenceTable(panel, cited, actions, true);
-                const download = button("Export evidence reference", () => {
-                    const url = URL.createObjectURL(new Blob([JSON.stringify(ref, null, 2)], {
-                        type: "application/json",
-                    }));
-                    const a = link("Download", url);
-                    a.download = ref.id + ".json";
-                    a.click();
-                    setTimeout(() => URL.revokeObjectURL(url), 1000);
-                });
-                panel.append(download);
+                panel.append(link("Data & Diagnostics", "#/insights/data"));
             }
         }
         const close = (e) => {
@@ -562,6 +598,8 @@ export async function renderAnalytics(host, route, actions) {
         for (const [index, insight] of model.statements.entries()) {
             const statement = node("div");
             statement.className = "insight-statement";
+            statement.dataset.candidateId = insight.id;
+            statement.dataset.actionId = insight.actionId ?? insight.id;
             statement.append(node("p", renderInsight(insight, locale) ?? "Evidence unavailable."));
             insight.evidenceRefIds.forEach((ref, j) => statement.append(button("View Evidence [E" +
                 (index + 1) +
@@ -585,12 +623,15 @@ export async function renderAnalytics(host, route, actions) {
     const moreActions = node("details");
     moreActions.className = "insight-more-actions";
     moreActions.append(node("summary", "More practice options"));
-    for (const insight of model.recommendations) {
+    for (const insight of workspaceMode
+        ? model.recommendations.slice(0, 1)
+        : model.recommendations) {
         const c = model.cells.find((c) => c.id === insight.cellId);
         if (!c)
             continue;
         const wrapper = node("div");
         wrapper.className = "insight-recommendation";
+        wrapper.dataset.actionId = insight.id;
         wrapper.dataset.certainty = insight.certainty;
         wrapper.append(node("h4", headings[insight.certainty]));
         const sampleRows = c.sample.length
@@ -655,8 +696,6 @@ export async function renderAnalytics(host, route, actions) {
     }
     if (moreActions.children.length > 1)
         queue.append(moreActions);
-    if (model.recommendations.length)
-        decision.append(queue);
     host.append(decision);
     if (!mode) {
         host.append(node("h3", "Mode status"));
@@ -678,7 +717,7 @@ export async function renderAnalytics(host, route, actions) {
             if (!group.length)
                 status.append(node("p", "No recorded outcomes"));
             status.append(link("Details", "#/insights/" + id));
-            if (!group.length)
+            if (!group.length && rows.length)
                 status.append(button("Configure diagnostic set", () => actions.customize({ ...defaults, mode: id, count: 10 }, [])));
             grid.append(status);
         }
@@ -688,6 +727,38 @@ export async function renderAnalytics(host, route, actions) {
             .slice(0, 2);
         for (const i of changes)
             host.append(button(i.mode.toUpperCase() + " · Comparable change", () => openEvidence(i.evidenceRefIds[0])));
+        const available = Object.keys(names).filter((id) => rows.some((e) => e.mode === id));
+        if (available.length) {
+            const recent = [...rows].sort((a, b) => b.createdAt.localeCompare(a.createdAt) || a.id.localeCompare(b.id))[0]?.mode;
+            const retainedFocus = params.get("focus") ?? sessionStorage.getItem("insights:focused-mode");
+            const focused = available.includes(retainedFocus ?? "")
+                ? retainedFocus
+                : (model.statements[0]?.mode ?? recent ?? available[0]);
+            sessionStorage.setItem("insights:focused-mode", focused);
+            const label = node("label", "Explore exercise"), select = node("select"), workspace = node("section");
+            workspace.className = "insight-focused-mode";
+            select.setAttribute("aria-label", "Explore exercise");
+            available.forEach((id) => select.add(new Option(id.toUpperCase() + " · " + names[id], id)));
+            select.value = focused;
+            select.onchange = () => {
+                params.set("focus", select.value);
+                params.delete("cell");
+                sessionStorage.setItem("insights:focused-mode", select.value);
+                change();
+            };
+            label.append(select);
+            host.append(label, workspace);
+            await renderAnalytics(workspace, route, actions, focused);
+            if (host.dataset.route !== route)
+                return;
+            workspace.querySelector(":scope > nav")?.remove();
+            workspace.querySelector(":scope > h2")?.remove();
+            workspace.querySelector(":scope > .insight-decision")?.remove();
+            workspace.querySelector(":scope > .insight-methodology")?.remove();
+            workspace.querySelector(":scope > a[href='#/insights/data']")?.remove();
+        }
+        else
+            host.append(button("Start a diagnostic set", () => actions.customize({ ...defaults, count: 10 }, [])));
     }
     else if (rows.length) {
         methodology.append(node("p", mode === "m2" || (mode === "m3" && subtask === "recognize")
@@ -711,6 +782,8 @@ export async function renderAnalytics(host, route, actions) {
                     stats.ratings.missed
                 : rate(stats.ratings.correct, stats.submitted));
             metric(strip, "Independent fresh questions", String(stats.eligibleCount));
+            metric(strip, "Dated local days", String(dailyResults(group, window).length));
+            metric(strip, "Retained assessments", String(group.length));
             if (stats.median !== null)
                 metric(strip, mode === "m6"
                     ? "Stage active-time median"
@@ -732,21 +805,44 @@ export async function renderAnalytics(host, route, actions) {
             " independent diagnostic questions at their task/source grain."));
         table(ledger, ["Exclusive exclusion stage", "Count"], Object.entries(counts.exclusions).map(([k, v]) => [k, String(v)]));
         host.append(node("h3", "Explore evidence"));
+        const workspace = node("div");
+        workspace.className = "insight-workspace";
         const matrixHost = node("section");
         matrixHost.id = "skill-stats";
         renderAggregateMatrix(matrixHost, model.cells, matrixMetric, (cell) => {
             params.set("cell", cell.id);
             params.set("level", cell.level);
             params.delete("cellRoot");
+            params.delete("missingQuality");
+            params.delete("missingDegree");
             change();
+        }, {
+            selected: params.get("cell") ?? undefined,
+            missing: (quality, degree) => {
+                params.delete("cell");
+                params.set("missingQuality", quality);
+                params.set("missingDegree", degree);
+                change();
+            },
         });
-        host.append(matrixHost, ledger);
+        workspace.append(matrixHost);
+        host.append(workspace);
         const selected = model.cells.find((c) => c.id === params.get("cell"));
         if (selected) {
-            const panel = node("dialog");
+            const localRoot = params.get("cellRoot"), observations = selected.observations.filter((o) => !localRoot || localRoot === "all" || o.root === localRoot);
+            const local = observations.length && localRoot && localRoot !== "all"
+                ? makeCell(observations, selected.level, selected.id + ":local:" + localRoot, {
+                    ...query,
+                    contextFilters: { ...query.contextFilters, root: [localRoot] },
+                }, revision, now)
+                : null;
+            if (local)
+                model.refs.set(local.ref.id, local.ref);
+            const viewed = local?.cell ?? selected;
+            const panel = node("section");
             panel.id = "selected-cell";
             panel.className = "insight-cell-detail";
-            panel.setAttribute("role", "dialog");
+            panel.setAttribute("role", "region");
             panel.setAttribute("aria-label", "Cell details: " + selected.label);
             panel.tabIndex = -1;
             panel.append(node("h3", mode.toUpperCase() + " → " + selected.label + " → roots"), button("Close cell", () => {
@@ -757,19 +853,65 @@ export async function renderAnalytics(host, route, actions) {
                 sessionStorage.setItem("insights:focus", id);
                 change();
             }));
-            panel.append(node("p", selected.reliability +
+            panel.append(node("p", (viewed.source === "self"
+                ? "Self-rated correct: "
+                : "Recorded correct: ") +
+                (viewed.independentQuestionCount === null
+                    ? "Identity unknown"
+                    : viewed.denominator === null
+                        ? "Not applicable at this grain"
+                        : rate(viewed.numerator ?? 0, viewed.denominator)) +
+                (viewed.independentQuestionCount === null
+                    ? " · Retained ratings are available in Evidence; no diagnostic rate is reported."
+                    : " · " +
+                        viewed.selfRatings.correct +
+                        " correct / " +
+                        viewed.selfRatings.close +
+                        " close / " +
+                        viewed.selfRatings.missed +
+                        " missed")), node("p", local
+                ? "Detail scope: root " +
+                    localRoot +
+                    " only; page matrix and summary unchanged."
+                : "Detail scope: all observed roots"), node("p", viewed.grain +
                 " · " +
-                selected.contextState +
+                (days === "all" ? "All retained" : days + " days") +
                 " · " +
-                selected.rows.length +
+                timezone), node("p", viewed.reliability +
+                " · " +
+                viewed.contextState +
+                " · " +
+                viewed.rows.length +
                 " assessments · " +
-                selected.independentQuestionCount +
+                (viewed.independentQuestionCount ?? "Unknown") +
                 " independent questions · " +
-                selected.sessions +
+                viewed.sessions +
                 " sessions / " +
-                selected.localDays +
+                viewed.localDays +
                 " days"));
-            selected.capabilityReasons.forEach((r) => panel.append(node("p", r)));
+            const gates = node("details");
+            gates.append(node("summary", "Evidence gates"));
+            table(gates, ["Gate", "Observed / required"], [
+                [
+                    "Diagnostic questions",
+                    (viewed.denominator ?? "N/A") + " / " + policy.minimum,
+                ],
+                ["Sessions", viewed.sessions + " / " + policy.sessions],
+                ["Local days", viewed.localDays + " / " + policy.daysMinimum],
+                [
+                    "Wilson 95% width",
+                    viewed.wilson95
+                        ? ((viewed.wilson95[1] - viewed.wilson95[0]) * 100).toFixed(1) +
+                            " pp / ≤ " +
+                            policy.width * 100 +
+                            " pp"
+                        : "Unavailable",
+                ],
+                ["Generalization", viewed.generalization],
+                ["Settings", viewed.contextState],
+            ]);
+            viewed.capabilityReasons.forEach((r) => gates.append(node("p", r)));
+            panel.append(gates);
             if (selected.qualityGuard)
                 table(panel, [
                     "Practised quality",
@@ -780,8 +922,19 @@ export async function renderAnalytics(host, route, actions) {
                     q.k + "/" + q.n,
                     q.supported ? "Yes" : "No",
                 ]));
-            panel.append(button("View Evidence", () => openEvidence(selected.evidenceRefId)));
-            table(panel, ["Observed root", "Independent questions"], selected.roots.map((r) => [r.root, String(r.questionCount)]));
+            panel.append(button("View Evidence", () => openEvidence(viewed.evidenceRefId)));
+            table(panel, ["Observed root", "Correct / n", "Sessions / days"], selected.roots.map((r) => {
+                const built = makeCell(selected.observations.filter((o) => o.root === r.root), selected.level, selected.id + ":detail:" + r.root, query, revision, now).cell;
+                return [
+                    r.root,
+                    built.independentQuestionCount === null
+                        ? "Identity unknown"
+                        : built.denominator === null
+                            ? "Coverage only"
+                            : built.numerator + "/" + built.denominator,
+                    built.sessions + " / " + built.localDays,
+                ];
+            }));
             const rootLabel = node("label", "Root drilldown"), root = node("select");
             root.setAttribute("aria-label", "Root drilldown");
             root.add(new Option("All observed roots", "all"));
@@ -795,27 +948,62 @@ export async function renderAnalytics(host, route, actions) {
             };
             rootLabel.append(root);
             panel.append(rootLabel);
+            panel.append(button("Apply root to page", () => {
+                if (root.value === "all")
+                    params.delete("root");
+                else
+                    params.set("root", root.value);
+                params.delete("cell");
+                params.delete("cellRoot");
+                change();
+            }));
+            const sessions = node("details");
+            sessions.append(node("summary", "Contributing sessions and settings"));
+            const sessionGroups = new Map();
+            viewed.rows.forEach((e) => {
+                const list = sessionGroups.get(e.sessionId) ?? [];
+                list.push(e);
+                sessionGroups.set(e.sessionId, list);
+            });
+            table(sessions, ["Session", "Assessments", "Settings"], [...sessionGroups].map(([id, group]) => [
+                id,
+                String(group.length),
+                group[0].config.bpm +
+                    " BPM · " +
+                    group[0].config.context +
+                    " · roots " +
+                    group[0].config.roots +
+                    " · " +
+                    group[0].assistance,
+            ]));
+            panel.append(sessions);
             const subset = selected.rows.filter((e) => root.value === "all" ||
                 e.record.chords.some((c) => parseChord(c).root === root.value));
             const exact = cells(subset);
-            paginatedTable(panel, ["Exact context", "Outcome counts", "Independent questions", "Action"], exact, (cell) => {
-                const s = aggregate(cell.rows, timezone, now);
-                return [
-                    cell.label,
-                    s.ratings.correct +
-                        " correct / " +
-                        s.ratings.close +
-                        " close / " +
-                        s.ratings.missed +
-                        " missed",
-                    String(s.eligibleCount),
-                    button("Inspect", () => {
-                        const region = node("section");
-                        focus(region, cell, route, actions, timezone);
-                        panel.append(region);
-                    }),
-                ];
-            }, 12, "Exact contexts");
+            if (selected.independentQuestionCount !== null)
+                paginatedTable(panel, [
+                    "Exact context",
+                    "Outcome counts",
+                    "Independent questions",
+                    "Action",
+                ], exact, (cell) => {
+                    const s = aggregate(cell.rows, timezone, now);
+                    return [
+                        cell.label,
+                        s.ratings.correct +
+                            " correct / " +
+                            s.ratings.close +
+                            " close / " +
+                            s.ratings.missed +
+                            " missed",
+                        String(s.eligibleCount),
+                        button("Inspect", () => {
+                            const region = node("section");
+                            focus(region, cell, route, actions, timezone);
+                            panel.append(region);
+                        }),
+                    ];
+                }, 12, "Exact contexts");
             panel.addEventListener("keydown", (e) => {
                 if (e.key === "Escape") {
                     e.preventDefault();
@@ -825,11 +1013,33 @@ export async function renderAnalytics(host, route, actions) {
                     change();
                 }
             });
-            host.append(panel);
-            presentInspection(panel);
+            workspace.append(panel);
+            panel.focus({ preventScroll: true });
         }
         else if (params.has("cell"))
             host.append(node("p", "Selected cell is unavailable after the evidence or filters changed. Select a matrix cell again."));
+        if (!selected) {
+            const panel = node("section");
+            panel.className = "insight-cell-detail insight-cell-empty";
+            const quality = params.get("missingQuality"), degree = params.get("missingDegree");
+            panel.append(node("h3", quality && degree ? quality + " / " + degree : "Cell details"), node("p", quality && degree
+                ? "No eligible diagnostic observations in this selection. This is missing coverage, not zero accuracy."
+                : "Select an observed context."));
+            if (quality && degree)
+                panel.append(button("Customize diagnostic set", () => actions.customize({
+                    ...defaults,
+                    mode: mode,
+                    quality: quality,
+                    qualityPool: [quality],
+                    degree,
+                    degreePool: [degree],
+                    count: 10,
+                }, [])));
+            workspace.append(panel);
+        }
+        if (model.recommendations.length)
+            host.append(queue);
+        host.append(ledger);
         if (mode === "m2" || (mode === "m3" && subtask === "recognize")) {
             const detail = node("details");
             detail.append(node("summary", "Recognition components and confusions"));
@@ -982,25 +1192,12 @@ export async function renderAnalytics(host, route, actions) {
                 " unresolved. Playback activity only; not note or rhythm accuracy."));
             host.append(detail);
         }
-        renderComparisons(host, rows, evidence, timezone, now);
+        renderComparisons(host, rows, evidence, timezone, now, window);
         evidenceTable(host, rows, actions);
-        const diagnostics = node("details");
-        diagnostics.append(node("summary", "Summary rule diagnostics"));
-        diagnostics.append(node("pre", JSON.stringify({
-            policy: summaryPolicy.version,
-            candidates: model.candidates.map((i) => ({
-                id: i.id,
-                category: i.category,
-                certainty: i.certainty,
-                suppressedBy: i.suppressedBy,
-                reason: i.suppressionReason,
-            })),
-            comparisons: model.comparisons,
-        }, null, 2)));
-        host.append(diagnostics);
     }
-    host.append(methodology);
-    await health(host, evidence);
+    host.append(methodology, link("Settings · Data & Diagnostics", "#/insights/data"));
+    if (!workspaceMode)
+        sessionStorage.setItem("insights:return", "#/" + route);
     const focusId = sessionStorage.getItem("insights:focus");
     if (focusId) {
         host
@@ -1009,9 +1206,47 @@ export async function renderAnalytics(host, route, actions) {
         sessionStorage.removeItem("insights:focus");
     }
 }
-function renderComparisons(host, rows, evidence, timezone, now) {
+function renderComparisons(host, rows, evidence, timezone, now, window) {
     const keys = new Set(rows.map((e) => e.cohortKey)), history = evidence.filter((e) => keys.has(e.cohortKey)), trends = matchedTrends(history, timezone, now);
+    host.append(node("h3", "Recent results"));
+    const dailySeries = new Map();
+    for (const e of rows) {
+        const key = [
+            e.mode,
+            e.subtask,
+            e.source,
+            e.grain,
+            e.record.analytics?.timingVersion ?? "historical-seconds",
+        ].join(" · "), group = dailySeries.get(key) ?? [];
+        group.push(e);
+        dailySeries.set(key, group);
+    }
+    for (const [key, group] of dailySeries) {
+        const section = node("section");
+        section.setAttribute("aria-label", key + " · recent results");
+        renderTrend(section, group, timezone, now, new Set(group.map((e) => e.cohortKey)).size > 1, window);
+        host.append(section);
+    }
     host.append(node("h3", "Comparable periods"));
+    const stamp = (time) => new Intl.DateTimeFormat("en-GB", {
+        timeZone: timezone,
+        dateStyle: "medium",
+        timeStyle: "short",
+    }).format(time);
+    const span = policy.days * 86400000;
+    const comparisonWindow = node("details");
+    comparisonWindow.append(node("summary", "Comparison window boundaries"), node("p", "Existing v2 rolling windows, separate from the calendar display filter: prior [" +
+        stamp(now - 2 * span) +
+        ", " +
+        stamp(now - span) +
+        "); current [" +
+        stamp(now - span) +
+        ", " +
+        stamp(now) +
+        "]. " +
+        timezone +
+        ". Each side is resolved from its own evidence IDs."));
+    host.append(comparisonWindow);
     if (!trends.length) {
         host.append(node("p", "Outcome results are available. No matched prior period is available for this selection."));
         const why = node("details");
@@ -1026,7 +1261,7 @@ function renderComparisons(host, rows, evidence, timezone, now) {
     }
     else {
         host.append(node("p", "Exact matched cohorts; outcomes and timing have separate samples. Unmatched practice is excluded."));
-        trends.slice(0, 2).forEach((t) => renderTrend(host, history.filter((e) => e.cohortKey === t.key), timezone, now));
+        trends.slice(0, 2).forEach((t) => renderTrend(host, history.filter((e) => e.cohortKey === t.key), timezone, now, false, window));
         table(host, ["Prior / current questions", "Outcome change", "Timing interpretation"], trends.map((t) => [
             rate(t.prior.correct, t.prior.eligibleCount) +
                 " → " +
@@ -1060,7 +1295,7 @@ function renderComparisons(host, rows, evidence, timezone, now) {
         const draw = () => {
             chart.replaceChildren();
             const group = series.get(select.value) ?? [];
-            renderTrend(chart, group, timezone, now, true);
+            renderTrend(chart, group, timezone, now, true, window);
             if (!chart.children.length)
                 chart.append(node("p", "At least two recorded days are needed for this descriptive series."));
         };
@@ -1154,6 +1389,44 @@ function paginatedTable(parent, headers, items, row, size, label) {
     draw();
 }
 function focus(parent, cell, route, actions, timezone, compact = false) {
+    const scopes = new Map();
+    for (const e of cell.rows) {
+        const key = comparisonFamily(e);
+        const list = scopes.get(key) ?? [];
+        list.push(e);
+        scopes.set(key, list);
+    }
+    if (scopes.size > 1) {
+        const box = node("article"), label = node("label", "Practice setting scope"), select = node("select"), preview = node("div");
+        box.className = "insight-focus";
+        box.append(node("h3", cell.label), node("p", "Mixed historical settings. Select an actual setting scope before compiling a plan; the aggregate is not one reproducible configuration."));
+        select.setAttribute("aria-label", "Practice setting scope");
+        select.add(new Option("Choose settings", ""));
+        [...scopes]
+            .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+            .forEach(([key, group]) => {
+            const e = group[0];
+            select.add(new Option(e.config.bpm +
+                " BPM · " +
+                e.config.context +
+                " · roots " +
+                e.config.roots +
+                " · " +
+                group.length +
+                " assessments · " +
+                key.slice(-8), key));
+        });
+        select.onchange = () => {
+            preview.replaceChildren();
+            const rows = scopes.get(select.value);
+            if (rows)
+                focus(preview, { ...cell, rows, diagnosticStats: undefined }, route, actions, timezone, compact);
+        };
+        label.append(select);
+        box.append(label, preview, button("Customize", () => actions.customize(cell.rows[0].config, cell.rows[0].session.customSnapshot ?? [])));
+        parent.append(box);
+        return;
+    }
     const box = node("article");
     box.className = "insight-focus";
     const stats = cell.diagnosticStats ?? aggregate(cell.rows, timezone), rank = cell.category ?? "Selected evidence; not an automatic difficulty claim";
@@ -1265,7 +1538,13 @@ function evidenceTable(parent, rows, actions, opened = false) {
         "Timing",
         "Review",
     ], [...rows].sort((a, b) => b.createdAt.localeCompare(a.createdAt) || a.id.localeCompare(b.id)), (e) => [
-        e.createdAt + " / " + e.sessionId.slice(0, 8),
+        e.createdAt +
+            " / " +
+            e.sessionId +
+            " · assessment " +
+            e.id +
+            " · question " +
+            (e.questionId ?? "unknown"),
         e.record.chords
             .map((c, i) => c +
             "/" +
@@ -1514,6 +1793,7 @@ async function health(host, evidence) {
     const routeToken = host.dataset.route;
     const details = node("details");
     details.className = "insight-health";
+    details.open = true;
     details.append(node("summary", "Data quality and local backup"));
     const imports = await readAll("imports"), metadata = await readAll("metadata");
     if (host.dataset.route !== routeToken)
@@ -1532,12 +1812,14 @@ async function health(host, evidence) {
     details.append(button("Export local evidence", async () => {
         const url = URL.createObjectURL(new Blob([await exportData()], { type: "application/json" }));
         const a = link("Download", url);
-        a.download = "jazz-insights.json";
+        a.download =
+            "jazz-insights-v1-" + new Date().toISOString().slice(0, 10) + ".json";
         a.click();
         setTimeout(() => URL.revokeObjectURL(url), 1000);
     }));
     details.append(button("Clear derived cache", () => {
         clearSummaryCache();
+        lastRuleDiagnostics = null;
         const status = node("p", "Derived cache cleared. Practice history and saved presets are unchanged.");
         status.setAttribute("role", "status");
         details.append(status);
@@ -1548,20 +1830,103 @@ async function health(host, evidence) {
     upload.setAttribute("aria-label", "Import Insights backup");
     upload.onchange = async () => {
         try {
-            if (upload.files?.[0])
-                await importData(await upload.files[0].text());
-            location.reload();
+            if (!upload.files?.[0])
+                return;
+            const text = await upload.files[0].text(), preview = await previewImport(text);
+            const dialog = node("dialog");
+            dialog.className = "insight-data-confirm";
+            dialog.setAttribute("aria-label", "Import preview");
+            dialog.append(node("h3", "Import preview"), node("p", preview.accepted +
+                " new records · " +
+                preview.overlap +
+                " overlapping IDs retained unchanged · " +
+                preview.quarantined +
+                " quarantined in backup"));
+            table(dialog, ["Store", "New", "Overlapping"], preview.rows.map((r) => [
+                r.store,
+                String(r.accepted),
+                String(r.overlap),
+            ]));
+            const origin = document.activeElement;
+            const cancel = button("Cancel", () => {
+                dialog.close();
+                dialog.remove();
+                upload.value = "";
+                origin?.focus();
+            });
+            cancel.autofocus = true;
+            dialog.append(cancel, button("Confirm additive import", async () => {
+                await importData(text);
+                location.reload();
+            }));
+            dialog.addEventListener("cancel", () => {
+                upload.value = "";
+                setTimeout(() => {
+                    dialog.remove();
+                    origin?.focus();
+                }, 0);
+            });
+            details.append(dialog);
+            dialog.showModal();
+            cancel.focus();
         }
         catch (error) {
-            details.append(node("p", String(error)));
+            const status = node("p", "Import rejected: " +
+                String(error) +
+                ". Existing records are unchanged.");
+            status.setAttribute("role", "alert");
+            details.append(status);
         }
     };
     details.append(upload);
     details.append(button("Clear Insights evidence", async () => {
-        if (confirm("Clear the Insights database and pending analytics only? Original practice history, saved presets and legacy storage remain intact. Export first to keep a backup.")) {
+        const origin = document.activeElement;
+        const snapshot = JSON.parse(await exportData());
+        const dialog = node("dialog");
+        dialog.className = "insight-data-confirm";
+        dialog.setAttribute("aria-label", "Clear Insights confirmation");
+        dialog.append(node("h3", "Clear Insights evidence?"), node("p", evidence.length +
+            " captured/imported assessments, analytics events and pending analytics will be deleted. Original trainer history, Saved presets and legacy storage are not deleted."));
+        table(dialog, ["Insights store / scope", "Records"], Object.entries(snapshot)
+            .filter(([, value]) => Array.isArray(value))
+            .map(([key, value]) => [key, String(value.length)]));
+        const cancel = button("Cancel", () => {
+            dialog.close();
+            dialog.remove();
+            origin?.focus();
+        });
+        cancel.autofocus = true;
+        dialog.append(cancel, button("Export before deleting", async () => {
+            const url = URL.createObjectURL(new Blob([await exportData()], { type: "application/json" }));
+            const a = link("Download", url);
+            a.download =
+                "jazz-insights-v1-" +
+                    new Date().toISOString().slice(0, 10) +
+                    ".json";
+            a.click();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }), button("Confirm clear Insights", async () => {
             await clearInsights();
             location.reload();
-        }
+        }));
+        dialog.addEventListener("cancel", () => setTimeout(() => {
+            dialog.remove();
+            origin?.focus();
+        }, 0));
+        details.append(dialog);
+        dialog.showModal();
+        cancel.focus();
     }));
+    const diagnostic = node("details");
+    diagnostic.append(node("summary", "Developer diagnostics"), node("pre", JSON.stringify({
+        policy: summaryPolicy.version,
+        basePolicy: policy.version,
+        scope: "All retained Insights evidence; last rendered query below has its own scope",
+        assessments: evidence.length,
+        imports,
+        metadata,
+        lastRenderedQuery: lastRuleDiagnostics,
+    }, null, 2)));
+    details.append(diagnostic);
     host.append(details);
 }

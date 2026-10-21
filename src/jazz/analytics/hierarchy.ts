@@ -385,6 +385,7 @@ export function makeCell(
   };
   const labelState = evidenceLabel(n, k, sessions, days);
   const cell: AggregateCell = {
+    queryScope: stable(query),
     schemaVersion: 1,
     id,
     level,
@@ -404,7 +405,11 @@ export function makeCell(
       missed: sample.filter((o) => o.outcome === "missed").length,
     },
     descriptiveItemCount: observations.length,
-    independentQuestionCount: rows.every((e) => !!e.questionId) ? n : null,
+    independentQuestionCount: rows.every(
+      (e) => !!e.questionId && e.capabilities.identity,
+    )
+      ? n
+      : null,
     sessions,
     localDays: days,
     wilson95: wilson(k, n),

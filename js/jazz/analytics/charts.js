@@ -1,22 +1,13 @@
-import { aggregate, eligible, independent } from "./metrics.js";
 import { dayKey } from "./policy.js";
-export function renderTrend(parent, rows, timezone, now = Date.now(), mixed = false) {
-    const sample = independent(rows.filter((e) => eligible(e, now) && Date.parse(e.createdAt) >= now - 56 * 86400000));
-    const groups = new Map();
-    for (const e of sample) {
-        const day = dayKey(e.createdAt, timezone), list = groups.get(day) ?? [];
-        list.push(e);
-        groups.set(day, list);
-    }
-    const points = [...groups]
-        .map(([day, items]) => ({
-        day,
-        time: Math.min(...items.map((e) => Date.parse(e.createdAt))),
-        stats: aggregate(items, timezone, now),
-    }))
-        .sort((a, b) => a.time - b.time);
-    if (points.length < 2)
+import { dailyResults, resolveWindow, trendDensity } from "./windows.js";
+export function renderTrend(parent, rows, timezone, now = Date.now(), mixed = false, window = resolveWindow(now, timezone, 28)) {
+    const points = dailyResults(rows, window), density = trendDensity(points.map((p) => p.stats.eligibleCount));
+    if (!points.length) {
+        const status = document.createElement("p");
+        status.textContent = "No dated diagnostic outcomes in this window.";
+        parent.append(status);
         return;
+    }
     const hasTime = points.some((p) => p.stats.median !== null);
     for (const metric of hasTime ? ["outcome", "timing"] : ["outcome"]) {
         const figure = document.createElement("figure"), caption = document.createElement("figcaption"), canvas = document.createElement("canvas");
@@ -54,7 +45,13 @@ export function renderTrend(parent, rows, timezone, now = Date.now(), mixed = fa
         const max = metric === "outcome"
             ? 1
             : Math.max(1, ...points.map((p) => (p.stats.p75 ?? 0) / 1000));
-        const x = (time) => 85 + ((time - (now - 56 * 86400000)) / (56 * 86400000)) * 790, y = (n) => 195 - (n / max) * 175;
+        const start = window.startInclusive
+            ? Date.parse(window.startInclusive)
+            : points[0].time, end = window.startInclusive === null
+            ? Date.parse(resolveWindow(points[points.length - 1].time, timezone, 1)
+                .endExclusive)
+            : Date.parse(window.endExclusive);
+        const x = (time) => 85 + ((time - start) / Math.max(1, end - start)) * 790, y = (n) => 195 - (n / max) * 175;
         ctx.fillStyle = "#53635e";
         ctx.fillText(metric === "outcome" ? "100%" : max.toFixed(1) + "s", 15, 30);
         ctx.fillText(metric === "outcome" ? "0%" : "0s", 40, 197);
@@ -82,11 +79,12 @@ export function renderTrend(parent, rows, timezone, now = Date.now(), mixed = fa
             }
         }
         ctx.fillStyle = "#53635e";
-        ctx.fillText(dayKey(new Date(now - 56 * 86400000).toISOString(), timezone), 85, 225);
-        ctx.fillText(dayKey(new Date(now).toISOString(), timezone), 770, 225);
+        ctx.fillText(dayKey(new Date(start).toISOString(), timezone), 85, 225);
+        ctx.fillText(dayKey(new Date(end - 1).toISOString(), timezone), 770, 225);
         const details = document.createElement("details"), summary = document.createElement("summary"), wrap = document.createElement("div"), table = document.createElement("table"), head = document.createElement("thead"), header = document.createElement("tr"), body = document.createElement("tbody");
         summary.textContent =
             "Daily values and sample sizes (no-data days are gaps)";
+        details.open = density !== "chart";
         wrap.className = "table-scroll";
         wrap.setAttribute("role", "region");
         wrap.setAttribute("aria-label", metric + " daily values");
@@ -116,13 +114,24 @@ export function renderTrend(parent, rows, timezone, now = Date.now(), mixed = fa
             const values = metric === "outcome"
                 ? [
                     p.day,
-                    p.stats.correct + "/" + p.stats.eligibleCount,
+                    p.stats.correct +
+                        "/" +
+                        p.stats.eligibleCount +
+                        " (" +
+                        ((100 * p.stats.correct) / p.stats.eligibleCount).toFixed(1) +
+                        "%)",
                     mixed
                         ? "Mixed settings; descriptive only"
                         : (p.stats.interval
                             ?.map((v) => (v * 100).toFixed(1) + "%")
                             .join(" to ") ?? "No observations"),
-                    rows[0].source + " / " + rows[0].grain,
+                    (rows[0].source === "self"
+                        ? "Self-assessed production"
+                        : rows[0].source === "visual"
+                            ? "Visual mapping"
+                            : "Recognition") +
+                        " / " +
+                        rows[0].grain,
                 ]
                 : [
                     p.day,
@@ -147,7 +156,17 @@ export function renderTrend(parent, rows, timezone, now = Date.now(), mixed = fa
         table.append(head, body);
         wrap.append(table);
         details.append(summary, wrap);
-        figure.append(caption, canvas, details);
+        figure.dataset.density = density;
+        figure.append(caption);
+        if (density === "chart")
+            figure.append(canvas);
+        else if (points.length >= 3) {
+            const plot = document.createElement("details"), label = document.createElement("summary");
+            label.textContent = "Daily dot plot";
+            plot.append(label, canvas);
+            figure.append(plot);
+        }
+        figure.append(details);
         parent.append(figure);
     }
 }

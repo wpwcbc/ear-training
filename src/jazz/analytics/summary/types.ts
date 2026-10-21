@@ -5,6 +5,8 @@ export type Category =
   | "confusion"
   | "specific-difficulty"
   | "comparable-trend"
+  | "tentative-positive"
+  | "descriptive-peer"
   | "coverage";
 export type Level = "none" | "early" | "building" | "sufficient";
 export interface InsightsQuery {
@@ -46,6 +48,7 @@ export interface Observation {
   family: string;
 }
 export interface AggregateCell {
+  queryScope?: string;
   schemaVersion: 1;
   id: string;
   parentId?: string;
@@ -82,6 +85,7 @@ export interface AggregateCell {
   qualityGuard?: import("./generalization.js").QualityGuard;
 }
 export interface Insight {
+  actionId?: string;
   schemaVersion: 1;
   id: string;
   category: Category;

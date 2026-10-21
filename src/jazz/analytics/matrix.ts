@@ -1,244 +1,470 @@
-import { parseChord } from "../theory.js";
-import type { Evidence } from "./types.js";
+import {
+  allowedTargetDegrees,
+  qualities,
+  degrees as canonicalDegrees,
+} from "../theory.js";
 import { quantile } from "./policy.js";
 import type { AggregateCell } from "./summary/types.js";
 import { registry } from "./summary/registry.js";
-import { degrees as canonicalDegrees } from "../theory.js";
+let activeTooltip: HTMLElement | null = null;
+if (typeof document !== "undefined")
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && activeTooltip) {
+      activeTooltip.hidden = true;
+      activeTooltip = null;
+    }
+  });
+
+function el<K extends keyof HTMLElementTagNameMap>(tag: K, text?: string) {
+  const node = document.createElement(tag);
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+function rate(c: AggregateCell) {
+  return c.independentQuestionCount === null
+    ? null
+    : c.denominator
+      ? c.numerator! / c.denominator
+      : null;
+}
+function value(c: AggregateCell, metric: string) {
+  if (c.independentQuestionCount === null) return "?";
+  if (c.denominator === null && metric === "outcome") return "N/A";
+  if (metric === "sample") return String(c.independentQuestionCount);
+  if (metric === "time") {
+    const times = c.sample
+      .filter(
+        (o) =>
+          o.row.record.targets.length === 1 &&
+          o.row.capabilities.timing &&
+          (o.row.source === "self" || o.outcome === "correct"),
+      )
+      .map((o) => o.row.record.analytics!.activeMs!)
+      .filter((n) => Number.isFinite(n) && n >= 0);
+    const median = quantile(times, 0.5);
+    return median === null ? "N/A" : (median / 1000).toFixed(2) + "s";
+  }
+  return rate(c) === null ? "\u2014" : Math.round(rate(c)! * 100) + "%";
+}
+function cellButton(
+  c: AggregateCell,
+  metric: string,
+  inspect: (c: AggregateCell) => void,
+  selected?: string,
+) {
+  const b = el("button");
+  b.type = "button";
+  b.className = "matrix-value";
+  b.dataset.cellId = c.id;
+  b.dataset.reliability = c.reliability;
+  b.dataset.stale = String(c.stale);
+  b.setAttribute("aria-pressed", String(c.id === selected));
+  const label =
+    c.independentQuestionCount === null
+      ? "Identity unknown"
+      : c.denominator === null
+        ? "Coverage only"
+        : c.denominator === 0
+          ? "No data"
+          : c.reliability;
+  b.append(
+    el("strong", value(c, metric)),
+    el(
+      "span",
+      c.independentQuestionCount === null
+        ? "Identity unknown"
+        : c.denominator === null
+          ? c.descriptiveItemCount + " item exposures"
+          : "n=" + c.denominator,
+    ),
+    el("small", label + (c.stale ? " · stale" : "")),
+  );
+  const source =
+    c.source === "self"
+      ? "Self-rated"
+      : c.source === "visual"
+        ? "Visual mapping"
+        : "Recognition";
+  const scope = c.queryScope
+    ? (JSON.parse(c.queryScope) as {
+        startInclusive: string | null;
+        endExclusive: string | null;
+        timezone: string;
+      })
+    : null;
+  const exact = `${c.label} · ${source} · ${c.grain} · ${c.numerator ?? "N/A"}/${c.denominator ?? "N/A"} · ${c.sessions} sessions / ${c.localDays} days · ${c.contextState} · ${label} · roots ${c.roots.map((r) => r.root).join(", ") || "unknown"}${scope ? " · " + (scope.startInclusive ?? "All retained") + " to " + (scope.endExclusive ?? "snapshot") + " · " + scope.timezone : ""}`;
+  b.setAttribute("aria-label", exact);
+  if (metric === "outcome" && rate(c) !== null)
+    b.style.setProperty(
+      "--outcome-color",
+      `hsl(174 28% ${96 - rate(c)! * 27}%)`,
+    );
+  b.onclick = () => inspect(c);
+  const tooltip = el("span", exact);
+  tooltip.className = "matrix-tooltip";
+  tooltip.id = "tooltip-" + c.id;
+  tooltip.setAttribute("role", "tooltip");
+  tooltip.hidden = true;
+  b.setAttribute("aria-describedby", tooltip.id);
+  b.onmouseenter = b.onfocus = () => {
+    if (activeTooltip && activeTooltip !== tooltip) activeTooltip.hidden = true;
+    activeTooltip = tooltip;
+    tooltip.hidden = false;
+    const anchor = b.getBoundingClientRect(),
+      box = tooltip.getBoundingClientRect();
+    tooltip.style.left =
+      Math.max(8, Math.min(anchor.left, innerWidth - box.width - 8)) + "px";
+    tooltip.style.top =
+      Math.max(8, Math.min(anchor.bottom + 4, innerHeight - box.height - 8)) +
+      "px";
+  };
+  const leave = () =>
+    setTimeout(() => {
+      if (
+        !b.matches(":hover") &&
+        !tooltip.matches(":hover") &&
+        document.activeElement !== b
+      )
+        tooltip.hidden = true;
+    }, 80);
+  b.onmouseleave = leave;
+  b.onblur = () => {
+    if (!tooltip.matches(":hover")) tooltip.hidden = true;
+  };
+  tooltip.onmouseleave = leave;
+  b.onkeydown = (e) => {
+    if (e.key === "Escape") tooltip.hidden = true;
+  };
+  return { b, tooltip };
+}
 export function renderAggregateMatrix(
   parent: HTMLElement,
   cells: AggregateCell[],
   metric: string,
   inspect: (cell: AggregateCell) => void,
+  options: {
+    selected?: string;
+    missing?: (quality: string, degree: string) => void;
+  } = {},
 ) {
   const partitions = new Map<string, AggregateCell[]>();
   for (const c of cells.filter(
     (c) =>
       !c.stratum &&
-      (c.level === "quality-degree" || c.level === "mode-specific"),
+      c.level ===
+        (registry(c).degreeUse === "outcome"
+          ? "quality-degree"
+          : "mode-specific"),
   )) {
-    const expected =
-      registry(c).degreeUse === "outcome" ? "quality-degree" : "mode-specific";
-    if (c.level !== expected) continue;
-    const key = [c.mode, c.subtask, c.source, c.grain, c.metricId].join(" · ");
-    const group = partitions.get(key) ?? [];
-    group.push(c);
-    partitions.set(key, group);
+    const key = [c.mode, c.subtask, c.source, c.grain, c.metricId].join(" · "),
+      list = partitions.get(key) ?? [];
+    list.push(c);
+    partitions.set(key, list);
   }
   for (const [key, group] of partitions) {
-    const section = document.createElement("section"),
-      heading = document.createElement("h3"),
-      toggle = document.createElement("button");
-    heading.textContent =
-      (group[0].level === "quality-degree"
-        ? "Chord quality × degree"
-        : "Assessed contexts") +
-      " · " +
-      (group[0].source === "self"
-        ? "Self-assessed"
-        : group[0].source === "visual"
-          ? "Visual mapping"
-          : "Recognition");
+    const section = el("section"),
+      grid = group[0].level === "quality-degree";
     section.dataset.partition = key;
-    toggle.type = "button";
-    toggle.textContent = "Table view";
-    toggle.setAttribute("aria-pressed", "false");
-    const wrap = document.createElement("div");
-    wrap.className = "table-scroll aggregate-matrix";
-    wrap.setAttribute("role", "region");
-    wrap.setAttribute(
-      "aria-label",
-      heading.textContent +
-        " · " +
-        group[0].mode.toUpperCase() +
-        " · " +
-        group[0].subtask +
-        " · " +
-        group[0].grain,
+    section.append(
+      el(
+        "h3",
+        (grid ? "Chord quality × degree" : "Assessed contexts") +
+          " · " +
+          (group[0].source === "self"
+            ? "Self-assessed"
+            : group[0].source === "visual"
+              ? "Visual mapping"
+              : "Recognition"),
+      ),
     );
+    const toolbar = el("div"),
+      toggle = el("button", "Table view"),
+      sort = el("select"),
+      label = el("label", "Sort");
+    toolbar.className = "matrix-toolbar";
+    toggle.type = "button";
+    toggle.setAttribute("aria-pressed", "false");
+    sort.setAttribute("aria-label", "Matrix table sort");
+    for (const [v, t] of [
+      ["canonical", "Musical order"],
+      ["rate-desc", "Rate: high to low"],
+      ["rate-asc", "Rate: low to high"],
+      ["n-desc", "Sample: high to low"],
+      ["n-asc", "Sample: low to high"],
+    ])
+      sort.add(new Option(t, v));
+    label.append(sort);
+    label.hidden = true;
+    toolbar.append(toggle, label);
+    const wrap = el("div");
+    wrap.className = "table-scroll aggregate-matrix";
     wrap.tabIndex = 0;
-    toggle.onclick = () => {
-      const plain = wrap.classList.toggle("matrix-table-view");
-      toggle.setAttribute("aria-pressed", String(plain));
-      toggle.textContent = plain ? "Heatmap view" : "Table view";
-    };
-    section.append(heading, toggle, wrap);
-    const table = document.createElement("table"),
-      caption = document.createElement("caption");
-    caption.textContent =
-      group[0].mode.toUpperCase() +
-      " · " +
-      group[0].subtask +
-      " · " +
-      group[0].grain +
-      ". Diagnostic first-question sample; independent questions and item exposures are different counts.";
-    table.append(caption);
-    const head = document.createElement("thead"),
-      body = document.createElement("tbody"),
-      header = document.createElement("tr");
-    const isGrid = group[0].level === "quality-degree";
-    const columns = isGrid
-      ? [...new Set(group.map((c) => c.degree!))].sort(
-          (a, b) =>
-            canonicalDegrees.indexOf(a as never) -
-              canonicalDegrees.indexOf(b as never) || a.localeCompare(b),
+    wrap.setAttribute("role", "region");
+    wrap.setAttribute("aria-label", key + " · matrix");
+    const store = "insights:matrix:" + key;
+    let plain = sessionStorage.getItem(store) === "table",
+      page = 0;
+    const qualityOrder = (a: string, b: string) =>
+      qualities.indexOf(a as never) - qualities.indexOf(b as never);
+    const degreeOrder = (a: string, b: string) =>
+      canonicalDegrees.indexOf(a as never) -
+      canonicalDegrees.indexOf(b as never);
+    const canonical = (a: AggregateCell, b: AggregateCell) =>
+      qualityOrder(a.quality ?? "", b.quality ?? "") ||
+      degreeOrder(a.degree ?? "", b.degree ?? "") ||
+      (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+    const rowQualities = [...new Set(group.map((c) => c.quality!))].sort(
+      qualityOrder,
+    );
+    const scopedDegrees = new Set(
+      group.flatMap((c) =>
+        c.rows.flatMap((e) => [
+          ...(e.config.degreePool ?? []),
+          e.config.degree,
+          ...e.record.targets,
+        ]),
+      ),
+    );
+    const columns = grid
+      ? canonicalDegrees.filter(
+          (d) =>
+            scopedDegrees.has(d) &&
+            rowQualities.some((q) =>
+              allowedTargetDegrees({
+                root: "C",
+                quality: q as never,
+                symbol: "C" + q,
+              }).includes(d),
+            ),
         )
       : ["Recorded outcome"];
-    for (const text of [isGrid ? "Quality / degree" : "Context", ...columns]) {
-      const th = document.createElement("th");
-      th.scope = "col";
-      th.textContent = text;
-      header.append(th);
-    }
-    head.append(header);
-    const labels = isGrid
-      ? [...new Set(group.map((c) => c.quality!))].sort()
-      : group.map((c) => c.id);
-    let page = 0;
-    const count = document.createElement("p"),
-      prev = document.createElement("button"),
-      next = document.createElement("button");
+    const prev = el("button", "Previous contexts"),
+      next = el("button", "Next contexts"),
+      count = el("p");
     prev.type = next.type = "button";
-    prev.textContent = "Previous contexts";
-    next.textContent = "Next contexts";
+    const pagination = el("div");
+    pagination.className = "matrix-toolbar";
+    pagination.append(count, prev, next);
     const draw = () => {
-      body.replaceChildren();
-      count.textContent =
-        labels.length +
-        " contexts · page " +
-        (page + 1) +
-        "/" +
-        Math.ceil(labels.length / 12);
-      prev.disabled = page === 0;
-      next.disabled = (page + 1) * 12 >= labels.length;
-      for (const label of isGrid
-        ? labels
-        : labels.slice(page * 12, (page + 1) * 12)) {
-        const tr = document.createElement("tr"),
-          th = document.createElement("th");
-        th.scope = "row";
-        th.textContent = isGrid
-          ? label
-          : group.find((c) => c.id === label)!.label;
-        tr.append(th);
-        for (const degree of columns) {
-          const td = document.createElement("td"),
-            c = group.find((c) =>
-              isGrid
-                ? c.quality === label && c.degree === degree
-                : c.id === label,
-            );
-          if (!c) {
-            td.textContent = "No observations";
-            tr.append(td);
-            continue;
-          }
-          const b = document.createElement("button");
-          b.type = "button";
-          b.dataset.cellId = c.id;
-          b.className = "matrix-value";
-          let text: string;
-          if (metric === "time") {
-            const times = c.sample
-              .filter(
-                (o) =>
-                  o.row.record.targets.length === 1 &&
-                  o.row.capabilities.timing &&
-                  (o.row.source === "self" || o.outcome === "correct"),
-              )
-              .map((o) => o.row.record.analytics!.activeMs!)
-              .filter((n) => Number.isFinite(n) && n >= 0);
-            const median = quantile(times, 0.5);
-            text =
-              median === null
-                ? "Not recorded at this grain"
-                : (median / 1000).toFixed(2) + "s · valid n=" + times.length;
-          } else if (metric === "sample")
-            text =
-              (c.independentQuestionCount ?? "Unknown") +
-              " independent questions · " +
-              c.descriptiveItemCount +
-              " item exposures";
-          else
-            text =
-              c.denominator === null
-                ? "Not applicable · coverage only"
-                : c.independentQuestionCount === null
-                  ? "Unknown question identity"
-                  : c.denominator === 0
-                    ? "No eligible diagnostic observations"
-                    : c.source === "self"
-                      ? c.selfRatings.correct +
-                        " correct / " +
-                        c.selfRatings.close +
-                        " close / " +
-                        c.selfRatings.missed +
-                        " missed · " +
-                        c.denominator +
-                        " questions"
-                      : c.numerator +
-                        "/" +
-                        c.denominator +
-                        " correct · " +
-                        c.descriptiveItemCount +
-                        " items";
-          b.textContent = text + " · " + c.reliability;
-          b.dataset.reliability = c.reliability;
-          b.setAttribute(
-            "aria-label",
-            c.label + " · " + c.source + " · " + b.textContent,
-          );
-          b.onclick = () => inspect(c);
-          td.append(b);
+      wrap.replaceChildren();
+      toggle.textContent = plain ? "Heatmap view" : "Table view";
+      toggle.setAttribute("aria-pressed", String(plain));
+      label.hidden = !plain;
+      wrap.classList.toggle("matrix-table-view", plain);
+      const table = el("table"),
+        head = el("thead"),
+        body = el("tbody"),
+        header = el("tr");
+      table.append(
+        el(
+          "caption",
+          group[0].mode.toUpperCase() +
+            " · " +
+            group[0].subtask +
+            " · " +
+            group[0].grain +
+            " · diagnostic first-question sample",
+        ),
+      );
+      const headings = plain
+        ? [
+            "Quality / context",
+            "Degree",
+            "Metric",
+            "Correct / n",
+            "Grades: correct / close / missed",
+            "Evidence",
+            "Days / sessions",
+            "Settings",
+            "Details",
+          ]
+        : [grid ? "Quality / degree" : "Context", ...columns];
+      headings.forEach((t) => {
+        const th = el("th", t);
+        th.scope = "col";
+        header.append(th);
+      });
+      head.append(header);
+      if (plain) {
+        const sorted = [...group].sort((a, b) => {
+          if (sort.value === "canonical") return canonical(a, b);
+          const x = sort.value.startsWith("rate")
+              ? rate(a)
+              : a.independentQuestionCount === null
+                ? null
+                : a.denominator,
+            y = sort.value.startsWith("rate")
+              ? rate(b)
+              : b.independentQuestionCount === null
+                ? null
+                : b.denominator;
+          return x === null
+            ? y === null
+              ? canonical(a, b)
+              : 1
+            : y === null
+              ? -1
+              : (sort.value.endsWith("asc") ? x - y : y - x) || canonical(a, b);
+        });
+        for (const c of sorted) {
+          const tr = el("tr");
+          for (const t of [
+            c.quality ?? c.label,
+            c.degree ?? "N/A",
+            value(c, metric),
+            rate(c) === null ? "N/A" : c.numerator + "/" + c.denominator,
+            c.selfRatings.correct +
+              " / " +
+              c.selfRatings.close +
+              " / " +
+              c.selfRatings.missed,
+            c.reliability + (c.stale ? " · stale" : ""),
+            c.localDays + " / " + c.sessions,
+            c.contextState,
+          ])
+            tr.append(el("td", t));
+          const td = el("td"),
+            { b, tooltip } = cellButton(c, metric, inspect, options.selected);
+          b.replaceChildren(document.createTextNode("Details"));
+          td.append(b, tooltip);
           tr.append(td);
+          body.append(tr);
         }
-        body.append(tr);
+      } else {
+        const labels = grid
+          ? rowQualities
+          : group.slice(page * 12, (page + 1) * 12).map((c) => c.id);
+        for (const label of labels) {
+          const tr = el("tr"),
+            th = el(
+              "th",
+              grid ? label : group.find((c) => c.id === label)!.label,
+            );
+          th.scope = "row";
+          tr.append(th);
+          for (const degree of columns) {
+            const td = el("td"),
+              c = group.find((c) =>
+                grid
+                  ? c.quality === label && c.degree === degree
+                  : c.id === label,
+              );
+            if (c) {
+              const { b, tooltip } = cellButton(
+                c,
+                metric,
+                inspect,
+                options.selected,
+              );
+              td.append(b, tooltip);
+            } else if (
+              !allowedTargetDegrees({
+                root: "C",
+                quality: label as never,
+                symbol: "C" + label,
+              }).includes(degree)
+            )
+              td.append(el("span", "N/A"));
+            else {
+              const b = el("button", "\u2014");
+              b.type = "button";
+              b.className = "matrix-value matrix-missing";
+              b.append(el("small", "No data"));
+              b.setAttribute(
+                "aria-label",
+                label + " / " + degree + " · No data",
+              );
+              b.onclick = () => options.missing?.(label, degree);
+              td.append(b);
+            }
+            tr.append(td);
+          }
+          body.append(tr);
+        }
       }
+      prev.disabled = page === 0;
+      next.disabled = (page + 1) * 12 >= group.length;
+      count.textContent =
+        "Page " + (page + 1) + " / " + Math.ceil(group.length / 12);
+      pagination.hidden = grid || plain || group.length <= 12;
+      table.append(head, body);
+      wrap.append(table);
+    };
+    toggle.onclick = () => {
+      plain = !plain;
+      sessionStorage.setItem(store, plain ? "table" : "heatmap");
+      draw();
+      toggle.focus();
+    };
+    sort.onchange = draw;
+    prev.onclick = () => {
+      page--;
+      draw();
+    };
+    next.onclick = () => {
+      page++;
+      draw();
     };
     draw();
-    if (!isGrid && labels.length > 12) {
-      prev.onclick = () => {
-        page--;
-        draw();
-      };
-      next.onclick = () => {
-        page++;
-        draw();
-      };
-      section.insertBefore(count, wrap);
-      section.append(prev, next);
-    }
-    table.append(head, body);
-    wrap.append(table);
+    section.append(toolbar, wrap, pagination);
     parent.append(section);
-    if (group[0].level === "quality-degree") {
-      const strip = document.createElement("div");
-      strip.className = "degree-strip";
-      const degrees = cells.filter(
-        (c) =>
-          c.level === "degree" &&
-          c.mode === group[0].mode &&
-          c.subtask === group[0].subtask &&
-          c.source === group[0].source,
+    if (grid) {
+      const marginal = el("details");
+      marginal.className = "degree-strip";
+      marginal.append(
+        el("summary", "Degree totals · descriptive across practised qualities"),
       );
-      strip.append(document.createTextNode("Across practised contexts: "));
-      for (const c of degrees) {
-        const b = document.createElement("button");
-        b.type = "button";
-        b.textContent =
-          c.degree +
-          " · " +
-          (c.denominator === null
-            ? "coverage"
-            : c.numerator + "/" + c.denominator) +
-          " · " +
-          (c.qualityGuard?.supported
-            ? "Supported across qualities"
-            : "Descriptive only");
-        b.onclick = () => inspect(c);
-        b.dataset.cellId = c.id;
-        strip.append(b);
+      const table = el("table"),
+        tr = el("tr"),
+        head = el("thead"),
+        body = el("tbody");
+      for (const t of [
+        "Degree",
+        "Correct / n",
+        "Observed %",
+        "Evidence",
+        "Breakdown",
+      ]) {
+        const th = el("th", t);
+        th.scope = "col";
+        tr.append(th);
       }
-      parent.append(strip);
+      head.append(tr);
+      for (const c of cells
+        .filter(
+          (c) =>
+            c.level === "degree" &&
+            c.mode === group[0].mode &&
+            c.subtask === group[0].subtask &&
+            c.source === group[0].source,
+        )
+        .sort(
+          (a, b) =>
+            (b.denominator ?? 0) - (a.denominator ?? 0) ||
+            degreeOrder(a.degree!, b.degree!),
+        )) {
+        const row = el("tr");
+        [
+          c.degree!,
+          rate(c) === null ? "Unknown" : c.numerator + "/" + c.denominator,
+          value(c, "outcome"),
+          c.qualityGuard?.supported ? "Supported strata" : "Descriptive only",
+        ].forEach((t) => row.append(el("td", t)));
+        const td = el("td"),
+          b = el("button", "Details");
+        b.type = "button";
+        b.dataset.cellId = c.id;
+        b.onclick = () => inspect(c);
+        td.append(b);
+        row.append(td);
+        body.append(row);
+      }
+      table.append(head, body);
+      const scroll = el("div");
+      scroll.className = "table-scroll";
+      scroll.append(table);
+      marginal.append(scroll);
+      parent.append(marginal);
     }
   }
 }

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { navigate, labURL } from "./browser-support.mjs";
+import { checkRefinement } from "./refinement-ui.mjs";
 import {
   screenshot113,
   supportedParent,
@@ -10,7 +11,10 @@ const { chromium } = await import(
   process.env.PLAYWRIGHT_MODULE || "playwright"
 );
 const browser = await chromium.launch({ channel: "msedge", headless: true });
-const page = await browser.newPage({ viewport: { width: 1366, height: 900 } });
+const page = await browser.newPage({
+  viewport: { width: 1366, height: 900 },
+  timezoneId: "Asia/Hong_Kong",
+});
 page.setDefaultTimeout(20000);
 const errors = [];
 page.on("pageerror", (e) => errors.push(e.message));
@@ -27,7 +31,7 @@ try {
     for (const e of rows) await r.put("assessments", e);
   }, screenshot113());
   await navigate(page, "insights/m1?days=all");
-  await page.locator("#skill-stats table").waitFor();
+  await page.locator(".aggregate-matrix table").first().waitFor();
   await page.getByText("How these counts reconcile", { exact: true }).click();
   assert.match(
     await page.locator("#analytics-content").innerText(),
@@ -62,20 +66,24 @@ try {
       .count(),
     1,
   );
-  assert.equal(await page.locator(".insight-trend canvas").count(), 0);
+  assert.equal(await page.locator(".insight-trend canvas:visible").count(), 0);
   // Citation values resolve to actual IDs; reference export is not a remote service.
   await page
     .locator(".smart-summary")
     .getByRole("button", { name: /View Evidence/ })
     .first()
     .click();
+  await page.locator(".insight-evidence-panel").waitFor();
   assert.ok(await page.locator(".insight-evidence-panel").count());
   await page.locator(".insight-evidence-panel").press("Escape");
   assert.equal(await page.locator(".insight-evidence-panel").count(), 0);
   await page.locator(".aggregate-matrix [data-cell-id]").first().focus();
   await page.keyboard.press("Enter");
   await page.locator("#selected-cell").waitFor();
-  assert.ok((await page.locator("#selected-cell tbody tr").count()) <= 17);
+  assert.ok(
+    (await page.locator("#selected-cell .insight-paged tbody tr").count()) <=
+      12,
+  );
   await page.locator("#selected-cell").press("Escape");
   await page.waitForFunction(() => !document.getElementById("selected-cell"));
   // Fully supported parent beats all sparse children and remains at most three actions.
@@ -149,8 +157,8 @@ try {
     for (const e of rows) await r.put("assessments", e);
   }, manyContexts);
   await navigate(page, "insights/m1?days=all");
-  await page.locator("#skill-stats table").waitFor();
-  assert.equal(await page.locator("#skill-stats tbody tr").count(), 1);
+  await page.locator(".aggregate-matrix table").first().waitFor();
+  assert.equal(await page.locator(".aggregate-matrix tbody tr").count(), 1);
   await page.locator(".aggregate-matrix [data-cell-id]").first().click();
   await page.locator("#selected-cell").waitFor();
   const contexts = page.locator("#selected-cell .insight-paged");
@@ -170,8 +178,9 @@ try {
     .filter({ has: page.getByText("Evidence table (300)", { exact: true }) });
   assert.equal(await assessments.locator("tbody tr").count(), 25);
   const workerCheck = await page.evaluate(async (base) => {
-    const { computeSummary } =
-      await import("/js/jazz/analytics/summary/client.js");
+    const { computeSummary } = await import(
+      "/js/jazz/analytics/summary/client.js"
+    );
     const history = Array.from({ length: 10000 }, (_, i) => ({
       ...base,
       id: "bench:" + i,
@@ -207,6 +216,7 @@ try {
   assert.equal(workerCheck.n, 10000);
   assert.ok(workerCheck.ticks > 2);
   console.log("10k background-worker responsiveness:", workerCheck);
+  await checkRefinement(page);
   assert.deepEqual(errors, []);
   console.log(
     "Smart Summary browser checks passed: reconciliation, cautious priorities, citations, matrix drilldown/keyboard, locale, compact overview, unavailable capabilities, mobile and source preservation.",

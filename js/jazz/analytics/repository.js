@@ -209,7 +209,7 @@ export async function exportData() {
     data.outbox = pending();
     return JSON.stringify(data, null, 2);
 }
-export async function importData(text) {
+function validatedBackup(text) {
     const data = JSON.parse(text);
     if (data.format !== "earTrainingInsights" || data.version !== 1)
         throw new Error("Unsupported export. Existing data preserved.");
@@ -228,6 +228,36 @@ export async function importData(text) {
             throw new Error("Invalid assessment schema");
         normalize(row.session, row.record, row.rawSource?.index ?? 0);
     }
+    return data;
+}
+export async function previewImport(text) {
+    const data = validatedBackup(text);
+    let accepted = 0, overlap = 0;
+    const rows = [];
+    for (const name of stores) {
+        const ids = new Set((await readAll(name)).map((r) => r.id));
+        let added = 0, repeated = 0;
+        for (const row of data[name]) {
+            if (ids.has(row.id))
+                repeated++;
+            else {
+                ids.add(row.id);
+                added++;
+            }
+        }
+        accepted += added;
+        overlap += repeated;
+        rows.push({ store: name, accepted: added, overlap: repeated });
+    }
+    return {
+        accepted,
+        overlap,
+        quarantined: data.imports.reduce((n, r) => n + (r.quarantined ?? 0), 0),
+        rows,
+    };
+}
+export async function importData(text) {
+    const data = validatedBackup(text);
     const db = await open();
     await new Promise((resolve, reject) => {
         const tx = db.transaction([...stores], "readwrite");

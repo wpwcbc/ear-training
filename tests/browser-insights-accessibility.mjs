@@ -108,7 +108,13 @@ try {
   };
   for (const type of ["deuteranopia", "protanopia", "achromatopsia"]) {
     await cdp.send("Emulation.setEmulatedVisionDeficiency", { type });
-    assert.match(await page.locator("#skill-stats").innerText(), /25\/50/);
+    assert.match(
+      await page
+        .locator(".aggregate-matrix [data-cell-id]")
+        .first()
+        .getAttribute("aria-label"),
+      /25\/50/,
+    );
     assert.ok(await page.locator(".aggregate-matrix [data-cell-id]").count());
     await page.evaluate(() => scrollTo(0, 0));
     await page.waitForTimeout(100);
@@ -129,8 +135,9 @@ try {
   await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
   const performance = await page.evaluate(
     async ({ base, fixedNow }) => {
-      const { computeSummary } =
-        await import("/js/jazz/analytics/summary/client.js");
+      const { computeSummary } = await import(
+        "/js/jazz/analytics/summary/client.js"
+      );
       const rows = Array.from({ length: 10000 }, (_, i) => ({
         ...base,
         id: "throttle:" + i,
