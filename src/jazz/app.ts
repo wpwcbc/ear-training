@@ -990,9 +990,8 @@ function next(): void {
     referenceSeen = false;
     referenceAssisted = false;
     started = performance.now();
-    render();
-    status("Sing the next target; its chord has not played yet.");
-    armPrediction();
+    contextPending = true;
+    playContext();
     return;
   }
   index++;

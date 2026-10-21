@@ -22,6 +22,17 @@ try {
   await page.locator("#reveal").click();
   assert.match(await page.locator("#answer").innerText(), /E = 9/);
   await page.locator("[data-grade=correct]").click();
+  const firstQuestionCalls = await page.evaluate(
+    () => window.audioCalls.length,
+  );
+  await page.locator("#next").click();
+  assert.equal(
+    await page.evaluate(() => window.audioCalls.length),
+    firstQuestionCalls + 1,
+  );
+  assert.equal(await page.locator("#answer").isVisible(), false);
+  await ready(page);
+  assert.equal(await page.locator("#replay").isVisible(), true);
   await configure(page, { mode: "m3" });
   await ready(page);
   for (const [i, degree] of ["b3", "b7", "11"].entries())
@@ -45,12 +56,19 @@ try {
   assert.match(await page.locator("#answer").innerText(), /B = 3/);
   await page.locator("[data-grade=close]").click();
   await page.locator("#next").click();
-  assert.equal(await page.evaluate(() => window.audioCalls.length), 2);
+  assert.deepEqual(
+    await page.evaluate(() => window.audioCalls.map((c) => c.chords)),
+    [["Dm7"], ["G7"], ["G7"]],
+  );
+  assert.equal(await page.locator("#answer").isVisible(), false);
+  await ready(page);
+  assert.equal(await page.locator("#replay").isVisible(), true);
   await page.locator("#replay").click();
   await ready(page);
   assert.deepEqual(await page.evaluate(() => window.audioCalls.at(-1).chords), [
     "G7",
   ]);
+  assert.equal(await page.evaluate(() => window.audioCalls.length), 4);
   await page.setViewportSize({ width: 390, height: 844 });
   assert.equal(
     await page.evaluate(
