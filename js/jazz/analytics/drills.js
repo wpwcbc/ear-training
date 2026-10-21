@@ -1,5 +1,6 @@
 import { generate, validateConfig, } from "../model.js";
-import { allowedTargetDegrees, parseChord, recognitionDegrees, } from "../theory.js";
+import { allowedTargetDegrees, parseChord } from "../theory.js";
+import { responseOptions } from "../recognition.js";
 import { seededRandom } from "../lifecycle.js";
 import { hash } from "./types.js";
 import { compileAdvanced, qualityContrast, diagnosticSequences, } from "./focused.js";
@@ -65,8 +66,12 @@ export function compileDrill(cell, route) {
                 unsupportedReason: "No compatible nearby contrast within these settings. Customize the target pool.",
             };
         if (e.mode === "m2") {
-            const responses = recognitionDegrees(parseChord(config.root + cell.quality));
-            if (![cell.degree, contrast].every((d) => responses.includes(d)))
+            if (config.responseDistractors?.split(/\s+/).includes(contrast))
+                return {
+                    supported: false,
+                    unsupportedReason: "This contrast would turn a fixed distractor into a target and change the recorded choice policy. Customize the response choices first.",
+                };
+            if (![cell.degree, contrast].every((d) => responseOptions(parseChord(config.root + cell.quality), d, config).includes(d)))
                 return {
                     supported: false,
                     unsupportedReason: "The recorded response-choice pool cannot answer both focus and contrast targets. Customize the choices.",

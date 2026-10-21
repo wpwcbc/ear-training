@@ -13,6 +13,7 @@ import { policy } from "../policy.js";
 import { summaryPolicy as p } from "./policy.js";
 import { registry } from "./registry.js";
 import { renderInsight } from "./templates.js";
+import { qualityGeneralization } from "./generalization.js";
 import type {
   AggregateCell,
   Insight,
@@ -24,7 +25,9 @@ export function supported(c: AggregateCell) {
   return (
     c.reliability === "sufficient" &&
     !c.stale &&
-    c.contextState === "matched" &&
+    (c.level === "degree"
+      ? c.qualityGuard?.supported === true
+      : c.contextState === "matched") &&
     c.denominator !== null &&
     (c.level === "mode-specific" || c.generalization !== "not-established")
   );
@@ -97,6 +100,12 @@ export function comparePeers(
   revision: string,
   now: number,
 ) {
+  const familyVersion = [...a.sample, ...b.sample].some(
+    (o) =>
+      o.row.mode === "m2" && Boolean(o.row.config.responseDistractors?.trim()),
+  )
+    ? "tested-label-substitution-1"
+    : "exact-choices-1";
   const key = (o: AggregateCell["sample"][number]) =>
     stable([o.root, comparisonFamily(o.row, true)]);
   const leftMap = new Map<string, typeof a.sample>(),
@@ -118,7 +127,7 @@ export function comparePeers(
     return {
       comparison: {
         id: "comparison-" + hash([a.id, b.id]),
-        familyVersion: "tested-label-substitution-1",
+        familyVersion,
         kind: "peer" as const,
         leftEvidenceRefId: a.evidenceRefId,
         rightEvidenceRefId: b.evidenceRefId,
@@ -191,7 +200,7 @@ export function comparePeers(
     reasons.push("Both matched sides need sufficient compatible evidence.");
   const comparison: MatchedComparison = {
     id: "comparison-" + hash([a.id, b.id, shared]),
-    familyVersion: "tested-label-substitution-1",
+    familyVersion,
     kind: "peer",
     leftEvidenceRefId: left.ref.id,
     rightEvidenceRefId: right.ref.id,
@@ -215,8 +224,16 @@ export function buildSummary(
     candidates: Insight[] = [],
     comparisons: MatchedComparison[] = [];
   const cellIndex = new Map(cells.map((c) => [c.id, c]));
+  for (const c of cells.filter(
+    (c) => c.level === "degree" && c.denominator !== null,
+  )) {
+    c.qualityGuard = qualityGeneralization(c, cells);
+    c.capabilityReasons.push(...c.qualityGuard.reasons);
+    c.label = c.degree + " across practised qualities";
+  }
   const relevant = cells.filter(
     (c) =>
+      (c.level === "degree" && c.qualityGuard?.supported) ||
       c.level === "quality-degree" ||
       c.level === "root-quality-degree" ||
       c.level === "mode-specific",
@@ -232,6 +249,16 @@ export function buildSummary(
       k,
       n,
       noncorrect,
+      ...(c.level === "degree"
+        ? {
+            sourceLabel:
+              c.source === "self"
+                ? "self-rated"
+                : c.source === "visual"
+                  ? "visually mapped"
+                  : "recorded",
+          }
+        : {}),
       ...(c.mode === "m2"
         ? {
             component:
@@ -271,7 +298,7 @@ export function buildSummary(
             ? "specific-difficulty"
             : "weakness",
           "supported",
-          registry(c).templateId,
+          c.level === "degree" ? "cross-quality" : registry(c).templateId,
           params,
         ),
       );
@@ -617,6 +644,7 @@ export function buildSummary(
     recommendations: diverse(
       visible.filter(
         (i) =>
+          cellIndex.get(i.cellId)?.level !== "degree" &&
           i.certainty !== "descriptive" &&
           i.category !== "relative-strength" &&
           i.category !== "comparable-trend",

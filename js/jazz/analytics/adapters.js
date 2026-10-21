@@ -73,6 +73,9 @@ export function normalize(session, record, index) {
         }),
         cohortKey: analyticsCohortKey(config, {
             generator: session.generatorVersion ?? "legacy",
+            ...(capture?.choicePolicy
+                ? { choicePolicy: capture.choicePolicy }
+                : {}),
             assessedScope: record.mode === "m4" ||
                 (record.mode === "m5" && config.runMode === "step")
                 ? {

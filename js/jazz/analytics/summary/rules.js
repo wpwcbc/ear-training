@@ -6,10 +6,13 @@ import { policy } from "../policy.js";
 import { summaryPolicy as p } from "./policy.js";
 import { registry } from "./registry.js";
 import { renderInsight } from "./templates.js";
+import { qualityGeneralization } from "./generalization.js";
 export function supported(c) {
     return (c.reliability === "sufficient" &&
         !c.stale &&
-        c.contextState === "matched" &&
+        (c.level === "degree"
+            ? c.qualityGuard?.supported === true
+            : c.contextState === "matched") &&
         c.denominator !== null &&
         (c.level === "mode-specific" || c.generalization !== "not-established"));
 }
@@ -66,6 +69,9 @@ function contains(parent, child) {
     return child.sample.every((o) => questions.has(o.row.questionId));
 }
 export function comparePeers(a, b, query, revision, now) {
+    const familyVersion = [...a.sample, ...b.sample].some((o) => o.row.mode === "m2" && Boolean(o.row.config.responseDistractors?.trim()))
+        ? "tested-label-substitution-1"
+        : "exact-choices-1";
     const key = (o) => stable([o.root, comparisonFamily(o.row, true)]);
     const leftMap = new Map(), rightMap = new Map();
     for (const [cell, map] of [
@@ -84,7 +90,7 @@ export function comparePeers(a, b, query, revision, now) {
         return {
             comparison: {
                 id: "comparison-" + hash([a.id, b.id]),
-                familyVersion: "tested-label-substitution-1",
+                familyVersion,
                 kind: "peer",
                 leftEvidenceRefId: a.evidenceRefId,
                 rightEvidenceRefId: b.evidenceRefId,
@@ -129,7 +135,7 @@ export function comparePeers(a, b, query, revision, now) {
         reasons.push("Both matched sides need sufficient compatible evidence.");
     const comparison = {
         id: "comparison-" + hash([a.id, b.id, shared]),
-        familyVersion: "tested-label-substitution-1",
+        familyVersion,
         kind: "peer",
         leftEvidenceRefId: left.ref.id,
         rightEvidenceRefId: right.ref.id,
@@ -145,7 +151,13 @@ export function comparePeers(a, b, query, revision, now) {
 export function buildSummary(rows, query, revision = dataRevision(rows), now = Date.now(), history = rows) {
     const { cells, refs } = buildHierarchy(rows, query, revision, now), candidates = [], comparisons = [];
     const cellIndex = new Map(cells.map((c) => [c.id, c]));
-    const relevant = cells.filter((c) => c.level === "quality-degree" ||
+    for (const c of cells.filter((c) => c.level === "degree" && c.denominator !== null)) {
+        c.qualityGuard = qualityGeneralization(c, cells);
+        c.capabilityReasons.push(...c.qualityGuard.reasons);
+        c.label = c.degree + " across practised qualities";
+    }
+    const relevant = cells.filter((c) => (c.level === "degree" && c.qualityGuard?.supported) ||
+        c.level === "quality-degree" ||
         c.level === "root-quality-degree" ||
         c.level === "mode-specific");
     for (const c of relevant) {
@@ -158,6 +170,15 @@ export function buildSummary(rows, query, revision = dataRevision(rows), now = D
             k,
             n,
             noncorrect,
+            ...(c.level === "degree"
+                ? {
+                    sourceLabel: c.source === "self"
+                        ? "self-rated"
+                        : c.source === "visual"
+                            ? "visually mapped"
+                            : "recorded",
+                }
+                : {}),
             ...(c.mode === "m2"
                 ? {
                     component: c.metricId === "joint-recognition"
@@ -181,7 +202,7 @@ export function buildSummary(rows, query, revision = dataRevision(rows), now = D
         if (supported(c) && c.wilson95[1] < policy.target)
             candidates.push(fact(c, c.level === "root-quality-degree" || c.level === "mode-specific"
                 ? "specific-difficulty"
-                : "weakness", "supported", registry(c).templateId, params));
+                : "weakness", "supported", c.level === "degree" ? "cross-quality" : registry(c).templateId, params));
         else if (c.contextState === "matched" &&
             !c.stale &&
             n &&
@@ -426,7 +447,8 @@ export function buildSummary(rows, query, revision = dataRevision(rows), now = D
         candidates,
         comparisons,
         statements: diverse(visible, query.mode ? p.maxModeStatements : p.maxOverviewStatements),
-        recommendations: diverse(visible.filter((i) => i.certainty !== "descriptive" &&
+        recommendations: diverse(visible.filter((i) => cellIndex.get(i.cellId)?.level !== "degree" &&
+            i.certainty !== "descriptive" &&
             i.category !== "relative-strength" &&
             i.category !== "comparable-trend"), p.maxRecommendations),
         reconciliation: reconciliation(rows, now),

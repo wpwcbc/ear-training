@@ -79,6 +79,7 @@ export interface AggregateCell {
   last: number;
   stratum?: boolean;
   aggregateEvidenceRefId?: string;
+  qualityGuard?: import("./generalization.js").QualityGuard;
 }
 export interface Insight {
   schemaVersion: 1;

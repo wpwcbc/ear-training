@@ -245,6 +245,7 @@ export function installFlow(engine: Bridge) {
     2: [
       "degree",
       "recognitionPool",
+      "responseDistractors",
       "path",
       "commonMode",
       "targetLimit",

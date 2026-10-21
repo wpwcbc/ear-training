@@ -1,8 +1,16 @@
 import { parseChord } from "../theory.js";
 import type { Evidence } from "./types.js";
-import { policy, wilson, evidenceLabel, dayKey, quantile } from "./policy.js";
+import {
+  policy,
+  wilson,
+  evidenceLabel,
+  dayKey,
+  quantile,
+  timestamp,
+  compareId,
+} from "./policy.js";
 export function eligible(e: Evidence, now = Date.now()): boolean {
-  const date = Date.parse(e.createdAt);
+  const date = timestamp(e.createdAt);
   return (
     e.record.grade !== "skipped" &&
     e.assistance === "none" &&
@@ -17,8 +25,8 @@ export function independent(rows: Evidence[]): Evidence[] {
   return [...rows]
     .sort(
       (a, b) =>
-        Date.parse(a.createdAt) - Date.parse(b.createdAt) ||
-        a.id.localeCompare(b.id),
+        timestamp(a.createdAt) - timestamp(b.createdAt) ||
+        compareId(a.id, b.id),
     )
     .filter((e) => {
       const key = e.questionId ?? e.id;
@@ -352,20 +360,16 @@ export function matchedTrends(
   return [...groups]
     .sort(([a], [b]) => a.localeCompare(b))
     .flatMap(([key, cohort]) => {
-      const current = aggregate(
-        cohort.filter((e) => Date.parse(e.createdAt) >= now - span),
-        timezone,
-        now,
-      );
-      const prior = aggregate(
-        cohort.filter(
-          (e) =>
-            Date.parse(e.createdAt) >= now - 2 * span &&
-            Date.parse(e.createdAt) < now - span,
-        ),
-        timezone,
-        now,
-      );
+      const currentRows: Evidence[] = [],
+        priorRows: Evidence[] = [];
+      for (const e of cohort) {
+        const date = timestamp(e.createdAt);
+        if (date >= now - span) currentRows.push(e);
+        else if (date >= now - 2 * span) priorRows.push(e);
+      }
+      if (!currentRows.length || !priorRows.length) return [];
+      const current = aggregate(currentRows, timezone, now);
+      const prior = aggregate(priorRows, timezone, now);
       if (!current.eligibleCount || !prior.eligibleCount) return [];
       const delta =
         current.correct / current.eligibleCount -

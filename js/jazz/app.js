@@ -1,4 +1,4 @@
-import { degrees, recognitionDegrees, qualities, spellTarget, } from "./theory.js";
+import { degrees, qualities, spellTarget, } from "./theory.js";
 import { phrases } from "./phrases.js";
 import { drawBass, drawScore } from "./views.js";
 import { bassTarget, bassPositions } from "./bass.js";
@@ -9,6 +9,7 @@ import { AudioEngine } from "./audio.js";
 import { sessionQuestion, createSession } from "./lifecycle.js";
 import { installFlow } from "./flow.js";
 import { AttemptCapture } from "./analytics/events.js";
+import { responseOptions, captureChoicePolicy } from "./recognition.js";
 import { captureAssessment, reconcile } from "./analytics/repository.js";
 let capture = null;
 let timerReveal = false;
@@ -418,6 +419,7 @@ function modeUI() {
     el("single-settings").hidden = !single;
     el("degree-setting").hidden = config.mode !== "m1" && config.mode !== "m7";
     el("recognition-setting").hidden = config.mode !== "m2";
+    el("response-setting").hidden = config.mode !== "m2";
     el("blind-quality-setting").hidden =
         config.mode !== "m2" || config.showChords;
     el("quality").closest("label").hidden =
@@ -836,7 +838,7 @@ function renderChoices() {
         const select = document.createElement("select");
         select.setAttribute("aria-label", `Role over chord ${i + 1}`);
         const fillOptions = (quality) => {
-            select.replaceChildren(new Option("Choose degree", ""), ...recognitionDegrees({ ...target.chord, quality }).map((d) => new Option(d, d)));
+            select.replaceChildren(new Option("Choose degree", ""), ...responseOptions({ ...target.chord, quality }, target.degree, config).map((d) => new Option(d, d)));
         };
         if (!config.showChords) {
             const qualitySelect = document.createElement("select");
@@ -1078,6 +1080,7 @@ async function reveal() {
         capture.value.answerOptions = Array.from(el("choices").querySelectorAll("select")).map((s) => Array.from(s.options)
             .map((o) => o.value)
             .filter(Boolean));
+        capture.value.choicePolicy = captureChoicePolicy(config, capture.value.answerOptions);
         capture.commit(isRecognition(config) ? "answer_committed" : "reference_revealed", timerReveal);
         capture.event("reference_revealed", {
             reason: timerReveal ? "timer" : "manual",

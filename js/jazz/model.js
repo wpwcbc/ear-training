@@ -1,4 +1,4 @@
-import { parseChord, targetPc, spellTarget, degreeForPc, inRange, nearestGuide, pitchClass, chordToneDegrees, tensionDegrees, allowedTargetDegrees, } from "./theory.js";
+import { parseChord, targetPc, spellTarget, degreeForPc, inRange, nearestGuide, pitchClass, chordToneDegrees, tensionDegrees, allowedTargetDegrees, degrees, recognitionDegrees, } from "./theory.js";
 import { progressionBank, guideDegrees, parseProgression, } from "./progressions.js";
 import { bassTarget } from "./bass.js";
 import { transformPhrase } from "./phrases.js";
@@ -27,6 +27,7 @@ export const defaults = {
     commonMode: "recognize",
     span: 0,
     recognitionPool: "1 b3 3 5 b7 maj7 9 11 13",
+    responseDistractors: "",
     recognitionQualities: "maj7 m7 7 m7b5",
     revealMode: "manual",
     predictionSeconds: 4,
@@ -364,6 +365,30 @@ export function validateConfig(config, customs = []) {
         throw new Error("Select a valid practice mode.");
     if (next.mode === "m3")
         next.context = "full";
+    if (next.mode === "m2" && next.responseDistractors?.trim()) {
+        const distractors = next.responseDistractors.trim().split(/\s+/);
+        if (distractors.length < 2 ||
+            distractors.length > 7 ||
+            new Set(distractors).size !== distractors.length ||
+            distractors.some((d) => !degrees.includes(d)))
+            throw new Error("Choose 2-7 distinct fixed distractor roles.");
+        const targets = next.degreePool ?? next.recognitionPool.split(/\s+/);
+        if (targets.some((d) => distractors.includes(d)))
+            throw new Error("Target degrees and fixed distractors must be separate.");
+        const choiceQualities = next.showChords
+            ? (next.qualityPool ?? [next.quality])
+            : next.recognitionQualities
+                .trim()
+                .split(/[\s,]+/)
+                .filter(Boolean);
+        for (const quality of choiceQualities) {
+            const chord = parseChord("C" + quality);
+            if (distractors.some((d) => !recognitionDegrees(chord).includes(d)))
+                throw new Error(`Fixed distractor roles must be available for every selected quality (${quality}).`);
+            if (targets.some((d) => distractors.includes(degreeForPc(chord, targetPc(chord, d)))))
+                throw new Error("Canonical target roles and fixed distractors must be separate.");
+        }
+    }
     if (next.mode === "m5" && next.targetPattern === "line") {
         next.path = "nearest";
         next.targetLimit = "guides";

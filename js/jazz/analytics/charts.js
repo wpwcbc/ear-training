@@ -1,6 +1,6 @@
 import { aggregate, eligible, independent } from "./metrics.js";
 import { dayKey } from "./policy.js";
-export function renderTrend(parent, rows, timezone, now = Date.now()) {
+export function renderTrend(parent, rows, timezone, now = Date.now(), mixed = false) {
     const sample = independent(rows.filter((e) => eligible(e, now) && Date.parse(e.createdAt) >= now - 56 * 86400000));
     const groups = new Map();
     for (const e of sample) {
@@ -22,6 +22,7 @@ export function renderTrend(parent, rows, timezone, now = Date.now()) {
         const figure = document.createElement("figure"), caption = document.createElement("figcaption"), canvas = document.createElement("canvas");
         figure.className = "insight-trend";
         figure.dataset.metric = metric;
+        figure.dataset.comparison = mixed ? "mixed" : "matched";
         caption.textContent =
             (metric === "outcome"
                 ? rows[0].source === "self"
@@ -33,8 +34,10 @@ export function renderTrend(parent, rows, timezone, now = Date.now()) {
                 " · " +
                 rows[0].subtask +
                 " · " +
-                rows[0].config.bpm +
-                " BPM · exact matched cohort · daily points are descriptive";
+                (mixed
+                    ? "Mixed settings · practice mix changed; descriptive only, not evidence of improvement"
+                    : rows[0].config.bpm +
+                        " BPM · exact matched cohort · daily points are descriptive");
         canvas.width = 900;
         canvas.height = 240;
         canvas.setAttribute("role", "img");
@@ -65,7 +68,7 @@ export function renderTrend(parent, rows, timezone, now = Date.now()) {
                 continue;
             ctx.strokeStyle = metric === "outcome" ? "#236b56" : "#965b25";
             ctx.fillStyle = ctx.strokeStyle;
-            if (metric === "outcome" && p.stats.interval) {
+            if (metric === "outcome" && p.stats.interval && !mixed) {
                 ctx.beginPath();
                 ctx.moveTo(x(p.time), y(p.stats.interval[0]));
                 ctx.lineTo(x(p.time), y(p.stats.interval[1]));
@@ -92,7 +95,7 @@ export function renderTrend(parent, rows, timezone, now = Date.now()) {
             ? [
                 "Local day",
                 "Correct / diagnostic questions",
-                "Wilson 95%",
+                mixed ? "Comparability" : "Wilson 95%",
                 "Source / grain",
             ]
             : [
@@ -114,9 +117,11 @@ export function renderTrend(parent, rows, timezone, now = Date.now()) {
                 ? [
                     p.day,
                     p.stats.correct + "/" + p.stats.eligibleCount,
-                    p.stats.interval
-                        ?.map((v) => (v * 100).toFixed(1) + "%")
-                        .join(" to ") ?? "No observations",
+                    mixed
+                        ? "Mixed settings; descriptive only"
+                        : (p.stats.interval
+                            ?.map((v) => (v * 100).toFixed(1) + "%")
+                            .join(" to ") ?? "No observations"),
                     rows[0].source + " / " + rows[0].grain,
                 ]
                 : [

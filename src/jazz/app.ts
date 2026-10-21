@@ -1,6 +1,5 @@
 import {
   degrees,
-  recognitionDegrees,
   qualities,
   type Quality,
   parseChord,
@@ -33,6 +32,7 @@ import { AudioEngine } from "./audio.js";
 import { sessionQuestion, createSession } from "./lifecycle.js";
 import { installFlow } from "./flow.js";
 import { AttemptCapture } from "./analytics/events.js";
+import { responseOptions, captureChoicePolicy } from "./recognition.js";
 import { captureAssessment, reconcile } from "./analytics/repository.js";
 let capture: AttemptCapture | null = null;
 let timerReveal = false;
@@ -516,6 +516,7 @@ function modeUI(): void {
   el("single-settings").hidden = !single;
   el("degree-setting").hidden = config.mode !== "m1" && config.mode !== "m7";
   el("recognition-setting").hidden = config.mode !== "m2";
+  el("response-setting").hidden = config.mode !== "m2";
   el("blind-quality-setting").hidden =
     config.mode !== "m2" || config.showChords;
   el("quality").closest("label")!.hidden =
@@ -981,9 +982,11 @@ function renderChoices(): void {
     const fillOptions = (quality: Quality) => {
       select.replaceChildren(
         new Option("Choose degree", ""),
-        ...recognitionDegrees({ ...target.chord, quality }).map(
-          (d) => new Option(d, d),
-        ),
+        ...responseOptions(
+          { ...target.chord, quality },
+          target.degree,
+          config,
+        ).map((d) => new Option(d, d)),
       );
     };
     if (!config.showChords) {
@@ -1242,6 +1245,10 @@ async function reveal(): Promise<void> {
       Array.from(s.options)
         .map((o) => o.value)
         .filter(Boolean),
+    );
+    capture.value.choicePolicy = captureChoicePolicy(
+      config,
+      capture.value.answerOptions,
     );
     capture.commit(
       isRecognition(config) ? "answer_committed" : "reference_revealed",

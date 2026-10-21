@@ -13,6 +13,7 @@ import { parseChord } from "../theory.js";
 import { defaultFocusIndex } from "./focused.js";
 import { validateScheduled } from "./focused.js";
 import { renderAggregateMatrix } from "./matrix.js";
+import { confusionGrids, legacyGrid, renderGrid } from "./grids.js";
 import { modeContext } from "./hierarchy.js";
 import { computeSummary, clearSummaryCache } from "./summary/client.js";
 import { summaryPolicy } from "./summary/policy.js";
@@ -661,6 +662,16 @@ export async function renderAnalytics(host, route, actions) {
                 selected.localDays +
                 " days"));
             selected.capabilityReasons.forEach((r) => panel.append(node("p", r)));
+            if (selected.qualityGuard)
+                table(panel, [
+                    "Practised quality",
+                    "Correct / diagnostic questions",
+                    "Supported stratum",
+                ], selected.qualityGuard.qualities.map((q) => [
+                    q.quality,
+                    q.k + "/" + q.n,
+                    q.supported ? "Yes" : "No",
+                ]));
             panel.append(button("View Evidence", () => openEvidence(selected.evidenceRefId)));
             table(panel, ["Observed root", "Independent questions"], selected.roots.map((r) => [r.root, String(r.questionCount)]));
             const rootLabel = node("label", "Root drilldown"), root = node("select");
@@ -732,6 +743,37 @@ export async function renderAnalytics(host, route, actions) {
                 c.selected,
                 rate(c.count, c.denominator),
             ]), "confusions");
+            const matrices = node("div");
+            matrices.id = "confusion-matrices";
+            for (const grid of confusionGrids(rows, now))
+                renderGrid(matrices, grid, (cell) => {
+                    const region = node("section");
+                    const origin = document.activeElement;
+                    const close = () => {
+                        region.remove();
+                        origin?.focus();
+                    };
+                    region.className = "insight-evidence-panel";
+                    region.tabIndex = -1;
+                    region.append(button("Close evidence", close));
+                    region.addEventListener("keydown", (e) => {
+                        if (e.key === "Escape")
+                            close();
+                    });
+                    region.append(node("h4", cell.row +
+                        " → " +
+                        cell.column +
+                        " · " +
+                        cell.k +
+                        "/" +
+                        cell.n +
+                        " expected-row questions"));
+                    evidenceTable(region, cell.evidence, actions, true);
+                    matrices.append(region);
+                    region.focus();
+                    region.scrollIntoView({ block: "nearest" });
+                });
+            detail.append(matrices);
             host.append(detail);
         }
         if (mode === "m6") {
@@ -881,6 +923,45 @@ function renderComparisons(host, rows, evidence, timezone, now) {
     }
     if (!rows.some((e) => e.capabilities.timing))
         host.append(node("p", "Standardized timing not recorded for these results."));
+    if (keys.size > 1) {
+        const detail = node("details");
+        detail.className = "mixed-history";
+        detail.append(node("summary", "Mixed practice history (descriptive)"), node("p", "Practice mix changed. These observations are not matched comparisons and do not establish improvement. Sources, tasks, assessment units and timing definitions stay separate."));
+        const series = new Map();
+        for (const e of rows) {
+            const key = [
+                e.mode,
+                e.subtask,
+                e.source,
+                e.grain,
+                e.record.analytics?.timingVersion ?? "historical-seconds",
+            ].join(" · ");
+            const group = series.get(key) ?? [];
+            group.push(e);
+            series.set(key, group);
+        }
+        const label = node("label", "Descriptive series"), select = node("select"), chart = node("div");
+        select.setAttribute("aria-label", "Descriptive series");
+        [...series.keys()].sort().forEach((k) => select.add(new Option(k, k)));
+        const draw = () => {
+            chart.replaceChildren();
+            const group = series.get(select.value) ?? [];
+            renderTrend(chart, group, timezone, now, true);
+            if (!chart.children.length)
+                chart.append(node("p", "At least two recorded days are needed for this descriptive series."));
+        };
+        select.onchange = draw;
+        label.append(select);
+        detail.append(label, chart);
+        let rendered = false;
+        detail.ontoggle = () => {
+            if (detail.open && !rendered) {
+                rendered = true;
+                draw();
+            }
+        };
+        host.append(detail);
+    }
 }
 async function launchPlan(plan, route, actions) {
     if (plan.questions.length !== 10)
@@ -1171,6 +1252,78 @@ async function renderLegacy(host) {
         section.append(node("p", legacy.id === "progression-id"
             ? "Chord exposure rows share a joint progression response. Independent accuracy and confidence are unavailable."
             : `First-try success among retained solved questions: ${rate(legacy.rows.filter((r) => r.attempts === 1).length, legacy.rows.length)}.`));
+        const matrixHost = node("div"), facetControls = node("div"), routeParams = new URLSearchParams((routeToken ?? "").split("?")[1] ?? "");
+        let inversion = routeParams.get("cq-inversion") ?? "all", playback = routeParams.get("cq-playback") ?? "all";
+        if (legacy.id === "chord-quality")
+            for (const [key, label, values] of [
+                [
+                    "cq-inversion",
+                    "Inversion",
+                    legacy.rows.map((r) => String(r.chordInversion ?? "Unknown")),
+                ],
+                [
+                    "cq-playback",
+                    "Playback",
+                    legacy.rows.map((r) => String(r.playbackMode ?? "Unknown")),
+                ],
+            ]) {
+                const l = node("label", label), select = node("select");
+                select.setAttribute("aria-label", "Legacy " + label);
+                select.add(new Option("All", "all"));
+                [...new Set(values)]
+                    .sort()
+                    .forEach((v) => select.add(new Option(v, v)));
+                select.value = routeParams.get(key) ?? "all";
+                if (!select.value)
+                    select.value = "all";
+                if (key === "cq-inversion")
+                    inversion = select.value;
+                else
+                    playback = select.value;
+                select.onchange = () => {
+                    routeParams.set(key, select.value);
+                    location.hash = "#/insights/legacy?" + routeParams.toString();
+                };
+                l.append(select);
+                facetControls.append(l);
+            }
+        facetControls.className = "insight-filters";
+        section.append(facetControls, matrixHost);
+        const grid = legacyGrid(legacy.id, legacy.rows, { inversion, playback });
+        if (grid?.cells.length)
+            renderGrid(matrixHost, grid, (cell) => {
+                const panel = node("details");
+                panel.open = true;
+                panel.append(node("summary", cell.row + " / " + cell.column + " · retained solved evidence"));
+                let rawIndices = [];
+                try {
+                    const raw = JSON.parse(legacy.rawQuestions ?? "[]");
+                    if (Array.isArray(raw))
+                        rawIndices = raw.flatMap((r, index) => r && Number.isInteger(r.attempts) && r.attempts >= 1
+                            ? [index]
+                            : []);
+                }
+                catch { }
+                paginatedTable(panel, [
+                    "Import source index",
+                    "Material",
+                    "Attempts",
+                    "Recorded time-to-solve",
+                ], cell.sourceIndices, (index) => {
+                    const r = legacy.rows[index];
+                    return [
+                        rawIndices[index] === undefined
+                            ? "Unknown provenance"
+                            : legacy.key + "[" + rawIndices[index] + "]",
+                        cell.row + " / " + cell.column,
+                        String(r.attempts),
+                        Number.isFinite(r.timeSeconds)
+                            ? String(r.timeSeconds) + "s"
+                            : "Not recorded",
+                    ];
+                }, 25, "Solved rows");
+                matrixHost.append(panel);
+            });
         table(section, ["Retained material", "Attempts", "Recorded time-to-solve"], legacy.rows.map((r) => [
             String(r.upperDegree ?? r.intervalLabel ?? r.chordDegree ?? "/") +
                 " / " +

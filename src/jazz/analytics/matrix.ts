@@ -192,7 +192,7 @@ export function renderAggregateMatrix(
     wrap.append(table);
     parent.append(section);
     if (group[0].level === "quality-degree") {
-      const strip = document.createElement("p");
+      const strip = document.createElement("div");
       strip.className = "degree-strip";
       const degrees = cells.filter(
         (c) =>
@@ -201,18 +201,24 @@ export function renderAggregateMatrix(
           c.subtask === group[0].subtask &&
           c.source === group[0].source,
       );
-      strip.textContent =
-        "Across practised contexts (descriptive): " +
-        degrees
-          .map(
-            (c) =>
-              c.degree +
-              " " +
-              (c.denominator === null
-                ? "coverage"
-                : c.numerator + "/" + c.denominator),
-          )
-          .join(" · ");
+      strip.append(document.createTextNode("Across practised contexts: "));
+      for (const c of degrees) {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.textContent =
+          c.degree +
+          " · " +
+          (c.denominator === null
+            ? "coverage"
+            : c.numerator + "/" + c.denominator) +
+          " · " +
+          (c.qualityGuard?.supported
+            ? "Supported across qualities"
+            : "Descriptive only");
+        b.onclick = () => inspect(c);
+        b.dataset.cellId = c.id;
+        strip.append(b);
+      }
       parent.append(strip);
     }
   }

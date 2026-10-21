@@ -172,6 +172,7 @@ export function installFlow(engine) {
         2: [
             "degree",
             "recognitionPool",
+            "responseDistractors",
             "path",
             "commonMode",
             "targetLimit",

@@ -41,7 +41,24 @@ export function quantile(values, fraction) {
     return (sorted[floor] + (sorted[Math.ceil(index)] - sorted[floor]) * (index - floor));
 }
 const dateFormatters = new Map();
+const parsedDates = new Map(), formattedDays = new Map();
+export function timestamp(value) {
+    let n = parsedDates.get(value);
+    if (n === undefined) {
+        n = Date.parse(value);
+        if (parsedDates.size >= 20000)
+            parsedDates.clear();
+        parsedDates.set(value, n);
+    }
+    return n;
+}
+export function compareId(a, b) {
+    return a < b ? -1 : a > b ? 1 : 0;
+}
 export function dayKey(timestamp, timezone) {
+    const key = timezone + "\0" + timestamp, previous = formattedDays.get(key);
+    if (previous)
+        return previous;
     let formatter = dateFormatters.get(timezone);
     if (!formatter) {
         formatter = new Intl.DateTimeFormat("en-CA", {
@@ -52,5 +69,9 @@ export function dayKey(timestamp, timezone) {
         });
         dateFormatters.set(timezone, formatter);
     }
-    return formatter.format(new Date(timestamp));
+    const result = formatter.format(new Date(timestamp));
+    if (formattedDays.size >= 20000)
+        formattedDays.clear();
+    formattedDays.set(key, result);
+    return result;
 }

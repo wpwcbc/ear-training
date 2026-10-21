@@ -1,7 +1,7 @@
 import { parseChord } from "../theory.js";
-import { policy, wilson, evidenceLabel, dayKey, quantile } from "./policy.js";
+import { policy, wilson, evidenceLabel, dayKey, quantile, timestamp, compareId, } from "./policy.js";
 export function eligible(e, now = Date.now()) {
-    const date = Date.parse(e.createdAt);
+    const date = timestamp(e.createdAt);
     return (e.record.grade !== "skipped" &&
         e.assistance === "none" &&
         e.attemptOrdinal === 1 &&
@@ -12,8 +12,8 @@ export function eligible(e, now = Date.now()) {
 export function independent(rows) {
     const seen = new Set();
     return [...rows]
-        .sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt) ||
-        a.id.localeCompare(b.id))
+        .sort((a, b) => timestamp(a.createdAt) - timestamp(b.createdAt) ||
+        compareId(a.id, b.id))
         .filter((e) => {
         const key = e.questionId ?? e.id;
         if (seen.has(key))
@@ -262,9 +262,18 @@ export function matchedTrends(rows, timezone, now = Date.now()) {
     return [...groups]
         .sort(([a], [b]) => a.localeCompare(b))
         .flatMap(([key, cohort]) => {
-        const current = aggregate(cohort.filter((e) => Date.parse(e.createdAt) >= now - span), timezone, now);
-        const prior = aggregate(cohort.filter((e) => Date.parse(e.createdAt) >= now - 2 * span &&
-            Date.parse(e.createdAt) < now - span), timezone, now);
+        const currentRows = [], priorRows = [];
+        for (const e of cohort) {
+            const date = timestamp(e.createdAt);
+            if (date >= now - span)
+                currentRows.push(e);
+            else if (date >= now - 2 * span)
+                priorRows.push(e);
+        }
+        if (!currentRows.length || !priorRows.length)
+            return [];
+        const current = aggregate(currentRows, timezone, now);
+        const prior = aggregate(priorRows, timezone, now);
         if (!current.eligibleCount || !prior.eligibleCount)
             return [];
         const delta = current.correct / current.eligibleCount -

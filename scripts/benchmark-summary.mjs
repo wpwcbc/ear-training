@@ -1,4 +1,5 @@
 import { performance } from "node:perf_hooks";
+import os from "node:os";
 import { assessment, query, now } from "../tests/summary-fixtures.mjs";
 import {
   buildSummary,
@@ -16,7 +17,7 @@ const base = assessment(0),
     record: { ...base.record, grade: i % 2 ? "correct" : "missed" },
   }));
 const times = [];
-for (let i = 0; i < 3; i++) {
+for (let i = 0; i < 20; i++) {
   const start = performance.now();
   const revision = dataRevision(rows);
   buildSummary(rows, query, revision, now);
@@ -36,8 +37,10 @@ console.log(
   JSON.stringify(
     {
       runtime: process.version,
+      cpu: os.cpus()[0]?.model,
       assessments: rows.length,
       uncachedMs: times,
+      coldMs: times[0],
       uncachedP95: p95(times),
       cachedP95: p95(cached),
       budgets: { uncached: 500, cached: 100 },

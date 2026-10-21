@@ -2,9 +2,17 @@ import { parseChord } from "../theory.js";
 import type { Evidence } from "./types.js";
 import { hash, stable } from "./types.js";
 import { eligible } from "./metrics.js";
-import { policy, evidenceLabel, wilson, dayKey } from "./policy.js";
+import {
+  policy,
+  evidenceLabel,
+  wilson,
+  dayKey,
+  timestamp,
+  compareId,
+} from "./policy.js";
 import { summaryPolicy as p } from "./summary/policy.js";
 import { registry } from "./summary/registry.js";
+import { responseOptions } from "../recognition.js";
 import type {
   AggregateCell,
   Observation,
@@ -12,8 +20,21 @@ import type {
   InsightsQuery,
 } from "./summary/types.js";
 const uniq = (values: string[]) => [...new Set(values)].sort();
+const rawRefs = new WeakMap<Evidence["rawSource"], string>();
+function rawSourceRef(e: Evidence): string {
+  let ref = rawRefs.get(e.rawSource);
+  if (!ref) {
+    ref = stable(e.rawSource);
+    rawRefs.set(e.rawSource, ref);
+  }
+  return ref;
+}
 const dayFormats = new Map<string, Intl.DateTimeFormat>();
+const dayValues = new Map<string, string>();
 function localDay(date: string, zone: string) {
+  const key = zone + "\0" + date,
+    previous = dayValues.get(key);
+  if (previous) return previous;
   let fmt = dayFormats.get(zone);
   if (!fmt) {
     fmt = new Intl.DateTimeFormat("en-CA", {
@@ -24,7 +45,19 @@ function localDay(date: string, zone: string) {
     });
     dayFormats.set(zone, fmt);
   }
-  return fmt.format(new Date(date));
+  const value = fmt.format(new Date(date));
+  if (dayValues.size >= 20000) dayValues.clear();
+  dayValues.set(key, value);
+  return value;
+}
+function streamHash(parts: Iterable<string>): string {
+  let n = 2166136261;
+  for (const value of parts) {
+    const part = value.length + ":" + value;
+    for (let i = 0; i < part.length; i++)
+      n = Math.imul(n ^ part.charCodeAt(i), 16777619);
+  }
+  return (n >>> 0).toString(16);
 }
 const cohortHashes = new Map<string, string>();
 export function dataRevision(rows: Evidence[]): string {
@@ -37,33 +70,50 @@ export function dataRevision(rows: Evidence[]): string {
     }
     return h;
   };
-  return hash(
-    rows
-      .map((e) => [
-        e.id,
-        e.questionId,
-        e.createdAt,
-        fingerprint(e.cohortKey),
-        e.mode,
-        e.subtask,
-        e.source,
-        e.grain,
-        e.version,
-        e.capabilities,
-        e.stimulusHash,
-        e.record.grade,
-        e.record.selectedDegrees,
-        e.record.selectedQualities,
-        e.record.analytics,
-        e.assistance,
-        e.exposure,
-      ])
-      .sort((a, b) => String(a[0]).localeCompare(String(b[0]))),
+  return (
+    "revision-2:" +
+    streamHash(
+      [...rows]
+        .sort((a, b) => a.id.localeCompare(b.id))
+        .map((e) =>
+          JSON.stringify([
+            e.id,
+            e.questionId,
+            e.createdAt,
+            fingerprint(e.cohortKey),
+            e.mode,
+            e.subtask,
+            e.source,
+            e.grain,
+            e.version,
+            [
+              e.capabilities.identity,
+              e.capabilities.selections,
+              e.capabilities.timing,
+              e.capabilities.marks,
+              e.capabilities.position,
+            ],
+            e.stimulusHash,
+            e.record.grade,
+            e.record.selectedDegrees,
+            e.record.selectedQualities,
+            e.record.analytics ? stable(e.record.analytics) : null,
+            e.attemptOrdinal,
+            e.assistance,
+            e.exposure,
+          ]),
+        ),
+    )
   );
 }
 // This is a presentation projection, never a replacement for the exact cohort key.
-export function comparisonFamily(e: Evidence, peer = false): string {
+export function comparisonFamily(
+  e: Evidence,
+  peer = false,
+  acrossQuality = false,
+): string {
   const config = { ...e.config } as Record<string, unknown>;
+  config.responseDistractors = config.responseDistractors ?? "";
   for (const k of [
     "root",
     "roots",
@@ -75,9 +125,67 @@ export function comparisonFamily(e: Evidence, peer = false): string {
   ])
     delete config[k];
   if (peer) for (const k of ["degree", "degreePool"]) delete config[k];
+  if (acrossQuality)
+    for (const k of ["quality", "qualityPool", "recognitionQualities"])
+      delete config[k];
   const options = e.record.analytics?.answerOptions;
+  if (
+    options &&
+    (!Array.isArray(options) ||
+      options.some(
+        (set) => !Array.isArray(set) || set.some((d) => typeof d !== "string"),
+      ))
+  )
+    return "unknown";
   if (e.source === "automatic" && !options?.length) return "unknown";
-  const choiceFamily = options?.map((set) => [...set].sort());
+  let choiceFamily = options?.map((set) => [...set].sort());
+  let choiceVersion = "exact-choices-1";
+  if (peer && e.mode === "m2" && String(config.responseDistractors).trim()) {
+    const cp = e.record.analytics?.choicePolicy,
+      slot = e.config.showChords ? 0 : 1,
+      degree = e.record.targets[0],
+      chord = parseChord(e.record.chords[0]);
+    const actualQuality = e.config.showChords
+      ? chord.quality
+      : e.record.selectedQualities?.[0];
+    if (
+      e.version !== "standard" ||
+      !actualQuality ||
+      !cp ||
+      cp.version !== "recognition-choice-family-1" ||
+      cp.kind !== "tested-label-substitution" ||
+      !Array.isArray(cp.counts) ||
+      !Array.isArray(cp.distractors) ||
+      cp.counts.length !== options!.length ||
+      options!.some((set, i) => set.length !== cp.counts[i])
+    )
+      return "unknown";
+    const fixed = [
+      ...new Set(String(config.responseDistractors).trim().split(/\s+/)),
+    ].sort();
+    let actualOptions: string[];
+    try {
+      actualOptions = responseOptions(
+        parseChord(chord.root + actualQuality),
+        degree,
+        e.config,
+      ).sort();
+    } catch {
+      return "unknown";
+    }
+    if (
+      fixed.includes(degree) ||
+      stable(fixed) !== stable(cp.distractors) ||
+      stable([...(options![slot] ?? [])].sort()) !== stable(actualOptions)
+    )
+      return "unknown";
+    choiceFamily = options!.map((set, i) =>
+      [...set].map((d) => (i === slot && d === degree ? "{tested}" : d)).sort(),
+    );
+    config.responseDistractors = fixed.join(" ");
+    delete config.recognitionPool;
+    choiceVersion = "tested-label-substitution-1";
+  }
   let generator: unknown = "unknown";
   try {
     generator =
@@ -89,7 +197,7 @@ export function comparisonFamily(e: Evidence, peer = false): string {
   }
   return stable({
     version: "root-projection-1",
-    comparisonFamily: peer ? "tested-label-substitution-1" : "exact-choices-1",
+    comparisonFamily: choiceVersion,
     config,
     mode: e.mode,
     task: e.subtask,
@@ -119,16 +227,17 @@ function ordered(items: Observation[]) {
     (a, b) =>
       (a.row.record.chordStep ?? 0) - (b.row.record.chordStep ?? 0) ||
       a.index - b.index ||
-      a.row.createdAt.localeCompare(b.row.createdAt) ||
-      a.row.id.localeCompare(b.row.id),
+      timestamp(a.row.createdAt) - timestamp(b.row.createdAt) ||
+      compareId(a.row.id, b.row.id),
   );
 }
 export function diagnosticSample(
   items: Observation[],
   now: number,
+  sorted = false,
 ): Observation[] {
   const seen = new Set<string>();
-  return ordered(items).filter((o) => {
+  return (sorted ? items : ordered(items)).filter((o) => {
     const e = o.row;
     if (
       !eligible(e, now) ||
@@ -149,8 +258,8 @@ export function reconciliation(rows: Evidence[], now: number) {
     const reason =
       e.record.grade === "skipped"
         ? "skipped"
-        : !Number.isFinite(Date.parse(e.createdAt)) ||
-            Date.parse(e.createdAt) > now
+        : !Number.isFinite(timestamp(e.createdAt)) ||
+            timestamp(e.createdAt) > now
           ? "invalid-or-future-date"
           : e.assistance !== "none"
             ? "assistance-or-unknown"
@@ -166,7 +275,7 @@ export function reconciliation(rows: Evidence[], now: number) {
   });
   const keys = new Set(
     metric.map((e) =>
-      stable([e.mode, e.subtask, e.source, e.grain, e.questionId]),
+      JSON.stringify([e.mode, e.subtask, e.source, e.grain, e.questionId]),
     ),
   );
   reasons["repeated-question-at-selected-grain"] = metric.length - keys.size;
@@ -192,14 +301,14 @@ export function makeCell(
   now: number,
 ): { cell: AggregateCell; ref: EvidenceRef } {
   const observations = ordered(items),
-    sample = diagnosticSample(observations, now),
+    sample = diagnosticSample(observations, now, true),
     first = observations[0],
     e = first.row;
   const k = sample.filter((o) => o.outcome === "correct").length,
     n = sample.length;
   const rows = [
     ...new Map(observations.map((o) => [o.row.id, o.row])).values(),
-  ].sort((a, b) => a.id.localeCompare(b.id));
+  ].sort((a, b) => compareId(a.id, b.id));
   const sessions = new Set(sample.map((o) => o.row.sessionId)).size,
     days = new Set(sample.map((o) => localDay(o.row.createdAt, query.timezone)))
       .size;
@@ -239,9 +348,11 @@ export function makeCell(
       hash([
         revision,
         id,
-        query,
+        stable(query),
         p.version,
-        observations.map((o) => [o.row.id, o.index]),
+        streamHash(
+          observations.map((o) => JSON.stringify([o.row.id, o.index])),
+        ),
       ]);
   const last = Math.max(0, ...sample.map((o) => Date.parse(o.row.createdAt)));
   const label =
@@ -266,7 +377,7 @@ export function makeCell(
     importedSourceRefs: uniq(
       rows
         .filter((e) => e.version === "historical")
-        .map((e) => stable(e.rawSource)),
+        .map((e) => rawSourceRef(e)),
     ),
     querySnapshot: query,
     exclusions,
@@ -349,6 +460,8 @@ export function buildHierarchy(
     { level: AggregateCell["level"]; items: Observation[]; stratumOf?: string }
   >();
   const familyCache = new Map<string, string>();
+  const familyTokens = new Map<string, string>(),
+    baseCache = new Map<string, string>();
   function add(key: string, level: AggregateCell["level"], o: Observation) {
     const g = groups.get(key) ?? { level, items: [] };
     g.items.push(o);
@@ -357,7 +470,7 @@ export function buildHierarchy(
   for (const e of [...new Map(rows.map((e) => [e.id, e])).values()]) {
     if (e.record.grade === "skipped") continue;
     const axes = registry(e),
-      base = stable([
+      baseKey = JSON.stringify([
         e.mode,
         e.subtask,
         e.source,
@@ -367,10 +480,20 @@ export function buildHierarchy(
         e.assistance,
         e.version,
       ]);
+    let base = baseCache.get(baseKey);
+    if (!base) {
+      base = hash(baseKey);
+      baseCache.set(baseKey, base);
+    }
     let family = familyCache.get(e.cohortKey);
     if (!family) {
       family = comparisonFamily(e);
       familyCache.set(e.cohortKey, family);
+    }
+    let familyToken = familyTokens.get(family);
+    if (!familyToken) {
+      familyToken = hash(family);
+      familyTokens.set(family, familyToken);
     }
     e.record.targets.forEach((degree, index) => {
       const chord = parseChord(e.record.chords[index]),
@@ -396,20 +519,20 @@ export function buildHierarchy(
         degree,
         family,
       };
-      add(stable([base, "degree", degree]), "degree", o);
+      add(JSON.stringify([base, "degree", degree]), "degree", o);
       add(
-        stable([base, "quality-degree", chord.quality, degree]),
+        JSON.stringify([base, "quality-degree", chord.quality, degree]),
         "quality-degree",
         o,
       );
       add(
-        stable([
+        JSON.stringify([
           base,
           "root-quality-degree",
           root,
           chord.quality,
           degree,
-          family,
+          familyToken,
         ]),
         "root-quality-degree",
         o,

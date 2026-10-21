@@ -15,7 +15,7 @@
 }
 body {
   margin: 0;
-  min-width: 320px;
+  min-width: 0;
   background: #f7f8fa;
   font-size: 14px;
   line-height: 1.55;
@@ -1957,6 +1957,40 @@ button.fret.picked {
 }
 .degree-strip {
   font-size: 14px;
+}
+.diagnostic-grid {
+  margin-block: 24px;
+  min-width: 0;
+}
+.diagnostic-grid .matrix-value {
+  background: color-mix(in srgb, #9fc8b4 calc(var(--cell-share) * 70%), white);
+  color: #19372c;
+}
+.diagnostic-grid .matrix-table-view .matrix-value {
+  background: transparent;
+}
+@media (max-width: 320px) {
+  .lab-tabs {
+    overflow-x: auto;
+    max-width: 100%;
+  }
+  .lab-tabs button {
+    flex-shrink: 0;
+  }
+  .analytics {
+    overflow-wrap: anywhere;
+  }
+  .analytics button,
+  .analytics select,
+  .analytics input {
+    max-width: 100%;
+    min-width: 0;
+  }
+  .insight-filters label,
+  .insight-primary label {
+    min-width: 0;
+    width: 100%;
+  }
 }
 .analytics :focus-visible {
   outline: 3px solid #b7641d;

@@ -36,6 +36,7 @@ export interface Capture {
     committedAt?: string;
   };
   answerOptions?: string[][];
+  choicePolicy?: import("../recognition.js").ChoicePolicy;
 }
 export interface Evidence {
   stimulusHash?: string;

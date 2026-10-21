@@ -6,6 +6,7 @@ export function renderTrend(
   rows: Evidence[],
   timezone: string,
   now = Date.now(),
+  mixed = false,
 ): void {
   const sample = independent(
     rows.filter(
@@ -34,6 +35,7 @@ export function renderTrend(
       canvas = document.createElement("canvas");
     figure.className = "insight-trend";
     figure.dataset.metric = metric;
+    figure.dataset.comparison = mixed ? "mixed" : "matched";
     caption.textContent =
       (metric === "outcome"
         ? rows[0].source === "self"
@@ -45,8 +47,10 @@ export function renderTrend(
       " · " +
       rows[0].subtask +
       " · " +
-      rows[0].config.bpm +
-      " BPM · exact matched cohort · daily points are descriptive";
+      (mixed
+        ? "Mixed settings · practice mix changed; descriptive only, not evidence of improvement"
+        : rows[0].config.bpm +
+          " BPM · exact matched cohort · daily points are descriptive");
     canvas.width = 900;
     canvas.height = 240;
     canvas.setAttribute("role", "img");
@@ -82,7 +86,7 @@ export function renderTrend(
       if (value === null) continue;
       ctx.strokeStyle = metric === "outcome" ? "#236b56" : "#965b25";
       ctx.fillStyle = ctx.strokeStyle;
-      if (metric === "outcome" && p.stats.interval) {
+      if (metric === "outcome" && p.stats.interval && !mixed) {
         ctx.beginPath();
         ctx.moveTo(x(p.time), y(p.stats.interval[0]));
         ctx.lineTo(x(p.time), y(p.stats.interval[1]));
@@ -120,7 +124,7 @@ export function renderTrend(
         ? [
             "Local day",
             "Correct / diagnostic questions",
-            "Wilson 95%",
+            mixed ? "Comparability" : "Wilson 95%",
             "Source / grain",
           ]
         : [
@@ -143,9 +147,11 @@ export function renderTrend(
           ? [
               p.day,
               p.stats.correct + "/" + p.stats.eligibleCount,
-              p.stats.interval
-                ?.map((v) => (v * 100).toFixed(1) + "%")
-                .join(" to ") ?? "No observations",
+              mixed
+                ? "Mixed settings; descriptive only"
+                : (p.stats.interval
+                    ?.map((v) => (v * 100).toFixed(1) + "%")
+                    .join(" to ") ?? "No observations"),
               rows[0].source + " / " + rows[0].grain,
             ]
           : [

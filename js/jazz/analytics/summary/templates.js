@@ -1,5 +1,10 @@
 const counts = ["focus", "scope", "k", "n", "noncorrect"];
 const definitions = {
+    "cross-quality": {
+        keys: counts,
+        en: (p) => `${p.scope}: ${p.focus}, ${p.k}/${p.n} first outcomes ${p.sourceLabel ?? "self-rated"} correct across the supported quality strata. This describes practised contexts, not every harmony.`,
+        zh: (p) => `${p.scope}：${p.focus} 在通過檢查的和弦品質層中有 ${p.k}/${p.n} 次首次結果${p.sourceLabel ?? "自評"} correct；只描述已練情境，不代表所有和聲。`,
+    },
     m1: {
         keys: counts,
         en: (p) => `${p.scope}: ${p.focus} was self-rated close/missed on ${p.noncorrect}/${p.n} questions (${p.k} correct).`,
