@@ -46,6 +46,11 @@ let playbackOverrides = {};
 const playbackConfig = () => ({ ...config, ...playbackOverrides });
 const status = (text) => {
     el("status").textContent = text;
+    el("status").classList.toggle("routine-status", [
+        "Sing or play the target, then reveal the reference.",
+        "Choose your answer, then check it.",
+        "Listen to the context, then respond.",
+    ].includes(text));
 };
 const button = (id, enabled) => {
     el(id).disabled = !enabled;

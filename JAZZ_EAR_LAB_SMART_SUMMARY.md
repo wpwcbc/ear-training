@@ -98,7 +98,7 @@ All browser fixtures use isolated profiles and leave user history untouched.
 
 ## Verification And Limits
 
-Verified `npm test`: 91 passing tests. Verified `npm run test:browser`: all twelve
+Verified `npm test`: 91 passing tests. Verified `npm run test:browser`: all thirteen
 suites passed, including 300-context/25-assessment pagination and the 10,000-row
 worker check. The new fixtures cover the 113/112/110
 reconciliation example, sparse children versus supported parents, root diversity

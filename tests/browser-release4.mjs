@@ -88,6 +88,7 @@ try {
   await page.locator("#reveal").click();
   assert.ok((await page.locator("#fretboard .target").count()) > 0);
   await page.locator("[data-grade=correct]").click();
+  await page.locator("#session-menu > summary").click();
   await page.locator("#favorite").click();
   const midi = await page.evaluate(() => window.audioCalls.at(-1).midis[0]);
   await navigate(page, "review");

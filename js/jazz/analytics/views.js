@@ -33,6 +33,35 @@ const node = (tag, text) => {
         n.textContent = text;
     return n;
 };
+function presentInspection(panel) {
+    const close = panel.querySelector(":scope > button");
+    panel.prepend(close);
+    panel.setAttribute("aria-modal", "true");
+    panel.addEventListener("cancel", (event) => {
+        event.preventDefault();
+        close.click();
+    });
+    panel.addEventListener("click", (event) => {
+        if (event.target === panel &&
+            event.clientX < panel.getBoundingClientRect().left)
+            close.click();
+    });
+    panel.addEventListener("keydown", (event) => {
+        if (event.key !== "Tab")
+            return;
+        const controls = Array.from(panel.querySelectorAll("button,input,select,textarea,a[href],summary,[tabindex='0']")).filter((e) => !e.matches(":disabled,[hidden]") && e.getClientRects().length > 0);
+        const first = controls[0], last = controls[controls.length - 1];
+        if (document.activeElement === panel ||
+            (event.shiftKey
+                ? document.activeElement === first
+                : document.activeElement === last)) {
+            event.preventDefault();
+            (event.shiftKey ? last : first)?.focus();
+        }
+    });
+    panel.showModal();
+    panel.focus();
+}
 function link(text, href) {
     const a = node("a", text);
     a.href = href;
@@ -44,6 +73,8 @@ function button(text, action) {
     commandIcon(b);
     if (text.startsWith("Practise"))
         icon(b, "play");
+    if (text.startsWith("Close "))
+        icon(b, "x", true);
     const failed = (error) => {
         const p = node("p", String(error));
         p.setAttribute("role", "alert");
@@ -145,16 +176,28 @@ export async function renderAnalytics(host, route, actions) {
     const nav = node("nav");
     nav.className = "insight-nav";
     nav.setAttribute("aria-label", "Insight sources");
-    for (const [id, label] of [
-        ["", "Overview"],
-        ...Object.keys(names).map((m) => [m, m.toUpperCase()]),
-        ["legacy", "Legacy"],
-    ]) {
-        const a = link(label, "#/insights" + (id ? "/" + id : ""));
-        if (id === mode)
-            a.setAttribute("aria-current", "page");
-        nav.append(a);
-    }
+    const overviewLink = link("Overview", "#/insights");
+    if (!mode)
+        overviewLink.setAttribute("aria-current", "page");
+    const exerciseLabel = node("label", "Exercise"), exerciseSelect = node("select");
+    exerciseSelect.setAttribute("aria-label", "Insights exercise");
+    exerciseSelect.add(new Option("All exercises", ""));
+    for (const [id, label] of Object.entries(names))
+        exerciseSelect.add(new Option(label + " · " + id.toUpperCase(), id));
+    exerciseSelect.add(new Option("Legacy trainers", "legacy"));
+    exerciseSelect.value = mode;
+    exerciseSelect.onchange = () => {
+        const retained = new URLSearchParams();
+        for (const key of ["days", "lang"])
+            if (params.has(key))
+                retained.set(key, params.get(key));
+        location.hash =
+            "#/insights" +
+                (exerciseSelect.value ? "/" + exerciseSelect.value : "") +
+                (retained.size ? "?" + retained.toString() : "");
+    };
+    exerciseLabel.append(exerciseSelect);
+    nav.append(overviewLink, exerciseLabel);
     host.append(nav, node("h2", mode === "legacy"
         ? "Legacy practice"
         : (names[mode] ?? "What to practise next")));
@@ -168,15 +211,19 @@ export async function renderAnalytics(host, route, actions) {
     advanced.className = "insight-advanced";
     filters.className = "insight-filters";
     advanced.append(node("summary", "Filters"), filters);
+    icon(advanced.querySelector("summary"), "sliders-horizontal");
     const change = () => {
         location.hash = "#/" + path + "?" + params.toString();
     };
+    let activeAdvanced = 0;
     const filter = (key, label, options, fallback, container = filters) => {
         let value = params.get(key) ?? fallback;
         if (!options.some((o) => o[0] === value)) {
             value = fallback;
             warnings.push("Unsupported " + label + "; using " + fallback + ".");
         }
+        if (container === filters && key !== "lang" && value !== fallback)
+            activeAdvanced++;
         const l = node("label", label), select = node("select");
         select.setAttribute("aria-label", label);
         options.forEach(([v, t]) => select.add(new Option(t, v)));
@@ -221,7 +268,32 @@ export async function renderAnalytics(host, route, actions) {
         m7: ["sing-play", "hear-play", "next-beat"],
     };
     const subtask = tasks[mode]
-        ? filter("task", "Task", tasks[mode].map((t) => [t, t]), tasks[mode][0], header)
+        ? filter("task", "Task", tasks[mode].map((t) => [
+            t,
+            {
+                visible: "Chord symbols shown",
+                hidden: "Chord quality by ear",
+                recognize: "Identify roles",
+                produce: "Sing the held note",
+                manual: "Manual reveal",
+                timed: "Timed prediction",
+                "step-one": "Step by step · one target",
+                "step-two": "Step by step · two targets",
+                "step-line": "Step by step · guide-tone line",
+                "continuous-one": "Continuous · one target",
+                "continuous-two": "Continuous · two targets",
+                "continuous-line": "Continuous · guide-tone line",
+                "whole-activity": "Complete phrase activity",
+                "stage-sing": "Phrase sing-back",
+                "stage-mark": "Target marking",
+                "stage-predict": "Phrase prediction",
+                "stage-bass": "Phrase bass mapping",
+                "stage-vary": "Phrase variation",
+                "sing-play": "Sing then map",
+                "hear-play": "Listen then map",
+                "next-beat": "Map on the next beat",
+            }[t] ?? t,
+        ]), tasks[mode][0], header)
         : "";
     const exposure = filter("exposure", "Practice", [
         ["fresh", "Fresh practice"],
@@ -348,6 +420,9 @@ export async function renderAnalytics(host, route, actions) {
         ].includes(params.get("level")))
         warnings.push("Unsupported aggregation level; using the selected cell's actual level.");
     filters.append(link("Reset filters", "#/" + path));
+    advanced.querySelector("summary").textContent = activeAdvanced
+        ? "Filters (" + activeAdvanced + ")"
+        : "Filters";
     const chips = node("p", exposure +
         " · " +
         (assistance === "none" ? "Known unassisted" : assistance) +
@@ -357,10 +432,13 @@ export async function renderAnalytics(host, route, actions) {
             ? " · Root: " + params.get("root")
             : ""));
     chips.className = "insight-scope";
-    host.append(header, chips, advanced);
+    header.append(advanced);
+    host.append(header, chips);
     if (warnings.length)
         host.append(node("p", warnings.join(" ")));
-    host.append(node("p", timezone + " · retained browser data · " + summaryPolicy.version));
+    const methodology = node("details");
+    methodology.className = "insight-methodology";
+    methodology.append(node("summary", "About these results"), node("p", timezone + " · retained browser data · " + summaryPolicy.version));
     const query = {
         mode,
         subtask,
@@ -395,8 +473,11 @@ export async function renderAnalytics(host, route, actions) {
     announce.setAttribute("role", "status");
     host.append(announce);
     const openEvidence = (refId) => {
-        const ref = model.refs.get(refId), panel = node("section");
+        const ref = model.refs.get(refId), panel = node("dialog");
         panel.className = "insight-evidence-panel";
+        host.querySelectorAll(".insight-evidence-panel").forEach((p) => p.remove());
+        panel.setAttribute("role", "dialog");
+        panel.setAttribute("aria-label", "Evidence reference");
         panel.tabIndex = -1;
         const origin = document.activeElement;
         panel.append(node("h3", "Evidence reference"));
@@ -443,21 +524,31 @@ export async function renderAnalytics(host, route, actions) {
         }
         const close = (e) => {
             if (e.key === "Escape") {
+                e.preventDefault();
                 panel.remove();
                 origin?.focus();
             }
         };
         panel.addEventListener("keydown", close);
         host.append(panel);
-        panel.focus();
+        presentInspection(panel);
         panel.scrollIntoView({ block: "nearest" });
     };
     const summary = node("section");
     summary.className = "smart-summary";
     summary.setAttribute("aria-label", "Smart Insights Summary");
-    summary.append(node("h3", "Smart Insights Summary"), node("p", locale === "zh-Hant"
-        ? "規則式摘要 · 根據你保留的練習紀錄"
-        : "Rule-based summary · based on your retained practice"));
+    summary.append(node("h3", locale === "zh-Hant" ? "練習重點" : "What stands out"));
+    if (rows.length) {
+        const sources = new Set(rows.map((e) => e.source));
+        summary.append(node("p", sources.size > 1
+            ? "Separate assessment sources"
+            : sources.has("self")
+                ? "Self-assessed production"
+                : sources.has("visual")
+                    ? "Visual mapping, not physical playing"
+                    : "Submitted recognition answers"));
+        summary.lastElementChild.classList.add("insight-source");
+    }
     if (!rows.length) {
         summary.append(node("p", scoped.length
             ? scoped.length +
@@ -478,7 +569,10 @@ export async function renderAnalytics(host, route, actions) {
                 "]", () => openEvidence(ref))));
             summary.append(statement);
         }
-    host.append(summary);
+    const decision = node("section");
+    decision.className = "insight-decision";
+    decision.setAttribute("aria-label", "Practice summary and next action");
+    decision.append(summary);
     const queue = node("section");
     queue.className = "insight-focus-queue";
     queue.append(node("h3", "Practise next"));
@@ -488,6 +582,9 @@ export async function renderAnalytics(host, route, actions) {
         coverage: "Collect more evidence",
         descriptive: "Collect more evidence",
     };
+    const moreActions = node("details");
+    moreActions.className = "insight-more-actions";
+    moreActions.append(node("summary", "More practice options"));
     for (const insight of model.recommendations) {
         const c = model.cells.find((c) => c.id === insight.cellId);
         if (!c)
@@ -532,7 +629,9 @@ export async function renderAnalytics(host, route, actions) {
                 " independent questions"));
             const plan = compileDiagnostic(c.rows[0].config, route, c.rows);
             if (plan) {
-                card.append(node("p", plan.reason), button("Practise 10", () => launchPlan(plan, route, actions)));
+                const planDetail = node("details");
+                planDetail.append(node("summary", "Practice plan"), node("p", plan.reason));
+                card.append(button("Practise 10", () => launchPlan(plan, route, actions)), planDetail);
             }
             else
                 card.append(button("Customize", () => actions.customize(c.rows[0].config, c.rows[0].session.customSnapshot ?? [])));
@@ -545,10 +644,20 @@ export async function renderAnalytics(host, route, actions) {
                 .querySelector("article")
                 ?.append(button("View Evidence", () => openEvidence(c.evidenceRefId)));
         }
-        queue.append(wrapper);
+        const card = wrapper.querySelector("article");
+        card
+            ?.querySelectorAll(":scope > details")
+            .forEach((detail) => card.append(detail));
+        if (queue.querySelector(".insight-recommendation"))
+            moreActions.append(wrapper);
+        else
+            queue.append(wrapper);
     }
-    if (!mode && model.recommendations.length)
-        host.append(queue);
+    if (moreActions.children.length > 1)
+        queue.append(moreActions);
+    if (model.recommendations.length)
+        decision.append(queue);
+    host.append(decision);
     if (!mode) {
         host.append(node("h3", "Mode status"));
         const grid = node("div");
@@ -581,7 +690,7 @@ export async function renderAnalytics(host, route, actions) {
             host.append(button(i.mode.toUpperCase() + " · Comparable change", () => openEvidence(i.evidenceRefIds[0])));
     }
     else if (rows.length) {
-        host.append(node("p", mode === "m2" || (mode === "m3" && subtask === "recognize")
+        methodology.append(node("p", mode === "m2" || (mode === "m3" && subtask === "recognize")
             ? "Recognition measures submitted choices, not singing or instrument performance."
             : "Production is self-assessed. Reference notes are generated targets, not measured singing or playing."));
         for (const s of ["self", "automatic", "visual"]) {
@@ -608,8 +717,6 @@ export async function renderAnalytics(host, route, actions) {
                     : "Recorded response / readiness median", (stats.median / 1000).toFixed(1) + "s · valid n=" + stats.timingCount);
             host.append(strip);
         }
-        if (model.recommendations.length)
-            host.append(queue);
         const ledger = node("details");
         ledger.append(node("summary", "How these counts reconcile"));
         const counts = model.reconciliation;
@@ -624,7 +731,6 @@ export async function renderAnalytics(host, route, actions) {
             (counts.diagnostic ?? "unknown") +
             " independent diagnostic questions at their task/source grain."));
         table(ledger, ["Exclusive exclusion stage", "Count"], Object.entries(counts.exclusions).map(([k, v]) => [k, String(v)]));
-        host.append(ledger);
         host.append(node("h3", "Explore evidence"));
         const matrixHost = node("section");
         matrixHost.id = "skill-stats";
@@ -634,12 +740,14 @@ export async function renderAnalytics(host, route, actions) {
             params.delete("cellRoot");
             change();
         });
-        host.append(matrixHost);
+        host.append(matrixHost, ledger);
         const selected = model.cells.find((c) => c.id === params.get("cell"));
         if (selected) {
-            const panel = node("section");
+            const panel = node("dialog");
             panel.id = "selected-cell";
             panel.className = "insight-cell-detail";
+            panel.setAttribute("role", "dialog");
+            panel.setAttribute("aria-label", "Cell details: " + selected.label);
             panel.tabIndex = -1;
             panel.append(node("h3", mode.toUpperCase() + " → " + selected.label + " → roots"), button("Close cell", () => {
                 const id = selected.id;
@@ -710,6 +818,7 @@ export async function renderAnalytics(host, route, actions) {
             }, 12, "Exact contexts");
             panel.addEventListener("keydown", (e) => {
                 if (e.key === "Escape") {
+                    e.preventDefault();
                     params.delete("cell");
                     params.delete("cellRoot");
                     sessionStorage.setItem("insights:focus", selected.id);
@@ -717,6 +826,7 @@ export async function renderAnalytics(host, route, actions) {
                 }
             });
             host.append(panel);
+            presentInspection(panel);
         }
         else if (params.has("cell"))
             host.append(node("p", "Selected cell is unavailable after the evidence or filters changed. Select a matrix cell again."));
@@ -747,18 +857,21 @@ export async function renderAnalytics(host, route, actions) {
             matrices.id = "confusion-matrices";
             for (const grid of confusionGrids(rows, now))
                 renderGrid(matrices, grid, (cell) => {
-                    const region = node("section");
+                    const region = node("dialog");
                     const origin = document.activeElement;
                     const close = () => {
                         region.remove();
                         origin?.focus();
                     };
                     region.className = "insight-evidence-panel";
+                    region.setAttribute("aria-label", "Confusion evidence: " + cell.row + " to " + cell.column);
                     region.tabIndex = -1;
                     region.append(button("Close evidence", close));
                     region.addEventListener("keydown", (e) => {
-                        if (e.key === "Escape")
+                        if (e.key === "Escape") {
+                            e.preventDefault();
                             close();
+                        }
                     });
                     region.append(node("h4", cell.row +
                         " → " +
@@ -770,7 +883,7 @@ export async function renderAnalytics(host, route, actions) {
                         " expected-row questions"));
                     evidenceTable(region, cell.evidence, actions, true);
                     matrices.append(region);
-                    region.focus();
+                    presentInspection(region);
                     region.scrollIntoView({ block: "nearest" });
                 });
             detail.append(matrices);
@@ -886,6 +999,7 @@ export async function renderAnalytics(host, route, actions) {
         }, null, 2)));
         host.append(diagnostics);
     }
+    host.append(methodology);
     await health(host, evidence);
     const focusId = sessionStorage.getItem("insights:focus");
     if (focusId) {
@@ -1053,7 +1167,7 @@ function focus(parent, cell, route, actions, timezone, compact = false) {
         extra.append(node("summary", "Details and settings"));
     }
     const e = cell.rows[0];
-    box.append(node("p", `${e.source === "self" ? "Self-assessed production" : e.source === "visual" ? "Visual mapping" : "Automatic answers"} · ${cell.metricLabel ?? e.grain}`));
+    box.append(node("p", `${e.source === "self" ? "Self-assessed production" : e.source === "visual" ? "Visual mapping" : "Automatic answers"}${compact ? "" : " · " + (cell.metricLabel ?? e.grain)}`));
     const settings = node("details");
     settings.append(node("summary", "Adjust focus"));
     if (e.challenge && ["m3", "m4", "m5", "m6", "m7"].includes(e.mode)) {
@@ -1110,7 +1224,7 @@ function focus(parent, cell, route, actions, timezone, compact = false) {
             plan.reason += " · one-context-replay experiment";
             plan.changedDifficulty.push("Context replay limit: one");
         }
-        box.append(node("p", compact ? plan.reason.split(".")[0] : plan.reason), button("Practise 10", () => launchPlan(plan, route, actions)));
+        box.append(node("p", compact ? "10 questions · targeted practice" : plan.reason), button("Practise 10", () => launchPlan(plan, route, actions)));
         const preview = node("details");
         preview.append(node("summary", "Scheduled targets and settings"));
         if (compact)

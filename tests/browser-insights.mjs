@@ -57,6 +57,7 @@ try {
   const drill = await page.evaluate(() =>
     JSON.parse(localStorage.getItem("jazzEarLab:v1:sessions")).at(-1),
   );
+  assert.equal(await page.locator("dialog[open]").count(), 0);
   assert.notEqual(drill.id, first[0].sessionId);
   assert.equal(drill.questions.length, 10);
   assert.ok(drill.insightPlanId);

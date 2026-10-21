@@ -170,8 +170,8 @@ export function installFlow(engine: Bridge) {
   shell.id = "flow-shell";
   shell.innerHTML = `
     <p id="flow-status" role="status" aria-live="polite"></p>
-    <section id="dashboard-view"><div class="dashboard-start"><div><span class="section-label">YOUR PRACTICE</span><h2>Ready for the next note.</h2></div><button id="start-practicing">Start Practicing</button></div>
-      <div id="resume-list"></div><div class="dashboard-tabs" role="tablist" aria-label="Configurations"><button data-dashboard="recent" role="tab">Recent</button><button data-dashboard="saved" role="tab">Saved</button><button data-dashboard="suggested" role="tab">Suggested</button></div>
+    <section id="dashboard-view"><div class="dashboard-start"><div><span class="section-label">PRACTICE</span><h2 id="dashboard-title">Your next practice</h2></div><button id="start-practicing">New session</button></div>
+      <div id="resume-list"></div><div class="dashboard-tabs" role="tablist" aria-label="Configurations"><button data-dashboard="recent" role="tab">Recent</button><button data-dashboard="saved" role="tab">Saved</button><button data-dashboard="suggested" role="tab">Exercises</button></div>
       <div id="configuration-list" role="tabpanel"></div><div id="dashboard-overview" class="overview"></div>
       <p class="local-notice">Saved in this browser only. Other devices do not sync; clearing browser data removes local practice records.</p>
     </section>
@@ -181,7 +181,8 @@ export function installFlow(engine: Bridge) {
       <div id="review-config"></div><p id="wizard-validation" role="status"></p>
       <div class="wizard-footer"><button id="wizard-back" class="secondary">Back</button><span id="wizard-short-summary"></span><button id="save-draft" class="secondary">Save Draft</button><button id="wizard-save-preset" class="secondary">Save as Preset</button><button id="wizard-next">Continue</button></div>
     </section>
-    <section id="session-view" hidden><div class="session-top"><button id="session-exit" class="secondary">Exit</button><strong id="session-exercise"></strong><span id="session-progress"></span><div id="session-tools"></div><button id="session-end" class="secondary">Finish Session</button></div><progress id="session-meter" value="0" max="10" aria-label="Session completion"></progress>
+    <section id="session-view" hidden><div class="session-top"><button id="session-exit" class="secondary">Exit</button><div class="session-identity"><strong id="session-exercise"></strong><span id="session-progress"></span></div><div id="session-tools"></div><details id="session-menu" class="row-menu"><summary class="row-menu-trigger">Session actions</summary><div class="row-menu-items"><button id="session-end" class="secondary">Finish Session</button></div></details></div><progress id="session-meter" value="0" max="10" aria-label="Session completion"></progress>
+      <div class="session-playback"><p id="session-state" role="status" aria-live="polite"></p></div>
       <details id="compact-settings"><summary>Playback Settings</summary><div class="settings-grid"><label>Volume<input id="compact-volume" type="range" min="0" max="1" step="0.05"></label><label>Tempo<input id="compact-bpm" type="number" min="30" max="240"></label><label class="check"><input id="compact-metronome" type="checkbox">Metronome</label><button id="session-edit" class="secondary">End &amp; Edit Exercise</button></div></details>
       <div class="session-phases" aria-label="Practice stages"><span data-phase="listen">Listen</span><span data-phase="imagine">Imagine</span><span data-phase="compare">Compare</span><span data-phase="assess">Assess</span></div><p id="session-prepare" role="timer"></p><div id="practice-host"></div>
     </section>
@@ -194,8 +195,32 @@ export function installFlow(engine: Bridge) {
   icon($("wizard-save-preset"), "bookmark");
   icon($("wizard-next"), "arrow-right");
   icon($("session-exit"), "arrow-left", true);
+  icon($("session-menu").querySelector("summary")!, "ellipsis", true);
+  icon($("session-end"), "check");
+  document.querySelector(".session-playback")!.append($("compact-settings"));
   $("practice-host").append(originalPractice);
-  $("session-tools").append($("pause"), $("favorite"));
+  $("session-tools").append($("pause"));
+  $("session-menu").querySelector(".row-menu-items")!.prepend($("favorite"));
+  $("session-menu").addEventListener("click", (event) => {
+    if ((event.target as HTMLElement).closest("button")) {
+      $<HTMLDetailsElement>("session-menu").open = false;
+      $("session-menu")
+        .querySelector<HTMLElement>("summary")!
+        .focus({ preventScroll: true });
+    }
+  });
+  const question = node("div", "", "session-question");
+  for (const id of [
+    "phase",
+    "chart",
+    "prompt",
+    "instruction",
+    "answer",
+    "choices",
+    "countdown",
+  ])
+    question.append($(id));
+  originalPractice.prepend(question);
   const dock = node("div", "", "practice-dock");
   dock.append(
     $("grading"),
@@ -210,7 +235,7 @@ export function installFlow(engine: Bridge) {
     ["reveal", "eye", false],
     ["next", "arrow-right", false],
     ["pause", "pause", true],
-    ["favorite", "bookmark", true],
+    ["favorite", "bookmark", false],
     ["skip", "skip-forward", true],
     ["retry", "rotate-ccw", true],
   ] as const)
@@ -228,6 +253,7 @@ export function installFlow(engine: Bridge) {
   modeBar.hidden = true;
   $("free-tab").textContent = "Practice";
   $("history-tab").textContent = "History";
+  $("path-tab").hidden = true;
   const stepFields: Record<number, string[]> = {
     1: [
       "root",
@@ -993,6 +1019,9 @@ export function installFlow(engine: Bridge) {
   ];
   function renderDashboard() {
     const sessions = loadSessions(localStorage);
+    $("dashboard-title").textContent = sessions.length
+      ? "Pick up where you left off"
+      : "Your first practice";
     const resume = $("resume-list");
     resume.replaceChildren();
     sessions
@@ -1126,9 +1155,12 @@ export function installFlow(engine: Bridge) {
               "config-description",
             ),
             action(
-              "Review & Practice",
-              () => openWizard(config, engine.getCustoms(), true),
-              true,
+              "Practice",
+              () => begin(config, engine.getCustoms(), "quick-start"),
+              false,
+            ),
+            action("Customize", () =>
+              openWizard(config, engine.getCustoms(), true),
             ),
           );
           quick.append(row);
@@ -1152,6 +1184,7 @@ export function installFlow(engine: Bridge) {
           !r.referenceAssisted,
       );
     const overview = $("dashboard-overview");
+    overview.hidden = !sessions.length;
     overview.replaceChildren();
     for (const [label, value] of [
       ["Practice days", String(days)],
@@ -1697,6 +1730,24 @@ export function installFlow(engine: Bridge) {
   }
   function routePage() {
     const route = location.hash.replace(/^#\/?/, "") || "home";
+    document
+      .querySelectorAll<HTMLDialogElement>("#analytics-content dialog[open]")
+      .forEach((panel) => panel.close());
+    if (!route.startsWith("insights"))
+      $("analytics-content").dataset.route = "";
+    else if (currentRoute.startsWith("insights")) {
+      const previousCell = new URLSearchParams(
+        currentRoute.split("?")[1] ?? "",
+      ).get("cell");
+      if (
+        previousCell &&
+        !new URLSearchParams(route.split("?")[1] ?? "").has("cell")
+      )
+        sessionStorage.setItem("insights:focus", previousCell);
+    }
+    document
+      .querySelectorAll<HTMLDetailsElement>(".row-menu[open]")
+      .forEach((menu) => (menu.open = false));
     clearInterval(prepareTimer);
     prepareTimer = 0;
     $("session-prepare").textContent = "";
@@ -1736,7 +1787,8 @@ export function installFlow(engine: Bridge) {
         "aria-selected",
         String(
           value === route ||
-            (tab === "free" && route.startsWith("setup/")) ||
+            (tab === "free" &&
+              (route.startsWith("setup/") || route === "suggested")) ||
             (tab === "insights" && route.startsWith("insights")),
         ),
       );
@@ -1815,15 +1867,14 @@ export function installFlow(engine: Bridge) {
           begin(config, customs, source, undefined, questions, plan),
         customize: (config, customs) => openWizard(config, customs, true),
       });
-    } else if (["history", "review", "suggested"].includes(route)) {
+    } else if (route === "suggested") {
+      dashboardTab = "suggested";
+      $("dashboard-view").hidden = false;
+      renderDashboard();
+    } else if (["history", "review"].includes(route)) {
       engine.refreshViews();
-      const view = route === "suggested" ? "path" : route;
-      $(view + "-view").hidden = false;
+      $(route + "-view").hidden = false;
       if (route === "history") renderHistory();
-      if (route === "suggested") {
-        $("recommended-start").hidden = true;
-        renderSuggested($("path-list"));
-      }
     } else {
       $("dashboard-view").hidden = false;
       renderDashboard();
@@ -1835,8 +1886,44 @@ export function installFlow(engine: Bridge) {
     if (!session) return;
     $("session-progress").textContent = $("session-count").textContent;
     const phase = $("phase").textContent;
+    document.querySelector<HTMLElement>('[data-phase="imagine"]')!.textContent =
+      isRecognition(session.config) ? "Answer" : "Imagine";
     icon($("pause"), phase === "PAUSED" ? "play" : "pause", true);
-    icon($("favorite"), "bookmark", true);
+    icon($("favorite"), "bookmark");
+    const playback = $("session-state");
+    const state =
+      phase === "PAUSED"
+        ? "Paused"
+        : phase === "ESTABLISH CONTEXT"
+          ? "Playing context"
+          : phase === "COUNT IN"
+            ? "Count-in"
+            : phase === "READY"
+              ? "Ready to listen"
+              : phase === "GRADED"
+                ? "Assessment complete"
+                : phase === "REFERENCE"
+                  ? "Compare with reference"
+                  : "Your turn";
+    if (playback.textContent !== state) playback.textContent = state;
+    playback.dataset.state =
+      phase === "PAUSED"
+        ? "paused"
+        : phase === "ESTABLISH CONTEXT"
+          ? "playing"
+          : "ready";
+    icon(
+      playback,
+      phase === "PAUSED"
+        ? "pause"
+        : phase === "ESTABLISH CONTEXT"
+          ? "audio-lines"
+          : phase === "GRADED"
+            ? "check"
+            : phase === "REFERENCE"
+              ? "eye"
+              : "play",
+    );
     const meter = $<HTMLProgressElement>("session-meter");
     meter.hidden = !session.questionCount;
     meter.max = Math.max(1, session.questionCount);
@@ -1856,7 +1943,7 @@ export function installFlow(engine: Bridge) {
       );
       item.setAttribute(
         "aria-current",
-        item.dataset.phase === stage ? "step" : "false",
+        phase !== "PAUSED" && item.dataset.phase === stage ? "step" : "false",
       );
     });
     if (phase === "PAUSED") {
@@ -1895,7 +1982,9 @@ export function installFlow(engine: Bridge) {
       if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key))
         return;
       const buttons = Array.from(
-        group.querySelectorAll<HTMLButtonElement>('button[role="tab"]'),
+        group.querySelectorAll<HTMLButtonElement>(
+          'button[role="tab"]:not([hidden])',
+        ),
       );
       const index = buttons.indexOf(
         document.activeElement as HTMLButtonElement,
@@ -2082,9 +2171,10 @@ export function installFlow(engine: Bridge) {
     if (
       !currentRoute.startsWith("session/") ||
       currentRoute.endsWith("/summary") ||
+      event.defaultPrevented ||
       event.repeat ||
       (event.target as HTMLElement).closest(
-        "input,select,textarea,[contenteditable=true]",
+        "input,select,textarea,.row-menu[open],[contenteditable=true]",
       ) ||
       event.ctrlKey ||
       event.metaKey ||
@@ -2093,6 +2183,11 @@ export function installFlow(engine: Bridge) {
       return;
     let target: HTMLButtonElement | null = null;
     const key = event.key.toLowerCase();
+    if (
+      (key === " " || key === "enter") &&
+      (event.target as HTMLElement).closest("button,a,summary")
+    )
+      return;
     if (key === " ")
       target = $("start").hidden
         ? $<HTMLButtonElement>("pause")

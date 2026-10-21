@@ -269,6 +269,7 @@ try {
   await page.locator("#choices select").nth(1).selectOption("b7");
   await page.locator("#reveal").click();
   assert.equal((await sessions()).at(-1).records[0].grade, "correct");
+  await page.locator("#session-menu > summary").click();
   await page.locator("#session-end").click();
   await page.waitForURL(/summary$/);
   assert.match(

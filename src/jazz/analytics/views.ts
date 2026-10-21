@@ -75,6 +75,45 @@ const node = <K extends keyof HTMLElementTagNameMap>(tag: K, text?: string) => {
   if (text) n.textContent = text;
   return n;
 };
+function presentInspection(panel: HTMLDialogElement) {
+  const close = panel.querySelector<HTMLButtonElement>(":scope > button")!;
+  panel.prepend(close);
+  panel.setAttribute("aria-modal", "true");
+  panel.addEventListener("cancel", (event) => {
+    event.preventDefault();
+    close.click();
+  });
+  panel.addEventListener("click", (event) => {
+    if (
+      event.target === panel &&
+      event.clientX < panel.getBoundingClientRect().left
+    )
+      close.click();
+  });
+  panel.addEventListener("keydown", (event) => {
+    if (event.key !== "Tab") return;
+    const controls = Array.from(
+      panel.querySelectorAll<HTMLElement>(
+        "button,input,select,textarea,a[href],summary,[tabindex='0']",
+      ),
+    ).filter(
+      (e) => !e.matches(":disabled,[hidden]") && e.getClientRects().length > 0,
+    );
+    const first = controls[0],
+      last = controls[controls.length - 1];
+    if (
+      document.activeElement === panel ||
+      (event.shiftKey
+        ? document.activeElement === first
+        : document.activeElement === last)
+    ) {
+      event.preventDefault();
+      (event.shiftKey ? last : first)?.focus();
+    }
+  });
+  panel.showModal();
+  panel.focus();
+}
 function link(text: string, href: string) {
   const a = node("a", text);
   a.href = href;
@@ -85,6 +124,7 @@ function button(text: string, action: () => unknown) {
   b.type = "button";
   commandIcon(b);
   if (text.startsWith("Practise")) icon(b, "play");
+  if (text.startsWith("Close ")) icon(b, "x", true);
   const failed = (error: unknown) => {
     const p = node("p", String(error));
     p.setAttribute("role", "alert");
@@ -202,15 +242,27 @@ export async function renderAnalytics(
   const nav = node("nav");
   nav.className = "insight-nav";
   nav.setAttribute("aria-label", "Insight sources");
-  for (const [id, label] of [
-    ["", "Overview"],
-    ...Object.keys(names).map((m) => [m, m.toUpperCase()]),
-    ["legacy", "Legacy"],
-  ]) {
-    const a = link(label, "#/insights" + (id ? "/" + id : ""));
-    if (id === mode) a.setAttribute("aria-current", "page");
-    nav.append(a);
-  }
+  const overviewLink = link("Overview", "#/insights");
+  if (!mode) overviewLink.setAttribute("aria-current", "page");
+  const exerciseLabel = node("label", "Exercise"),
+    exerciseSelect = node("select");
+  exerciseSelect.setAttribute("aria-label", "Insights exercise");
+  exerciseSelect.add(new Option("All exercises", ""));
+  for (const [id, label] of Object.entries(names))
+    exerciseSelect.add(new Option(label + " · " + id.toUpperCase(), id));
+  exerciseSelect.add(new Option("Legacy trainers", "legacy"));
+  exerciseSelect.value = mode;
+  exerciseSelect.onchange = () => {
+    const retained = new URLSearchParams();
+    for (const key of ["days", "lang"])
+      if (params.has(key)) retained.set(key, params.get(key)!);
+    location.hash =
+      "#/insights" +
+      (exerciseSelect.value ? "/" + exerciseSelect.value : "") +
+      (retained.size ? "?" + retained.toString() : "");
+  };
+  exerciseLabel.append(exerciseSelect);
+  nav.append(overviewLink, exerciseLabel);
   host.append(
     nav,
     node(
@@ -232,9 +284,11 @@ export async function renderAnalytics(
   advanced.className = "insight-advanced";
   filters.className = "insight-filters";
   advanced.append(node("summary", "Filters"), filters);
+  icon(advanced.querySelector("summary")!, "sliders-horizontal");
   const change = () => {
     location.hash = "#/" + path + "?" + params.toString();
   };
+  let activeAdvanced = 0;
   const filter = (
     key: string,
     label: string,
@@ -247,6 +301,8 @@ export async function renderAnalytics(
       value = fallback;
       warnings.push("Unsupported " + label + "; using " + fallback + ".");
     }
+    if (container === filters && key !== "lang" && value !== fallback)
+      activeAdvanced++;
     const l = node("label", label),
       select = node("select");
     select.setAttribute("aria-label", label);
@@ -301,7 +357,34 @@ export async function renderAnalytics(
     ? filter(
         "task",
         "Task",
-        tasks[mode].map((t) => [t, t]),
+        tasks[mode].map((t) => [
+          t,
+          (
+            {
+              visible: "Chord symbols shown",
+              hidden: "Chord quality by ear",
+              recognize: "Identify roles",
+              produce: "Sing the held note",
+              manual: "Manual reveal",
+              timed: "Timed prediction",
+              "step-one": "Step by step · one target",
+              "step-two": "Step by step · two targets",
+              "step-line": "Step by step · guide-tone line",
+              "continuous-one": "Continuous · one target",
+              "continuous-two": "Continuous · two targets",
+              "continuous-line": "Continuous · guide-tone line",
+              "whole-activity": "Complete phrase activity",
+              "stage-sing": "Phrase sing-back",
+              "stage-mark": "Target marking",
+              "stage-predict": "Phrase prediction",
+              "stage-bass": "Phrase bass mapping",
+              "stage-vary": "Phrase variation",
+              "sing-play": "Sing then map",
+              "hear-play": "Listen then map",
+              "next-beat": "Map on the next beat",
+            } as Record<string, string>
+          )[t] ?? t,
+        ]),
         tasks[mode][0],
         header,
       )
@@ -487,6 +570,9 @@ export async function renderAnalytics(
       "Unsupported aggregation level; using the selected cell's actual level.",
     );
   filters.append(link("Reset filters", "#/" + path));
+  advanced.querySelector("summary")!.textContent = activeAdvanced
+    ? "Filters (" + activeAdvanced + ")"
+    : "Filters";
   const chips = node(
     "p",
     exposure +
@@ -499,9 +585,13 @@ export async function renderAnalytics(
         : ""),
   );
   chips.className = "insight-scope";
-  host.append(header, chips, advanced);
+  header.append(advanced);
+  host.append(header, chips);
   if (warnings.length) host.append(node("p", warnings.join(" ")));
-  host.append(
+  const methodology = node("details");
+  methodology.className = "insight-methodology";
+  methodology.append(
+    node("summary", "About these results"),
     node("p", timezone + " · retained browser data · " + summaryPolicy.version),
   );
   const query: InsightsQuery = {
@@ -537,8 +627,11 @@ export async function renderAnalytics(
   host.append(announce);
   const openEvidence = (refId: string) => {
     const ref = model.refs.get(refId),
-      panel = node("section");
+      panel = node("dialog");
     panel.className = "insight-evidence-panel";
+    host.querySelectorAll(".insight-evidence-panel").forEach((p) => p.remove());
+    panel.setAttribute("role", "dialog");
+    panel.setAttribute("aria-label", "Evidence reference");
     panel.tabIndex = -1;
     const origin = document.activeElement as HTMLElement;
     panel.append(node("h3", "Evidence reference"));
@@ -601,27 +694,38 @@ export async function renderAnalytics(
     }
     const close = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
+        e.preventDefault();
         panel.remove();
         origin?.focus();
       }
     };
     panel.addEventListener("keydown", close);
     host.append(panel);
-    panel.focus();
+    presentInspection(panel);
     panel.scrollIntoView({ block: "nearest" });
   };
   const summary = node("section");
   summary.className = "smart-summary";
   summary.setAttribute("aria-label", "Smart Insights Summary");
   summary.append(
-    node("h3", "Smart Insights Summary"),
-    node(
-      "p",
-      locale === "zh-Hant"
-        ? "規則式摘要 · 根據你保留的練習紀錄"
-        : "Rule-based summary · based on your retained practice",
-    ),
+    node("h3", locale === "zh-Hant" ? "練習重點" : "What stands out"),
   );
+  if (rows.length) {
+    const sources = new Set(rows.map((e) => e.source));
+    summary.append(
+      node(
+        "p",
+        sources.size > 1
+          ? "Separate assessment sources"
+          : sources.has("self")
+            ? "Self-assessed production"
+            : sources.has("visual")
+              ? "Visual mapping, not physical playing"
+              : "Submitted recognition answers",
+      ),
+    );
+    summary.lastElementChild!.classList.add("insight-source");
+  }
   if (!rows.length) {
     summary.append(
       node(
@@ -662,7 +766,10 @@ export async function renderAnalytics(
       );
       summary.append(statement);
     }
-  host.append(summary);
+  const decision = node("section");
+  decision.className = "insight-decision";
+  decision.setAttribute("aria-label", "Practice summary and next action");
+  decision.append(summary);
   const queue = node("section");
   queue.className = "insight-focus-queue";
   queue.append(node("h3", "Practise next"));
@@ -672,6 +779,9 @@ export async function renderAnalytics(
     coverage: "Collect more evidence",
     descriptive: "Collect more evidence",
   };
+  const moreActions = node("details");
+  moreActions.className = "insight-more-actions";
+  moreActions.append(node("summary", "More practice options"));
   for (const insight of model.recommendations) {
     const c = model.cells.find((c) => c.id === insight.cellId);
     if (!c) continue;
@@ -722,9 +832,14 @@ export async function renderAnalytics(
       );
       const plan = compileDiagnostic(c.rows[0].config, route, c.rows);
       if (plan) {
-        card.append(
+        const planDetail = node("details");
+        planDetail.append(
+          node("summary", "Practice plan"),
           node("p", plan.reason),
+        );
+        card.append(
           button("Practise 10", () => launchPlan(plan, route, actions)),
+          planDetail,
         );
       } else
         card.append(
@@ -743,9 +858,17 @@ export async function renderAnalytics(
         .querySelector("article")
         ?.append(button("View Evidence", () => openEvidence(c.evidenceRefId)));
     }
-    queue.append(wrapper);
+    const card = wrapper.querySelector("article");
+    card
+      ?.querySelectorAll(":scope > details")
+      .forEach((detail) => card.append(detail));
+    if (queue.querySelector(".insight-recommendation"))
+      moreActions.append(wrapper);
+    else queue.append(wrapper);
   }
-  if (!mode && model.recommendations.length) host.append(queue);
+  if (moreActions.children.length > 1) queue.append(moreActions);
+  if (model.recommendations.length) decision.append(queue);
+  host.append(decision);
   if (!mode) {
     host.append(node("h3", "Mode status"));
     const grid = node("div");
@@ -794,7 +917,7 @@ export async function renderAnalytics(
         ),
       );
   } else if (rows.length) {
-    host.append(
+    methodology.append(
       node(
         "p",
         mode === "m2" || (mode === "m3" && subtask === "recognize")
@@ -834,7 +957,6 @@ export async function renderAnalytics(
         );
       host.append(strip);
     }
-    if (model.recommendations.length) host.append(queue);
     const ledger = node("details");
     ledger.append(node("summary", "How these counts reconcile"));
     const counts = model.reconciliation;
@@ -858,7 +980,6 @@ export async function renderAnalytics(
       ["Exclusive exclusion stage", "Count"],
       Object.entries(counts.exclusions).map(([k, v]) => [k, String(v)]),
     );
-    host.append(ledger);
     host.append(node("h3", "Explore evidence"));
     const matrixHost = node("section");
     matrixHost.id = "skill-stats";
@@ -868,12 +989,14 @@ export async function renderAnalytics(
       params.delete("cellRoot");
       change();
     });
-    host.append(matrixHost);
+    host.append(matrixHost, ledger);
     const selected = model.cells.find((c) => c.id === params.get("cell"));
     if (selected) {
-      const panel = node("section");
+      const panel = node("dialog");
       panel.id = "selected-cell";
       panel.className = "insight-cell-detail";
+      panel.setAttribute("role", "dialog");
+      panel.setAttribute("aria-label", "Cell details: " + selected.label);
       panel.tabIndex = -1;
       panel.append(
         node("h3", mode.toUpperCase() + " → " + selected.label + " → roots"),
@@ -972,6 +1095,7 @@ export async function renderAnalytics(
       );
       panel.addEventListener("keydown", (e) => {
         if (e.key === "Escape") {
+          e.preventDefault();
           params.delete("cell");
           params.delete("cellRoot");
           sessionStorage.setItem("insights:focus", selected.id);
@@ -979,6 +1103,7 @@ export async function renderAnalytics(
         }
       });
       host.append(panel);
+      presentInspection(panel);
     } else if (params.has("cell"))
       host.append(
         node(
@@ -1032,17 +1157,24 @@ export async function renderAnalytics(
       matrices.id = "confusion-matrices";
       for (const grid of confusionGrids(rows, now))
         renderGrid(matrices, grid, (cell) => {
-          const region = node("section");
+          const region = node("dialog");
           const origin = document.activeElement as HTMLElement;
           const close = () => {
             region.remove();
             origin?.focus();
           };
           region.className = "insight-evidence-panel";
+          region.setAttribute(
+            "aria-label",
+            "Confusion evidence: " + cell.row + " to " + cell.column,
+          );
           region.tabIndex = -1;
           region.append(button("Close evidence", close));
           region.addEventListener("keydown", (e) => {
-            if (e.key === "Escape") close();
+            if (e.key === "Escape") {
+              e.preventDefault();
+              close();
+            }
           });
           region.append(
             node(
@@ -1059,7 +1191,7 @@ export async function renderAnalytics(
           );
           evidenceTable(region, cell.evidence, actions, true);
           matrices.append(region);
-          region.focus();
+          presentInspection(region);
           region.scrollIntoView({ block: "nearest" });
         });
       detail.append(matrices);
@@ -1240,6 +1372,7 @@ export async function renderAnalytics(
     );
     host.append(diagnostics);
   }
+  host.append(methodology);
   await health(host, evidence);
   const focusId = sessionStorage.getItem("insights:focus");
   if (focusId) {
@@ -1511,7 +1644,7 @@ function focus(
   box.append(
     node(
       "p",
-      `${e.source === "self" ? "Self-assessed production" : e.source === "visual" ? "Visual mapping" : "Automatic answers"} · ${cell.metricLabel ?? e.grain}`,
+      `${e.source === "self" ? "Self-assessed production" : e.source === "visual" ? "Visual mapping" : "Automatic answers"}${compact ? "" : " · " + (cell.metricLabel ?? e.grain)}`,
     ),
   );
   const settings = node("details");
@@ -1587,7 +1720,7 @@ function focus(
       plan.changedDifficulty.push("Context replay limit: one");
     }
     box.append(
-      node("p", compact ? plan.reason.split(".")[0] : plan.reason),
+      node("p", compact ? "10 questions · targeted practice" : plan.reason),
       button("Practise 10", () => launchPlan(plan, route, actions)),
     );
     const preview = node("details");

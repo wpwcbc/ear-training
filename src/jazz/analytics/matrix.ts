@@ -29,18 +29,32 @@ export function renderAggregateMatrix(
       heading = document.createElement("h3"),
       toggle = document.createElement("button");
     heading.textContent =
-      key +
-      " · " +
       (group[0].level === "quality-degree"
         ? "Chord quality × degree"
-        : "Assessed contexts");
+        : "Assessed contexts") +
+      " · " +
+      (group[0].source === "self"
+        ? "Self-assessed"
+        : group[0].source === "visual"
+          ? "Visual mapping"
+          : "Recognition");
+    section.dataset.partition = key;
     toggle.type = "button";
     toggle.textContent = "Table view";
     toggle.setAttribute("aria-pressed", "false");
     const wrap = document.createElement("div");
     wrap.className = "table-scroll aggregate-matrix";
     wrap.setAttribute("role", "region");
-    wrap.setAttribute("aria-label", heading.textContent);
+    wrap.setAttribute(
+      "aria-label",
+      heading.textContent +
+        " · " +
+        group[0].mode.toUpperCase() +
+        " · " +
+        group[0].subtask +
+        " · " +
+        group[0].grain,
+    );
     wrap.tabIndex = 0;
     toggle.onclick = () => {
       const plain = wrap.classList.toggle("matrix-table-view");
@@ -51,7 +65,12 @@ export function renderAggregateMatrix(
     const table = document.createElement("table"),
       caption = document.createElement("caption");
     caption.textContent =
-      "Diagnostic first-question sample; independent questions and item exposures are different counts. Scroll for all columns.";
+      group[0].mode.toUpperCase() +
+      " · " +
+      group[0].subtask +
+      " · " +
+      group[0].grain +
+      ". Diagnostic first-question sample; independent questions and item exposures are different counts.";
     table.append(caption);
     const head = document.createElement("thead"),
       body = document.createElement("tbody"),
