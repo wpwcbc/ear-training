@@ -10,8 +10,8 @@ This update applies the agreed interface plan to the existing dashboard, wizard,
 - Empty-state quick starts are three repeated items rather than three full-width sections. Configuration summaries use progression names, musical targets and concise metadata. Configuration detail displays labelled parameters instead of raw configuration JSON.
 - Wizard uses a compact stepper, a clear current-step heading and grouped chord landmarks versus extensions/tensions. Settings scroll within their own area; Back/Continue and Save Draft remain in a separate action bar. The narrow layout reduces repeated headers to preserve usable settings space.
 - Practice gives fixed locations to session progress, pause, exercise, harmonic context, prompt, reference and actions. Listen/Imagine/Compare/Assess indicators reflect the existing engine phase. A completion meter represents completed questions; Endless runs do not show an invented completion percentage.
-- The practice dock separates self-assessment from playback/Next controls. Reference and optional tools remain available. Replay is omitted before the first context playback; Play context is the initial action. Absolute target names retain the existing reveal gates.
-- After the initial Play context action, Next automatically plays context for each new question and each step in M4/step-mode M5. Sequential context uses the previous known chord and target; the upcoming answer stays silent until reveal. Replay context remains available, and timed anticipation starts after context finishes.
+- The practice dock separates self-assessment from playback/Next controls. Starting a new M1 session with Practice or Start Practice automatically plays the first context, using that action to unlock audio. Replay context remains available. Other modes retain their initial Play context action. Reloading/restoring does not start audio; a blocked audio context keeps a manual retry button. Absolute target names retain the existing reveal gates.
+- Next automatically plays context for each new question and each step in M4/step-mode M5. Sequential context uses the previous known chord and target; the upcoming answer stays silent until reveal. Replay context remains available, and timed anticipation starts after context finishes.
 - Summary shows completion and active time before outcome distributions. Self-assessed ratings and automatic recognition accuracy remain separate. When missed questions exist, Review Missed is the primary action. Question details use a horizontally contained table.
 - History uses compact rows, status labels and existing filters. Tab arrows, Home/End navigation, menu Escape dismissal and outside-click dismissal work with keyboard and pointer input.
 
@@ -22,7 +22,7 @@ This update applies the agreed interface plan to the existing dashboard, wizard,
 ## Verification
 
 - `npm test`: 32 theory, generation, persistence and managed-audio tests.
-- `npm run test:browser`: the four existing musical/UX browser suites plus `tests/browser-design.mjs`.
+- `npm run test:browser`: the four musical/UX browser suites plus `tests/browser-design.mjs` and `tests/browser-autoplay.mjs`. The autoplay suite uses the browser's default audio policy to check the first M1 question, Recent, Next, replay, failed-audio recovery, reload and preparation cancellation.
 - The design suite checks actual SVG rendering, recent-list limits, keyboard menus/tabs, outside-click dismissal, 320/390/768/1440px overflow, settings/action-bar geometry and practice phase/assessment layout.
 - Desktop and phone-sized screenshots are inspected. Artifacts are saved in the OS temporary directory, including `jazz-design-home.png`, `jazz-design-recent.png`, `jazz-design-wizard-mobile.png`, `jazz-design-session-mobile.png`, and the existing `jazz-ux-*.png` captures.
 

@@ -23,8 +23,6 @@ export async function configure(page, config, customs) {
   );
   await page.goto(labURL + "#/setup/5");
   await page.reload();
-  await page.locator("#wizard-next").click();
-  await page.waitForURL(/#\/session\/[^/]+$/);
   await page.evaluate(async () => {
     const { AudioEngine } = await import("/js/jazz/audio.js");
     const play = AudioEngine.prototype.play,
@@ -54,7 +52,9 @@ export async function configure(page, config, customs) {
       return stop.call(this);
     };
   });
-  await page.locator("#start").click();
+  await page.locator("#wizard-next").click();
+  await page.waitForURL(/#\/session\/[^/]+$/);
+  if ((config.mode ?? "m1") !== "m1") await page.locator("#start").click();
 }
 export const ready = (page) =>
   page.waitForFunction(() => !document.getElementById("reveal").disabled);

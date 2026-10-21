@@ -60,12 +60,15 @@ async function presetConfig(config) {
   }, config);
   await page.goto(url + "#/setup/5");
   await page.reload();
+  await instrumentAudio();
   await page.locator("#wizard-next").click();
   await page.waitForURL(/#\/session\/[^/]+$/);
   await instrumentAudio();
   assert.equal(await page.locator("#answer").isVisible(), false);
-  assert.equal(await page.evaluate(() => window.calls.length), 0);
-  await page.locator("#start").click();
+  if ((config.mode ?? "m1") !== "m1") {
+    assert.equal(await page.evaluate(() => window.calls.length), 0);
+    await page.locator("#start").click();
+  }
 }
 try {
   await page.goto(url);
@@ -128,10 +131,9 @@ try {
   await page.waitForURL(/#\/session\/[^/]+$/);
   assert.equal(await page.locator(".lab-tabs").isVisible(), false);
   assert.equal(await page.locator("#settings").isVisible(), false);
-  assert.equal(await page.evaluate(() => window.calls.length), 0);
   const firstId = (await sessions()).at(-1).id;
-  await page.locator("#start").click();
   await ready();
+  assert.equal(await page.evaluate(() => window.calls.length), 1);
   assert.equal(await page.locator("#answer").isVisible(), false);
   await page.screenshot({
     path: join(tmpdir(), "jazz-ux-session.png"),

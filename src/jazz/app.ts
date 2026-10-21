@@ -1669,7 +1669,15 @@ flow = installFlow({
     renderReview();
   },
   play: async () => {
+    const currentChallenge = challenge,
+      currentOperation = operation;
     await audio.ready();
+    if (
+      !challenge ||
+      challenge !== currentChallenge ||
+      operation !== currentOperation
+    )
+      return;
     if (paused) await togglePause();
     playContext();
   },

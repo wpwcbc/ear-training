@@ -30,7 +30,7 @@ The server receives only `jazz-ear-lab/` when refreshing a hash route. This uses
 - Musical pools: 12 selectable roots, qualities, target degrees, and progression-bank entries. New fifths cycles respect the selected root pool. Production and recognition share the seeded generator; degree spellings remain unique per pitch class in recognition.
 - Challenge levels: Foundations sets chord landmarks, 72 BPM/full hints; Developing adds 9ths and 96 BPM; Advanced selects tensions, 120 BPM/minimal hints. The actual values remain editable.
 - Playback: managed metronome, count-in, optional preparation countdown, replay limits or unlimited, and optional delayed advancement. Auto Advance defaults off and only runs after a recorded grade. M4 gaps can be manual, two beats, one bar or explicit seconds. The preparation countdown is separate from the prediction window; charts can hide after listening.
-- Session start: Review creates the session and its immutable config snapshot, seed, generator version and actual generated question snapshots. The dedicated practice page waits for an explicit Play context action. Browser audio unlock occurs on that action, including before a preparation countdown.
+- Session start: Review creates the session and its immutable config snapshot, seed, generator version and actual generated question snapshots. M1 automatically plays the first context after the user's Start Practice / Practice action, including any configured preparation countdown. Other modes retain explicit Play context. Reload does not auto-start audio, and blocked audio offers manual retry.
 - Practice: context, anticipation/answer, reference, grade and Next remain phase gated. Each multi-chord transition retains its own assessment, but a question completes only after the whole path. Skips remain recorded. Future chord targets cannot be played from a partially revealed reference panel.
 - Persistence: question index, chord step, phase, grade, selected answers, replay count, phrase marks and bass choices are saved. Refresh restores the current challenge without replaying a completed assessment. Audio never auto-starts on reload. Interrupted context playback can be replayed explicitly.
 - Exit retains a paused session. Finish Session ends even an Endless run and opens its summary. End & Edit Exercise marks the previous session abandoned and opens a new draft. Finished histories cannot be resumed and rewritten.
@@ -62,7 +62,7 @@ The browser scripts require Playwright and an installed Microsoft Edge. They als
 
 The 32 pure-function/audio tests cover theory, register, voice leading, original phrases, managed scheduling, storage compatibility, semantic Recent identity, seeded re-generation, immutable snapshots, quality-compatible target pools and invalid pools. The four browser suites cover the existing music behavior and the new UX:
 
-1. Home -> M1 -> pools -> playback -> Review -> dedicated ready page; no audio before Play.
+1. Home -> M1 -> pools -> playback -> Review -> dedicated practice page; no audio while configuring, context starts automatically after Start Practice.
 2. Empty roots disable Continue; backward navigation preserves timing and targets.
 3. Preset save, rename/delete, Edit & Practice and old-history integrity.
 4. Reveal/self-grade, fourth-question refresh, no duplicate assessments, final summary.
@@ -79,7 +79,7 @@ Screenshot artifacts from the UX suite are written to the OS temporary directory
 
 ## Manual acceptance
 
-1. Open `jazz-ear-lab/`; choose Start Practicing, then Hear a Chord Degree. Select roots/qualities, choose target degrees, review and start. Press Play, sing, Reveal, then self-grade and Next.
+1. Open `jazz-ear-lab/`; choose Start Practicing, then Hear a Chord Degree. Select roots/qualities, choose target degrees, review and start. Context plays automatically; sing, Reveal, then self-grade and Next. Replay context remains available.
 2. Finish the set, save its configuration with a name and return home. Practice from Recent and Saved; each should create a different session ID directly. Edit a copy, then verify the saved original is intact.
 3. At question four refresh. Replay if needed, then continue; the first three results should remain exactly once.
 4. Customize an M4 guide path. Its next chord must remain silent until Hear next chord. Grade every transition before Next advances the question count.

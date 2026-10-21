@@ -145,6 +145,9 @@ export function installFlow(engine: Bridge) {
   let creating = false;
   let showAllRecent = false;
   let prepareTimer = 0;
+  let startingContext = false;
+  let pendingAutoPlay: { id: string; audioReady: Promise<string> } | null =
+    null;
   let historyFilters = {
     mode: "",
     status: "",
@@ -883,7 +886,18 @@ export function installFlow(engine: Bridge) {
     try {
       engine.setCustoms(customs);
       const checked = validateConfig(config, customs);
+      // Start unlocking audio inside the user's Practice action, before navigation.
+      const audioReady =
+        checked.mode === "m1"
+          ? engine.unlock().then(
+              () => "",
+              (error) =>
+                (error as Error).message ||
+                "Audio is unavailable. Press Play context to retry.",
+            )
+          : null;
       const session = await engine.create(checked, from, presetId, exact);
+      pendingAutoPlay = audioReady ? { id: session.id, audioReady } : null;
       try {
         rememberConfig(localStorage, checked, customs, from);
         if (presetId) {
@@ -1718,6 +1732,23 @@ export function installFlow(engine: Bridge) {
         $<HTMLInputElement>("compact-metronome").checked =
           !!saved.config.metronome;
         updateSession();
+        if (pendingAutoPlay?.id === saved.id) {
+          const pending = pendingAutoPlay;
+          pendingAutoPlay = null;
+          void pending.audioReady.then((error) => {
+            if (
+              currentRoute !== `session/${pending.id}` ||
+              engine.getSession()?.id !== pending.id ||
+              engine.getSession()?.status !== "active"
+            )
+              return;
+            if (error) {
+              showError(error);
+              return;
+            }
+            if (!engine.getSession()?.progress?.hasPlayed) void startContext();
+          });
+        }
       }
     } else if (["history", "insights", "review", "suggested"].includes(route)) {
       engine.refreshViews();
@@ -1926,14 +1957,17 @@ export function installFlow(engine: Bridge) {
     });
   };
   const play = $("start");
-  play.onclick = async () => {
+  async function startContext(): Promise<void> {
     const session = engine.getSession();
-    if (!session || prepareTimer) return;
+    if (!session || prepareTimer || startingContext) return;
+    startingContext = true;
     try {
       await engine.unlock();
     } catch (error) {
       showError(error);
       return;
+    } finally {
+      startingContext = false;
     }
     if (
       engine.getSession()?.id !== session.id ||
@@ -1957,7 +1991,8 @@ export function installFlow(engine: Bridge) {
         engine.play().catch(showError);
       }
     }, 1000);
-  };
+  }
+  play.onclick = startContext;
   originalPractice.addEventListener(
     "click",
     (event) => {
