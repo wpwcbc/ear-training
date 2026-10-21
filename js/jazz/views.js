@@ -35,7 +35,7 @@ export function drawBass(container, low, high, showNames, target, selected, onSe
                         ? "·"
                         : "";
             button.setAttribute("aria-label", `${string.name} string, fret ${fret}${showNames ? ", " + names[midi % 12] : ""}`);
-            button.onclick = () => onSelect(midi);
+            button.onclick = () => onSelect(midi, { string: string.name, fret, midi });
             cell.append(button);
             row.append(cell);
         }

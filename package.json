@@ -10,7 +10,7 @@
 		"build": "tsc -p .",
 		"dev": "node scripts/serve.mjs",
 		"test": "npm run build && node --test tests/*.test.mjs",
-		"test:browser": "node tests/browser.mjs && node tests/browser-release3.mjs && node tests/browser-release4.mjs && node tests/browser-flow.mjs && node tests/browser-design.mjs && node tests/browser-autoplay.mjs",
+		"test:browser": "node tests/browser.mjs && node tests/browser-release3.mjs && node tests/browser-release4.mjs && node tests/browser-flow.mjs && node tests/browser-design.mjs && node tests/browser-autoplay.mjs && node tests/browser-insights.mjs",
 		"watch": "tsc -p . -w"
 	}
 }

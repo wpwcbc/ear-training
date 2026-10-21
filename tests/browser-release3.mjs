@@ -29,8 +29,12 @@ try {
   await page.locator("#choices select").selectOption("9");
   await page.locator("#reveal").click();
   assert.match(await page.locator("#status").innerText(), /Correct/);
-  await navigate(page, "insights");
-  assert.match(await page.locator("#confusions").innerText(), /9\s+3\s+1/);
+  await navigate(page, "insights/m2");
+  await page.locator("#confusions table").waitFor();
+  assert.match(
+    await page.locator("#confusions").innerText(),
+    /9\s+m7: 3\s+1\/1/,
+  );
   await configure(page, { mode: "m3", commonMode: "produce", span: 2 });
   await ready(page);
   const production = await page.evaluate(() => window.audioCalls.at(-1));
@@ -99,9 +103,9 @@ try {
   );
   await page.reload();
   assert.equal(await page.locator("#progression").inputValue(), customId);
-  await navigate(page, "insights");
-  await page.locator("#insight-group").selectOption("progression");
-  assert.match(await page.locator("#skill-stats").innerText(), /Modal shift/);
+  await navigate(page, "insights/m5");
+  await page.locator("#skill-stats table").waitFor();
+  assert.match(await page.locator("#skill-stats").innerText(), /transition/);
   await page.setViewportSize({ width: 390, height: 844 });
   assert.equal(
     await page.evaluate(

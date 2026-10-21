@@ -494,17 +494,20 @@ Dm7 4&#10;G7 4&#10;Cmaj7 8</textarea>
         aria-labelledby="insights-tab"
         hidden
       >
-        <h2>Skills and weak spots</h2>
-        <label
-          >Group by<select id="insight-group">
-            <option value="degree">Degree</option>
-            <option value="quality">Chord quality</option>
-            <option value="progression">Progression</option>
-          </select></label
-        >
-        <div id="skill-stats" class="table-scroll"></div>
-        <h3>Recognition confusions</h3>
-        <div id="confusions" class="table-scroll"></div>
+        <div id="analytics-content"></div>
+        <div hidden>
+          <h2>Skills and weak spots</h2>
+          <label
+            >Group by<select id="insight-group">
+              <option value="degree">Degree</option>
+              <option value="quality">Chord quality</option>
+              <option value="progression">Progression</option>
+            </select></label
+          >
+          <div id="legacy-skill-stats" class="table-scroll"></div>
+          <h3>Recognition confusions</h3>
+          <div id="legacy-confusions" class="table-scroll"></div>
+        </div>
       </section>
       <section id="review-view" hidden>
         <h2>Saved for review</h2>

@@ -20,6 +20,8 @@ import {
 } from "./progressions.js";
 import { bassTarget } from "./bass.js";
 import { transformPhrase } from "./phrases.js";
+import { normalize } from "./analytics/adapters.js";
+import { priorities } from "./analytics/metrics.js";
 export type Mode = "m1" | "m2" | "m3" | "m4" | "m5" | "m6" | "m7";
 export interface Config {
   qualityPool?: string[];
@@ -595,6 +597,7 @@ export function validateConfig(
 }
 export type Grade = "correct" | "close" | "missed" | "skipped";
 export interface RecordEntry {
+  analytics?: import("./analytics/types.js").Capture;
   questionIndex?: number;
   chordStep?: number;
   timestamp: string;
@@ -615,6 +618,8 @@ export interface RecordEntry {
   selectedPosition?: number;
 }
 export interface Session {
+  insightPlanId?: string;
+  insightOrigin?: string;
   status?: "active" | "paused" | "completed" | "abandoned";
   source?: string;
   sourcePresetId?: string;
@@ -635,6 +640,7 @@ export interface Session {
   timeSource?: "active-session" | "response-sum";
 }
 export interface PracticeProgress {
+  analytics?: import("./analytics/types.js").Capture;
   index: number;
   step: number;
   revealed: boolean;
@@ -742,63 +748,31 @@ export function recommendation(sessions: Session[]): {
   text: string;
   config?: Partial<Config>;
 } {
-  const recent = sessions
-    .flatMap((s) => s.records)
-    .filter(
-      (r) =>
-        Date.now() - Date.parse(r.timestamp) < 7 * 86400000 &&
-        r.grade !== "skipped" &&
-        !r.referenceAssisted,
-    )
-    .slice(-20);
-  if (!recent.length)
+  const evidence = sessions.flatMap((s) =>
+    s.records.flatMap((r, i) => {
+      try {
+        return [normalize(s, r, i)];
+      } catch {
+        return [];
+      }
+    }),
+  );
+  const focus = priorities(
+    evidence,
+    Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+  ).find((p) => p.stats.eligibleCount > 0 && p.rank < 3);
+  if (focus) {
+    const row = focus.rows[0];
     return {
-      mode: "m1",
-      degree: "3",
-      text: "Start with chord landmarks: produce a 3rd, then a 7th.",
-    };
-  const weak = recent
-    .filter((r) => r.grade !== "correct" || r.replayCount > 1)
-    .sort((a, b) => b.responseLatency - a.responseLatency)[0];
-  if (weak) {
-    const chord = parseChord(weak.chords[0]);
-    return {
-      mode: weak.mode,
-      degree: weak.targets[0],
-      config: ["m1", "m2", "m7"].includes(weak.mode)
-        ? {
-            ...weak.config,
-            root: chord.root,
-            quality: chord.quality,
-            rootOrder: "fixed",
-            recognitionQualities: chord.quality,
-          }
-        : weak.config,
-      text: `Revisit ${weak.chords.join(" / ")} (${weak.targets.join(" / ")}). Recent ${weak.gradingSource === "self" ? "self-assessment" : "recognition"} suggests more practice.`,
+      mode: row.mode as Mode,
+      degree: row.record.targets[0],
+      config: row.config,
+      text: `${focus.category}: ${focus.label}. ${focus.stats.label}; ${focus.stats.eligibleCount} questions represented. Inspect Insights before selecting a focused drill.`,
     };
   }
-  const mode = recent[recent.length - 1].mode;
   return {
-    mode:
-      mode === "m1" || mode === "m2"
-        ? "m3"
-        : mode === "m3"
-          ? "m4"
-          : mode === "m4"
-            ? "m5"
-            : mode === "m5"
-              ? "m6"
-              : mode === "m6"
-                ? "m7"
-                : "m6",
+    mode: "m1",
     degree: "3",
-    text:
-      mode === "m1"
-        ? "Try holding one pitch through changing chords."
-        : mode === "m5"
-          ? "Try an original phrase: sing, anticipate, then vary it."
-          : mode === "m6"
-            ? "Transfer your inner hearing to the bass fingerboard."
-            : "Try singing the next target before hearing its chord.",
+    text: "Collect evidence with chord landmarks: produce a 3rd, then a 7th. All modes remain available.",
   };
 }

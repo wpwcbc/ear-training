@@ -8,7 +8,10 @@ export function drawBass(
   showNames: boolean,
   target: number | undefined,
   selected: number | undefined,
-  onSelect: (midi: number) => void,
+  onSelect: (
+    midi: number,
+    position: { string: string; fret: number; midi: number },
+  ) => void,
 ): void {
   container.replaceChildren();
   const table = document.createElement("table");
@@ -49,7 +52,8 @@ export function drawBass(
         "aria-label",
         `${string.name} string, fret ${fret}${showNames ? ", " + names[midi % 12] : ""}`,
       );
-      button.onclick = () => onSelect(midi);
+      button.onclick = () =>
+        onSelect(midi, { string: string.name, fret, midi });
       cell.append(button);
       row.append(cell);
     }

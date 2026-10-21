@@ -30,6 +30,9 @@ import {
   type Recent,
 } from "./lifecycle.js";
 import { icon, commandIcon, relativeDate, duration } from "./ui.js";
+import { renderAnalytics } from "./analytics/views.js";
+import type { DrillPlan } from "./analytics/drills.js";
+import { readAll } from "./analytics/repository.js";
 
 interface Bridge {
   getConfig(): Config;
@@ -880,6 +883,7 @@ export function installFlow(engine: Bridge) {
     from: string,
     presetId?: string,
     exact?: Challenge[],
+    plan?: DrillPlan,
   ) {
     if (creating) return;
     creating = true;
@@ -896,7 +900,17 @@ export function installFlow(engine: Bridge) {
                 "Audio is unavailable. Press Play context to retry.",
             )
           : null;
-      const session = await engine.create(checked, from, presetId, exact);
+      const session = await engine.create(
+        checked,
+        exact && !plan ? "exact-review" : from,
+        presetId,
+        exact,
+      );
+      if (plan) {
+        session.insightPlanId = plan.id;
+        session.insightOrigin = plan.originRoute;
+        saveSession(localStorage, session);
+      }
       pendingAutoPlay = audioReady ? { id: session.id, audioReady } : null;
       try {
         rememberConfig(localStorage, checked, customs, from);
@@ -1354,12 +1368,7 @@ export function installFlow(engine: Bridge) {
           `${Math.round((automatic.filter((r) => r.grade === "correct").length / automatic.length) * 100)}% accuracy / ${automatic.length} assessments`,
         ),
       );
-    const needs = records.filter(
-      (r) =>
-        ["missed", "close"].includes(r.grade) ||
-        r.replayCount >= 3 ||
-        r.responseLatency >= 15,
-    );
+    const needs = records.filter((r) => ["missed", "close"].includes(r.grade));
     if (needs.length) {
       const review = node("section", "", "needs-review");
       review.append(node("h3", "Needs Review"));
@@ -1382,6 +1391,47 @@ export function installFlow(engine: Bridge) {
     const controls = $("summary-actions");
     const missed = missedQuestions(session);
     controls.replaceChildren();
+    if (session.insightOrigin) {
+      controls.append(
+        action("Return to this insight", () => go(session.insightOrigin!)),
+      );
+      void readAll<DrillPlan>("drillPlans")
+        .then((plans) => {
+          if (
+            !controls.isConnected ||
+            location.hash !== `#/session/${session.id}/summary`
+          )
+            return;
+          const plan = plans.find((p) => p.id === session.insightPlanId);
+          if (!plan) return;
+          holder.append(
+            node(
+              "p",
+              `${plan.reason}. ${session.records.filter((r) => !r.referenceAssisted && r.grade !== "skipped").length} new observations collected. A focused set alone does not establish mastery or improvement.`,
+            ),
+          );
+          controls.append(
+            action("Repeat focus", () =>
+              begin(
+                plan.config,
+                plan.customSnapshots,
+                "insight:" + plan.id,
+                undefined,
+                plan.questions,
+                plan,
+              ),
+            ),
+            action("Matched check", () =>
+              begin(
+                { ...plan.baseline, count: 10 },
+                plan.customSnapshots,
+                "matched-check",
+              ),
+            ),
+          );
+        })
+        .catch(showError);
+    }
     controls.append(
       action(
         "Practice Same Settings",
@@ -1679,7 +1729,9 @@ export function installFlow(engine: Bridge) {
       $(tab + "-tab").setAttribute(
         "aria-selected",
         String(
-          value === route || (tab === "free" && route.startsWith("setup/")),
+          value === route ||
+            (tab === "free" && route.startsWith("setup/")) ||
+            (tab === "insights" && route.startsWith("insights")),
         ),
       );
       $(tab + "-tab").tabIndex =
@@ -1750,7 +1802,14 @@ export function installFlow(engine: Bridge) {
           });
         }
       }
-    } else if (["history", "insights", "review", "suggested"].includes(route)) {
+    } else if (route.startsWith("insights")) {
+      $("insights-view").hidden = false;
+      void renderAnalytics($("analytics-content"), route, {
+        start: (config, customs, source, questions, plan) =>
+          begin(config, customs, source, undefined, questions, plan),
+        customize: (config, customs) => openWizard(config, customs, true),
+      });
+    } else if (["history", "review", "suggested"].includes(route)) {
       engine.refreshViews();
       const view = route === "suggested" ? "path" : route;
       $(view + "-view").hidden = false;

@@ -208,7 +208,7 @@ test("weakness stats keep self-assessment and recognition separate, with actual 
   assert.deepEqual(confusions([base, self]), [
     { expected: "3", selected: "b7", count: 1 },
   ]);
-  assert.equal(recommendation(sessions).config.quality, "7");
+  assert.equal(recommendation(sessions).mode, "m1"); // Unknown historical exposure cannot establish a weakness.
 });
 
 test("legacy records without selected answers still contribute without invented confusion pairs", () => {

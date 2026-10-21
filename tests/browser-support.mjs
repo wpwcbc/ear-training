@@ -62,5 +62,5 @@ export async function navigate(page, route) {
   await page.evaluate((route) => {
     location.hash = "#/" + route;
   }, route);
-  await page.waitForURL(new RegExp("#\\/" + route + "$"));
+  await page.waitForURL((url) => url.hash === "#/" + route);
 }

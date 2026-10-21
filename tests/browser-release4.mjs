@@ -117,7 +117,8 @@ try {
   await page.locator("#reveal").click();
   assert.match(await page.locator("#status").innerText(), /Compare/);
   await navigate(page, "insights");
-  const stats = await page.locator("#skill-stats").innerText();
+  await page.locator(".insight-mode-grid").waitFor();
+  const stats = await page.locator(".insight-mode-grid").innerText();
   assert.match(stats, /M5/);
   assert.match(stats, /M6/);
   assert.match(stats, /M7/);

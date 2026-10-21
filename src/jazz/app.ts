@@ -32,6 +32,12 @@ import {
 import { AudioEngine } from "./audio.js";
 import { sessionQuestion, createSession } from "./lifecycle.js";
 import { installFlow } from "./flow.js";
+import { AttemptCapture } from "./analytics/events.js";
+import { captureAssessment, reconcile } from "./analytics/repository.js";
+let capture: AttemptCapture | null = null;
+let timerReveal = false;
+let selectedBassPosition:
+  { string: string; fret: number; midi: number } | undefined;
 
 const el = <T extends HTMLElement = HTMLElement>(id: string): T =>
   document.getElementById(id) as T;
@@ -126,6 +132,7 @@ function armPrediction(
     el("countdown").textContent =
       `Next chord in ${predictionRemaining.toFixed(1)}s`;
     if (predictionRemaining <= 0) {
+      timerReveal = true;
       window.clearInterval(predictionTimer);
       predictionTimer = 0;
       safe(reveal)();
@@ -312,9 +319,10 @@ function renderBassTask(): void {
       config.fretNames,
       revealed ? target.midi : undefined,
       bassSelection,
-      (midi) => {
+      (midi, position) => {
         bassSelection = midi;
-        renderBassTask();
+        selectedBassPosition = position;
+        render();
         store();
       },
     );
@@ -418,6 +426,7 @@ function store(): void {
         );
       if (challenge)
         session.progress = {
+          analytics: capture?.snapshot(),
           index,
           step,
           revealed,
@@ -531,6 +540,100 @@ function readConfig(): Config {
 }
 function render(): void {
   const active = !!challenge;
+  let stageRatings = document.getElementById("stage-ratings");
+  if (!stageRatings) {
+    stageRatings = document.createElement("div");
+    stageRatings.id = "stage-ratings";
+    el("phrase-step").after(stageRatings);
+  }
+  stageRatings.replaceChildren();
+  if (
+    active &&
+    config.mode === "m6" &&
+    [1, 3, 5].includes(phraseStage) &&
+    hasPlayed &&
+    !contextPending &&
+    !paused
+  ) {
+    const label = document.createElement("span");
+    label.textContent = "Stage self-assessment";
+    stageRatings.append(label);
+    for (const grade of ["correct", "close", "missed"] as const) {
+      const b = document.createElement("button");
+      b.textContent = grade;
+      b.disabled = !!capture?.value.stageRatings?.some(
+        (r) => r.stage === phraseStage,
+      );
+      b.onclick = () => {
+        if (capture) {
+          capture.value.stageRatings ??= [];
+          const rating = {
+            stage: phraseStage,
+            grade,
+            committedAt: new Date().toISOString(),
+          };
+          capture.value.stageRatings.push(rating);
+          capture.event("stage_self_grade_submitted", rating);
+          render();
+          store();
+        }
+      };
+      stageRatings.append(b);
+    }
+  }
+  let readyAction = document.getElementById(
+    "ready-declared",
+  ) as HTMLButtonElement | null;
+  if (!readyAction) {
+    readyAction = document.createElement("button");
+    readyAction.id = "ready-declared";
+    readyAction.textContent = "Ready";
+    readyAction.onclick = () => {
+      if (capture && !revealed && !contextPending) {
+        capture.value.ready = true;
+        capture.commit("ready_declared");
+        render();
+        store();
+      }
+    };
+    el("reveal").before(readyAction);
+  }
+  readyAction.hidden =
+    !active ||
+    config.mode !== "m4" ||
+    revealed ||
+    paused ||
+    contextPending ||
+    !hasPlayed;
+  readyAction.disabled = !!capture?.value.ready;
+  let lock = document.getElementById(
+    "lock-position",
+  ) as HTMLButtonElement | null;
+  if (!lock) {
+    lock = document.createElement("button");
+    lock.id = "lock-position";
+    lock.textContent = "Lock position";
+    lock.onclick = () => {
+      if (capture && selectedBassPosition && challenge && !revealed) {
+        capture.value.position = {
+          ...selectedBassPosition,
+          expectedMidi: challenge.targets[0].midi,
+        };
+        capture.event("position_committed", capture.value.position);
+        render();
+        store();
+      }
+    };
+    el("reveal").before(lock);
+  }
+  lock.hidden =
+    !active ||
+    config.mode !== "m7" ||
+    revealed ||
+    paused ||
+    contextPending ||
+    !hasPlayed;
+  lock.disabled = !selectedBassPosition || !!capture?.value.position;
   for (const id of ["pause", "retry", "skip", "favorite", "context-only"])
     el(id).hidden = !active;
   el("retry").hidden = !active || !hasPlayed || (!revealed && !graded);
@@ -677,6 +780,7 @@ function render(): void {
 }
 function playContext(): void {
   if (!challenge) return;
+  capture?.play(hasPlayed, playbackConfig());
   hasPlayed = true;
   status("Listen to the context, then respond.");
   if (!revealed && !contextPending)
@@ -710,6 +814,8 @@ function playContext(): void {
     phaseTimer = 0;
     contextPending = false;
     started = performance.now();
+    capture?.event("context_play_ended");
+    capture?.open();
     render();
     armPrediction();
     status(
@@ -787,14 +893,24 @@ function newQuestion(play = true): void {
   referenceSeen = false;
   referenceAssisted = false;
   contextPending = true;
+  timerReveal = false;
   hasPlayed = false;
   phraseStage = 0;
   bassStage = 0;
   bassSelection = undefined;
+  selectedBassPosition = undefined;
   marks = new Set();
   el("run-reference").textContent = "";
   started = performance.now();
   renderChoices();
+  if (session)
+    capture = new AttemptCapture(
+      session,
+      index,
+      step,
+      playbackConfig(),
+      challenge,
+    );
   render();
   if (play) playContext();
   else {
@@ -849,6 +965,7 @@ async function start(): Promise<void> {
     newQuestion();
     store();
   } catch (error) {
+    capture?.interrupt("audio_failed");
     status((error as Error).message);
   } finally {
     busy = false;
@@ -857,6 +974,9 @@ async function start(): Promise<void> {
 }
 function record(grade: Grade, source: "self" | "automatic"): void {
   if (!challenge || !session || graded) return;
+  if (grade === "skipped") capture?.commit("opportunity_skipped", true);
+  if (continuous() || config.mode === "m6")
+    capture?.interrupt("whole-activity-no-reaction-time");
   const targets = (
     isSequential(config) && !continuous()
       ? [challenge.targets[step]]
@@ -877,6 +997,7 @@ function record(grade: Grade, source: "self" | "automatic"): void {
   const latency =
     elapsed + (revealed ? 0 : Math.max(0, performance.now() - started) / 1000);
   session.records.push({
+    analytics: capture?.snapshot(),
     questionIndex: index,
     chordStep: step,
     timestamp: new Date().toISOString(),
@@ -905,6 +1026,7 @@ function record(grade: Grade, source: "self" | "automatic"): void {
     referenceAssisted,
   });
   graded = true;
+  captureAssessment(session, session.records.length - 1);
   if (
     !completedQuestions.has(index) &&
     (!isSequential(config) ||
@@ -947,6 +1069,23 @@ async function reveal(): Promise<void> {
   if (challenge !== currentChallenge || paused || revealed) return;
   stopAudio();
   elapsed += Math.max(0, performance.now() - started) / 1000;
+  if (capture) {
+    capture.value.answerOptions = Array.from(
+      el("choices").querySelectorAll("select"),
+    ).map((s) =>
+      Array.from(s.options)
+        .map((o) => o.value)
+        .filter(Boolean),
+    );
+    capture.commit(
+      isRecognition(config) ? "answer_committed" : "reference_revealed",
+      timerReveal,
+    );
+    capture.event("reference_revealed", {
+      reason: timerReveal ? "timer" : "manual",
+    });
+  }
+  timerReveal = false;
   started = performance.now();
   revealed = true;
   referenceSeen = true;
@@ -991,6 +1130,15 @@ function next(): void {
     referenceAssisted = false;
     started = performance.now();
     contextPending = true;
+    hasPlayed = false;
+    if (session)
+      capture = new AttemptCapture(
+        session,
+        index,
+        step,
+        playbackConfig(),
+        challenge,
+      );
     playContext();
     return;
   }
@@ -1021,6 +1169,8 @@ function next(): void {
 }
 async function togglePause(): Promise<void> {
   if (!challenge) return;
+  if (!paused) capture?.suspend("session_paused");
+  else if (!contextPending && !revealed) capture?.open();
   if (!paused) sessionPausedAt = performance.now();
   else if (sessionPausedAt) {
     sessionPausedMs += performance.now() - sessionPausedAt;
@@ -1135,7 +1285,7 @@ function renderInsights(sessions: Session[]): void {
   const name = (id: string) =>
     [...progressionBank, ...customs].find((p) => p.id === id)?.name ?? id;
   renderTable(
-    "skill-stats",
+    "legacy-skill-stats",
     [
       "Mode",
       "Skill",
@@ -1156,7 +1306,7 @@ function renderInsights(sessions: Session[]): void {
     ]),
   );
   renderTable(
-    "confusions",
+    "legacy-confusions",
     ["Expected", "Selected", "Count"],
     confusions(sessions.flatMap((s) => s.records)).map((row) => [
       row.expected,
@@ -1298,6 +1448,7 @@ function safe(action: () => void | Promise<void>): () => Promise<void> {
       await action();
     } catch (error) {
       stopAudio();
+      capture?.interrupt("audio_or_action_failed");
       status((error as Error).message);
     }
   };
@@ -1321,6 +1472,7 @@ el("replay").onclick = safe(async () => {
   if (challenge !== currentChallenge || paused || !challenge) return;
   replays++;
   if (revealed && challenge) {
+    capture?.event("reference_replayed");
     stopAudio();
     if (config.mode === "m6" && challenge.phrase)
       audio.playPhrase(challenge.phrase, playbackConfig());
@@ -1345,6 +1497,17 @@ el("skip").onclick = safe(() => {
 });
 el("retry").onclick = safe(() => {
   if (!challenge) return;
+  if (session)
+    capture = new AttemptCapture(
+      session,
+      index,
+      step,
+      playbackConfig(),
+      challenge,
+      false,
+      (capture?.value.attemptOrdinal ?? 0) + 1,
+    );
+  capture?.event("attempt_retried");
   stopAudio();
   if (referenceSeen) referenceAssisted = true;
   revealed = false;
@@ -1353,6 +1516,7 @@ el("retry").onclick = safe(() => {
   elapsed = 0;
   started = performance.now();
   contextPending = true;
+  hasPlayed = false;
   if (config.mode === "m6") {
     phraseStage = 0;
     marks = new Set();
@@ -1360,6 +1524,7 @@ el("retry").onclick = safe(() => {
   if (config.mode === "m7") {
     bassStage = 0;
     bassSelection = undefined;
+    selectedBassPosition = undefined;
   }
   renderChoices();
   render();
@@ -1396,6 +1561,13 @@ el("phrase-step").onclick = safe(async () => {
     return;
   }
   stopAudio();
+  if (phraseStage === 2 && capture) {
+    capture.value.marks = {
+      expected: challenge.phrase.notes.flatMap((n, i) => (n.target ? [i] : [])),
+      selected: [...marks],
+    };
+    capture.event("marks_committed", capture.value.marks);
+  }
   phraseStage = Math.min(6, phraseStage + 1);
   if (phraseStage === 3) {
     revealed = false;
@@ -1411,6 +1583,7 @@ el("context-only").onclick = safe(async () => {
   const current = challenge;
   await audio.ready();
   if (challenge !== current || paused) return;
+  capture?.interrupt("reference-context-playback");
   stopAudio();
   audio.play(
     isSequential(config)
@@ -1595,6 +1768,18 @@ flow = installFlow({
     index = p?.index ?? 0;
     challenge = sessionQuestion(session, index);
     step = p?.step ?? (isSequential(config) ? 1 : 0);
+    capture = new AttemptCapture(
+      session,
+      index,
+      step,
+      playbackConfig(),
+      challenge,
+      true,
+    );
+    if (p?.analytics && !p.graded) {
+      capture.value = structuredClone(p.analytics);
+      capture.interrupt("lifecycle_restored");
+    }
     revealed = p?.revealed ?? false;
     graded = p?.graded ?? false;
     replays = p?.replays ?? 0;
@@ -1633,6 +1818,7 @@ flow = installFlow({
     status("Session restored. Replay context when ready.");
   },
   leave(end = false) {
+    capture?.suspend(end ? "session_ended" : "session_paused");
     operation++;
     stopAudio();
     if (
@@ -1654,6 +1840,7 @@ flow = installFlow({
     sessionStarted = 0;
   },
   compact(next) {
+    capture?.interrupt("playback_settings_changed");
     stopAudio();
     contextPending = false;
     if (continuous() && !revealed) hasPlayed = false;
@@ -1682,3 +1869,16 @@ flow = installFlow({
     playContext();
   },
 });
+window.addEventListener("insights-storage-error", (event) => {
+  const notice =
+    document.getElementById("analytics-save-error") ??
+    document.body.appendChild(document.createElement("p"));
+  notice.id = "analytics-save-error";
+  notice.setAttribute("role", "alert");
+  notice.textContent = (event as CustomEvent<string>).detail;
+});
+void reconcile(loadSessions(localStorage)).catch((error) =>
+  window.dispatchEvent(
+    new CustomEvent("insights-storage-error", { detail: String(error) }),
+  ),
+);
