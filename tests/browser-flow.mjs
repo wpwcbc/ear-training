@@ -214,7 +214,8 @@ try {
     ),
     savedConfig,
   );
-  await page.locator("#free-tab").click();
+  await page.evaluate(() => { location.hash = "#/home"; });
+  await page.locator("#dashboard-view").waitFor();
   await page.locator("[data-dashboard=saved]").click();
   await page.locator("#configuration-list .row-menu > summary").click();
   page.once("dialog", (dialog) => dialog.accept("Renamed"));
@@ -374,7 +375,8 @@ try {
     ),
     false,
   );
-  await page.locator("#history-tab").click();
+  await page.getByRole("button", { name: "Open navigation", exact: true }).click();
+  await page.locator(".app-navigation [data-route=history]").click();
   await page
     .locator("#history-list select[aria-label=Status]")
     .selectOption("completed");

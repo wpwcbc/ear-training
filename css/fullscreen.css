@@ -20,7 +20,7 @@ body.fullscreen-open {
 	/* Prevent accidental horizontal page scrolling on mobile */
 	overflow: hidden;
 	max-width: 100vw;
-	background: #ffffff;
+	background: var(--ds-surface, #ffffff);
 	overscroll-behavior: none;
 }
 
@@ -42,7 +42,7 @@ body.fullscreen-open {
 	width: 100%;
 	display: grid;
 	grid-template-rows: 1fr;
-	background: #ffffff;
+	background: var(--ds-surface, #ffffff);
 }
 
 .fullscreen-body {
@@ -59,7 +59,7 @@ body.fullscreen-open {
 	max-width: 100vw;
 	min-height: 0;
 	height: 100%;
-	background: #ffffff;
+	background: var(--ds-surface, #ffffff);
 }
 
 /* Tables / wide grids: keep horizontal scroll inside the table container */

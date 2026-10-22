@@ -22,7 +22,7 @@
 	background: rgba(61, 64, 91, 0.08);
 	color: var(--indigo);
 	font-size: 13px;
-	letter-spacing: 0.08em;
+	letter-spacing: 0;
 	text-transform: uppercase;
 }
 
@@ -83,7 +83,7 @@ button {
 	font-family: "Space Grotesk", "Segoe UI", sans-serif;
 	cursor: pointer;
 	background: var(--indigo);
-	color: #fff;
+	color: var(--ds-surface, #fff);
 	transition:
 		transform 0.15s ease,
 		box-shadow 0.15s ease,
@@ -161,7 +161,7 @@ button.ghost {
 
 .ambience-submode__title {
 	font-size: 12px;
-	letter-spacing: 0.12em;
+	letter-spacing: 0;
 	text-transform: uppercase;
 	color: var(--muted);
 }
@@ -208,7 +208,7 @@ button.ghost {
 label {
 	font-size: 13px;
 	text-transform: uppercase;
-	letter-spacing: 0.08em;
+	letter-spacing: 0;
 	color: var(--muted);
 }
 
@@ -316,7 +316,7 @@ textarea {
 
 .velocity-panel label {
 	font-size: 11px;
-	letter-spacing: 0.08em;
+	letter-spacing: 0;
 }
 
 .velocity-grid .field:not(.velocity-lead) input[type="range"] {
@@ -474,7 +474,7 @@ textarea {
 	left: 2px;
 	width: 18px;
 	height: 18px;
-	background: #fff;
+	background: var(--ds-surface, #fff);
 	border-radius: 50%;
 	transition: transform 0.2s ease;
 	box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
@@ -531,7 +531,7 @@ textarea {
 }
 
 .progression-item {
-	background: #fff;
+	background: var(--ds-surface, #fff);
 	color: var(--indigo);
 	border: 1px solid var(--line);
 	box-shadow: none;
@@ -564,7 +564,7 @@ textarea {
 	font-size: 12px;
 	font-weight: 600;
 	border: 1px solid var(--line);
-	background: #fffaf6;
+	background: var(--ds-surface, #fffaf6);
 	color: var(--indigo);
 	box-shadow: none;
 }
@@ -600,7 +600,7 @@ textarea {
 	padding: 10px 12px;
 	border-radius: 12px;
 	border: 1px solid var(--line);
-	background: #fffaf6;
+	background: var(--ds-surface, #fffaf6);
 	font-size: 14px;
 }
 
@@ -638,7 +638,7 @@ textarea {
 	padding: 12px;
 	border-radius: 14px;
 	border: 1px solid var(--line);
-	background: #fffaf6;
+	background: var(--ds-surface, #fffaf6);
 	display: grid;
 	gap: 10px;
 	overflow-x: auto;
@@ -661,7 +661,7 @@ textarea {
 	padding: 8px;
 	border-radius: 16px;
 	border: 1px solid rgba(61, 64, 91, 0.2);
-	background: #ffffff;
+	background: var(--ds-surface, #ffffff);
 	display: grid;
 	grid-template-columns: repeat(4, minmax(0, 1fr));
 	gap: 6px;
@@ -682,7 +682,7 @@ textarea {
 	font-weight: 600;
 	color: var(--indigo);
 	font-size: 13px;
-	letter-spacing: 0.01em;
+	letter-spacing: 0;
 }
 
 .chord-segment.is-active {
@@ -730,7 +730,7 @@ textarea {
 	margin: 0;
 	font-size: 13px;
 	text-transform: uppercase;
-	letter-spacing: 0.08em;
+	letter-spacing: 0;
 	color: var(--muted);
 }
 
@@ -751,7 +751,7 @@ textarea {
 }
 
 .completion-stat {
-	background: #fffaf6;
+	background: var(--ds-surface, #fffaf6);
 	border: 1px solid var(--line);
 	border-radius: 12px;
 	padding: 10px 12px;
@@ -764,7 +764,7 @@ textarea {
 .completion-stat .label {
 	font-size: 11px;
 	text-transform: uppercase;
-	letter-spacing: 0.08em;
+	letter-spacing: 0;
 	color: var(--muted);
 }
 
@@ -788,7 +788,7 @@ textarea {
 .heatmap-header {
 	font-size: 12px;
 	text-transform: uppercase;
-	letter-spacing: 0.08em;
+	letter-spacing: 0;
 	color: var(--muted);
 	display: flex;
 	align-items: center;
@@ -845,7 +845,7 @@ textarea {
 	padding: 8px 14px;
 	border-radius: 999px;
 	border: 1px solid var(--line);
-	background: #fffaf6;
+	background: var(--ds-surface, #fffaf6);
 	color: var(--indigo);
 	font-weight: 600;
 	font-size: 13px;
@@ -859,7 +859,7 @@ textarea {
 
 .records-tab-button.active {
 	background: var(--indigo);
-	color: #fff;
+	color: var(--ds-surface, #fff);
 	border-color: transparent;
 }
 
@@ -913,7 +913,7 @@ textarea {
 .records-select label {
 	font-size: 11px;
 	text-transform: uppercase;
-	letter-spacing: 0.08em;
+	letter-spacing: 0;
 	color: var(--muted);
 }
 
@@ -926,7 +926,7 @@ textarea {
 	border: 1px solid var(--line);
 	border-radius: 16px;
 	padding: 12px 14px;
-	background: #ffffff;
+	background: var(--ds-surface, #ffffff);
 	box-shadow: 0 14px 30px rgba(30, 28, 32, 0.08);
 	color: var(--indigo);
 	display: grid;
@@ -936,7 +936,7 @@ textarea {
 .record-card.empty {
 	text-align: center;
 	color: var(--muted);
-	background: #fffaf6;
+	background: var(--ds-surface, #fffaf6);
 	box-shadow: none;
 }
 
@@ -989,7 +989,7 @@ textarea {
 .record-metric .record-label {
 	font-size: 10px;
 	text-transform: uppercase;
-	letter-spacing: 0.08em;
+	letter-spacing: 0;
 	color: var(--muted);
 }
 
@@ -999,7 +999,7 @@ textarea {
 }
 
 .stats-card {
-	background: #ffffff;
+	background: var(--ds-surface, #ffffff);
 }
 
 .stats-card-header {
@@ -1029,7 +1029,7 @@ textarea {
 	border: 1px dashed rgba(61, 64, 91, 0.2);
 	border-radius: 12px;
 	padding: 8px 10px;
-	background: #fffaf6;
+	background: var(--ds-surface, #fffaf6);
 	display: grid;
 	gap: 6px;
 }
@@ -1051,7 +1051,7 @@ textarea {
 	border: none;
 	border-radius: 14px;
 	overflow-x: auto;
-	background: #ffffff;
+	background: var(--ds-surface, #ffffff);
 	max-width: 100%;
 	min-width: 0;
 }
@@ -1062,7 +1062,7 @@ textarea {
 	max-width: 100%;
 	min-width: 0;
 	border-radius: 14px;
-	background: #ffffff;
+	background: var(--ds-surface, #ffffff);
 	-webkit-overflow-scrolling: touch;
 }
 
@@ -1090,9 +1090,9 @@ textarea {
 
 .stats-header .stats-cell {
 	border-top: none;
-	background: #fffaf6;
+	background: var(--ds-surface, #fffaf6);
 	font-size: 11px;
-	letter-spacing: 0.08em;
+	letter-spacing: 0;
 	text-transform: uppercase;
 	color: var(--muted);
 }
@@ -1103,7 +1103,7 @@ textarea {
 
 .stats-row--group .stats-cell {
 	font-weight: 600;
-	background: #ffffff;
+	background: var(--ds-surface, #ffffff);
 	color: var(--indigo);
 }
 
@@ -1203,7 +1203,7 @@ textarea {
 		top: 58px;
 		flex-direction: column;
 		align-items: stretch;
-		background: #ffffff;
+		background: var(--ds-surface, #ffffff);
 		border-radius: 16px;
 		border: 1px solid var(--line);
 		padding: 10px;

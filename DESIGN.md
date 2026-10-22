@@ -1,0 +1,31 @@
+# Ear Train Design System
+
+Source: the user's two attached Ear Train / Donezo design specifications (2026-10-22).
+
+## Direction
+
+Quiet, work-focused music practice. Forest actions, mint selections, neutral surfaces.
+Inset desktop shell, persistent sidebar, compact topbar; tablet icon rail and mobile drawer.
+Active sessions remove the sidebar, retain playback controls, and keep the existing staged flow.
+Mode cards are individual repeated items; page sections remain unframed.
+
+## Implementation
+
+`css/design-system.css` owns shared light/dark semantic tokens and responsive presentation.
+`src/shell.ts` mounts navigation around the existing main, without replacing training DOM.
+Lucide icons are local assets. Font stack is Inter / Segoe UI / system sans.
+Spacing follows 4px increments; cards use 14-16px radii and the shell 28px.
+Breakpoints: mobile <768px, tablet 768-1023px, expanded navigation >=1024px.
+Desktop content uses available width up to the 1600px shell limit.
+
+## Accessibility Adjustments
+
+Muted small text uses gray 600 instead of gray 500; interactive borders and focus indicators
+use stronger palette values to retain contrast. Tracking stays zero. Controls target 44px.
+Dark primary controls use dark text on mint, rather than white on mint.
+Heatmap performance buckets retain their independent evidence indicators and dark cell text.
+Theme preference is isolated in `earTrain:ui:theme`; no training storage migration.
+Mobile navigation supports Escape, a focus loop, inert closed content and focus return.
+Reduced motion and system color preference are respected.
+
+The Impeccable context launcher was unavailable; existing source and supplied specs were read directly.

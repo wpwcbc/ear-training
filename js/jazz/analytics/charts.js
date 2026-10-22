@@ -1,5 +1,12 @@
 import { dayKey } from "./policy.js";
 import { dailyResults, resolveWindow, trendDensity } from "./windows.js";
+const redraws = new WeakMap();
+if (typeof window !== "undefined")
+    window.addEventListener("eartrain:theme", () => {
+        document
+            .querySelectorAll(".insight-trend canvas")
+            .forEach((canvas) => redraws.get(canvas)?.());
+    });
 export function renderTrend(parent, rows, timezone, now = Date.now(), mixed = false, window = resolveWindow(now, timezone, 28), locale = "en") {
     const zh = locale === "zh-Hant";
     const points = dailyResults(rows, window), density = trendDensity(points.map((p) => p.stats.eligibleCount));
@@ -48,50 +55,59 @@ export function renderTrend(parent, rows, timezone, now = Date.now(), mixed = fa
         const ctx = canvas.getContext("2d");
         if (!ctx)
             continue;
-        ctx.fillStyle = "#fff";
-        ctx.fillRect(0, 0, 900, 240);
-        ctx.font = "14px Segoe UI";
-        ctx.strokeStyle = "#cbd4d0";
-        ctx.strokeRect(85, 20, 790, 175);
-        const max = metric === "outcome"
-            ? 1
-            : Math.max(1, ...points.map((p) => (p.stats.p75 ?? 0) / 1000));
-        const start = window.startInclusive
-            ? Date.parse(window.startInclusive)
-            : points[0].time, end = window.startInclusive === null
-            ? Date.parse(resolveWindow(points[points.length - 1].time, timezone, 1)
-                .endExclusive)
-            : Date.parse(window.endExclusive);
-        const x = (time) => 85 + ((time - start) / Math.max(1, end - start)) * 790, y = (n) => 195 - (n / max) * 175;
-        ctx.fillStyle = "#53635e";
-        ctx.fillText(metric === "outcome" ? "100%" : max.toFixed(1) + "s", 15, 30);
-        ctx.fillText(metric === "outcome" ? "0%" : "0s", 40, 197);
-        for (const p of points) {
-            const value = metric === "outcome"
-                ? p.stats.correct / p.stats.eligibleCount
-                : p.stats.median === null
-                    ? null
-                    : p.stats.median / 1000;
-            if (value === null)
-                continue;
-            ctx.strokeStyle = metric === "outcome" ? "#236b56" : "#965b25";
-            ctx.fillStyle = ctx.strokeStyle;
-            if (metric === "outcome" && p.stats.interval && !mixed) {
+        const draw = () => {
+            const theme = getComputedStyle(document.documentElement);
+            const color = (token, fallback) => theme.getPropertyValue(token).trim() || fallback;
+            ctx.fillStyle = color("--ds-surface", "#fff");
+            ctx.fillRect(0, 0, 900, 240);
+            ctx.font = "14px Segoe UI";
+            ctx.strokeStyle = color("--ds-control", "#cbd4d0");
+            ctx.strokeRect(85, 20, 790, 175);
+            const max = metric === "outcome"
+                ? 1
+                : Math.max(1, ...points.map((p) => (p.stats.p75 ?? 0) / 1000));
+            const start = window.startInclusive
+                ? Date.parse(window.startInclusive)
+                : points[0].time, end = window.startInclusive === null
+                ? Date.parse(resolveWindow(points[points.length - 1].time, timezone, 1)
+                    .endExclusive)
+                : Date.parse(window.endExclusive);
+            const x = (time) => 85 + ((time - start) / Math.max(1, end - start)) * 790, y = (n) => 195 - (n / max) * 175;
+            ctx.fillStyle = color("--ds-secondary", "#53635e");
+            ctx.fillText(metric === "outcome" ? "100%" : max.toFixed(1) + "s", 15, 30);
+            ctx.fillText(metric === "outcome" ? "0%" : "0s", 40, 197);
+            for (const p of points) {
+                const value = metric === "outcome"
+                    ? p.stats.correct / p.stats.eligibleCount
+                    : p.stats.median === null
+                        ? null
+                        : p.stats.median / 1000;
+                if (value === null)
+                    continue;
+                ctx.strokeStyle =
+                    metric === "outcome"
+                        ? color("--ds-accent", "#236b56")
+                        : color("--ds-warning", "#965b25");
+                ctx.fillStyle = ctx.strokeStyle;
+                if (metric === "outcome" && p.stats.interval && !mixed) {
+                    ctx.beginPath();
+                    ctx.moveTo(x(p.time), y(p.stats.interval[0]));
+                    ctx.lineTo(x(p.time), y(p.stats.interval[1]));
+                    ctx.stroke();
+                }
                 ctx.beginPath();
-                ctx.moveTo(x(p.time), y(p.stats.interval[0]));
-                ctx.lineTo(x(p.time), y(p.stats.interval[1]));
-                ctx.stroke();
+                ctx.arc(x(p.time), y(value), 4, 0, 2 * Math.PI);
+                ctx.fill();
+                if (metric === "timing" && p.stats.p75 !== null) {
+                    ctx.fillRect(x(p.time) - 3, y(p.stats.p75 / 1000) - 3, 6, 6);
+                }
             }
-            ctx.beginPath();
-            ctx.arc(x(p.time), y(value), 4, 0, 2 * Math.PI);
-            ctx.fill();
-            if (metric === "timing" && p.stats.p75 !== null) {
-                ctx.fillRect(x(p.time) - 3, y(p.stats.p75 / 1000) - 3, 6, 6);
-            }
-        }
-        ctx.fillStyle = "#53635e";
-        ctx.fillText(dayKey(new Date(start).toISOString(), timezone), 85, 225);
-        ctx.fillText(dayKey(new Date(end - 1).toISOString(), timezone), 770, 225);
+            ctx.fillStyle = color("--ds-secondary", "#53635e");
+            ctx.fillText(dayKey(new Date(start).toISOString(), timezone), 85, 225);
+            ctx.fillText(dayKey(new Date(end - 1).toISOString(), timezone), 770, 225);
+        };
+        redraws.set(canvas, draw);
+        draw();
         const details = document.createElement("details"), summary = document.createElement("summary"), wrap = document.createElement("div"), table = document.createElement("table"), head = document.createElement("thead"), header = document.createElement("tr"), body = document.createElement("tbody");
         summary.textContent =
             "Daily values and sample sizes (no-data days are gaps)";

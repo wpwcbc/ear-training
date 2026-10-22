@@ -23,7 +23,7 @@ const screenshot = (name) =>
 try {
   await page.goto(labURL + "#/home");
   await page.locator(".quick-start").first().waitFor();
-  assert.equal(await page.locator(".lab-tabs button:visible").count(), 4);
+  assert.equal(await page.locator(".app-navigation a:visible").count(), 5);
   assert.equal(await page.locator("#dashboard-overview").isVisible(), false);
   await screenshot("home-desktop");
   await page
@@ -101,8 +101,8 @@ try {
       .getAttribute("aria-selected"),
     "true",
   );
-  await page.locator("#free-tab").focus();
-  await page.keyboard.press("ArrowRight");
+  await page.getByRole("button", { name: "Open navigation", exact: true }).click();
+  await page.locator(".app-navigation [data-route=history]").click();
   await page.waitForURL(/#\/history$/);
 
   await page.clock.setFixedTime(new Date(now));

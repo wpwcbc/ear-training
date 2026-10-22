@@ -175,9 +175,11 @@ export function installFlow(engine: Bridge) {
   shell.id = "flow-shell";
   shell.innerHTML = `
     <p id="flow-status" role="status" aria-live="polite"></p>
-    <section id="dashboard-view"><div class="dashboard-start"><div><span class="section-label">PRACTICE</span><h2 id="dashboard-title">Your next practice</h2></div><button id="start-practicing">New session</button></div>
-      <div id="resume-list"></div><div class="dashboard-tabs" role="tablist" aria-label="Configurations"><button data-dashboard="recent" role="tab">Recent</button><button data-dashboard="saved" role="tab">Saved</button><button data-dashboard="suggested" role="tab">Exercises</button></div>
-      <div id="configuration-list" role="tabpanel"></div><div id="dashboard-overview" class="overview"></div>
+    <section id="dashboard-view"><div class="dashboard-start"><div><h2 id="dashboard-title">Your next practice</h2></div><button id="start-practicing">New session</button></div>
+      <div id="resume-list"></div><div class="dashboard-shortcuts"><button class="secondary" data-config-shortcut="recent">Recent</button><button class="secondary" data-config-shortcut="saved">Saved</button></div>
+      <div class="dashboard-workspace"><section class="mode-library" aria-labelledby="mode-library-title"><div class="mode-library-heading"><h3 id="mode-library-title">Choose your exercise</h3></div><div id="mode-library" class="mode-grid"></div></section>
+      <section class="configuration-library" aria-labelledby="configuration-library-title"><h3 id="configuration-library-title">Your configurations</h3><div class="dashboard-tabs" role="tablist" aria-label="Configurations"><button data-dashboard="recent" role="tab">Recent</button><button data-dashboard="saved" role="tab">Saved</button><button data-dashboard="suggested" role="tab">Quick starts</button></div>
+      <div id="configuration-list" role="tabpanel"></div></section></div><div id="dashboard-overview" class="overview"></div>
       <p class="local-notice">Saved in this browser only. Other devices do not sync; clearing browser data removes local practice records.</p>
     </section>
     <section id="wizard-view" hidden><div class="page-title"><span class="section-label">NEW SESSION</span><h2>Set Up Practice</h2></div><nav id="wizard-stepper" class="wizard-stepper" aria-label="Setup steps"></nav><div class="wizard-section-title"><span id="wizard-section-index"></span><h3 id="wizard-section-title"></h3></div>
@@ -195,6 +197,24 @@ export function installFlow(engine: Bridge) {
   main.append(shell);
   icon(document.querySelector<HTMLElement>(".lab-heading h1")!, "audio-lines");
   icon($("start-practicing"), "play");
+  document
+    .querySelectorAll<HTMLButtonElement>("[data-config-shortcut]")
+    .forEach((button) => {
+      icon(
+        button,
+        button.dataset.configShortcut === "saved" ? "bookmark" : "rotate-ccw",
+      );
+      button.onclick = () => {
+        document
+          .querySelector<HTMLButtonElement>(
+            `[data-dashboard="${button.dataset.configShortcut}"]`,
+          )!
+          .click();
+        document
+          .querySelector(".configuration-library")!
+          .scrollIntoView({ block: "start" });
+      };
+    });
   icon($("wizard-back"), "arrow-left");
   icon($("save-draft"), "save", true);
   icon($("wizard-save-preset"), "bookmark");
@@ -1037,6 +1057,59 @@ export function installFlow(engine: Bridge) {
   ];
   function renderDashboard() {
     const sessions = loadSessions(localStorage);
+    const library = $("mode-library");
+    library.replaceChildren();
+    const symbols: Record<Mode, string> = {
+      m1: "audio-lines",
+      m2: "headphones",
+      m3: "rotate-ccw",
+      m4: "arrow-right",
+      m5: "route",
+      m6: "library",
+      m7: "sliders-horizontal",
+    };
+    for (const mode of Object.keys(exerciseNames) as Mode[]) {
+      const card = node("article", "", "mode-card");
+      const header = node("div", "", "mode-card-header");
+      const symbol = node("span");
+      icon(symbol, symbols[mode]);
+      symbol.setAttribute("aria-hidden", "true");
+      header.append(symbol, node("span", mode.toUpperCase()));
+      const recent = sessions
+        .filter((session) => session.mode === mode)
+        .slice(-1)[0];
+      const start = action(
+        "Start practice",
+        () => {
+          openWizard({
+            ...defaults,
+            mode,
+            ...(mode === "m5"
+              ? ({ runMode: "continuous", path: "nearest" } as const)
+              : {}),
+          });
+          wizardStep = 1;
+          maxStep = 1;
+          draftSave();
+          go("setup/2");
+        },
+        true,
+      );
+      start.setAttribute("aria-label", `Start ${exerciseNames[mode]}`);
+      card.append(
+        header,
+        node("h4", exerciseNames[mode]),
+        node("p", purposes[mode]),
+        node(
+          "small",
+          recent
+            ? `Last practised ${relativeDate(recent.timestamp)}`
+            : "Not practised yet",
+        ),
+        start,
+      );
+      library.append(card);
+    }
     $("dashboard-title").textContent = sessions.length
       ? "Pick up where you left off"
       : "Your first practice";

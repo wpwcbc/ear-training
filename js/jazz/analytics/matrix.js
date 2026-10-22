@@ -120,8 +120,10 @@ function cellButton(c, metric, inspect, selected, locale = "en") {
         " · " +
         (c.denominator ?? "unavailable") +
         " independent questions · Open details");
-    if (metric === "outcome" && rate(c) !== null)
+    if (metric === "outcome" && rate(c) !== null) {
+        b.dataset.rateBucket = String(rateBucket(rate(c)));
         b.style.setProperty("--outcome-color", `var(--ji-rate-${rateBucket(rate(c))})`);
+    }
     b.onclick = () => inspect(c);
     const tooltip = el("span", exact);
     tooltip.className = "matrix-tooltip";
