@@ -208,9 +208,10 @@ export function diagnosticSample(items, now, sorted = false) {
         return true;
     });
 }
-export function reconciliation(rows, now) {
+export function reconciliation(rows, now, membership = true) {
     const unique = [...new Map(rows.map((e) => [e.id, e])).values()];
     const reasons = {};
+    const excludedIds = {};
     const metric = unique.filter((e) => {
         const reason = e.record.grade === "skipped"
             ? "skipped"
@@ -226,12 +227,32 @@ export function reconciliation(rows, now) {
                             : !e.questionId || !e.capabilities.identity
                                 ? "missing-question-identity"
                                 : "";
-        if (reason)
+        if (reason) {
             reasons[reason] = (reasons[reason] ?? 0) + 1;
+            if (membership)
+                (excludedIds[reason] ?? (excludedIds[reason] = [])).push(e.id);
+        }
         return !reason;
     });
     const keys = new Set(metric.map((e) => JSON.stringify([e.mode, e.subtask, e.source, e.grain, e.questionId])));
     reasons["repeated-question-at-selected-grain"] = metric.length - keys.size;
+    const seen = new Set();
+    const diagnosticIds = [];
+    for (const e of (membership ? [...metric] : []).sort((a, b) => a.createdAt.localeCompare(b.createdAt) || compareId(a.id, b.id))) {
+        const key = JSON.stringify([
+            e.mode,
+            e.subtask,
+            e.source,
+            e.grain,
+            e.questionId,
+        ]);
+        if (seen.has(key))
+            (excludedIds["repeated-question-at-selected-grain"] ?? (excludedIds["repeated-question-at-selected-grain"] = [])).push(e.id);
+        else {
+            seen.add(key);
+            diagnosticIds.push(e.id);
+        }
+    }
     return {
         retained: rows.length,
         normalized: unique.length,
@@ -239,10 +260,12 @@ export function reconciliation(rows, now) {
         eligible: metric.length,
         diagnostic: metric.length
             ? keys.size
-            : unique.some((e) => !e.questionId)
+            : unique.some((e) => !e.questionId || !e.capabilities.identity)
                 ? null
                 : 0,
         exclusions: reasons,
+        excludedIds,
+        diagnosticIds,
     };
 }
 export function makeCell(items, level, key, query, revision, now) {
@@ -292,7 +315,7 @@ export function makeCell(items, level, key, query, revision, now) {
             .filter(Boolean)
             .join(" / ");
     const outcome = observations.some((o) => o.outcome !== null);
-    const exclusions = reconciliation(rows, now).exclusions;
+    const exclusions = reconciliation(rows, now, false).exclusions;
     const ref = {
         schemaVersion: 1,
         id: refId,
@@ -333,7 +356,7 @@ export function makeCell(items, level, key, query, revision, now) {
             missed: sample.filter((o) => o.outcome === "missed").length,
         },
         descriptiveItemCount: observations.length,
-        independentQuestionCount: rows.every((e) => !!e.questionId && e.capabilities.identity)
+        independentQuestionCount: rows.some((e) => !!e.questionId && e.capabilities.identity)
             ? n
             : null,
         sessions,

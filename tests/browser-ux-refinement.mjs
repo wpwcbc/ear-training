@@ -120,7 +120,10 @@ try {
   await page.locator(".aggregate-matrix").waitFor();
   const primary = page
     .locator(".insight-focus-queue")
-    .getByRole("button", { name: "Practise 10", exact: true })
+    .getByRole("button", {
+      name: "Start Suggested Diagnostic · 10",
+      exact: true,
+    })
     .first();
   assert.ok(
     (await primary.boundingBox()).y >
@@ -128,8 +131,9 @@ try {
     "Targeted practice follows the matrix",
   );
   assert.ok(
-    (await page.locator("#skill-stats").boundingBox()).y < 900,
-    "Aggregate evidence starts within the desktop viewport",
+    (await page.locator("#skill-stats").boundingBox()).y >
+      (await page.locator(".insight-kpis").boundingBox()).y,
+    "Aggregate evidence follows the reconciled KPI strip",
   );
   assert.equal(
     await page.locator(".insight-methodology").evaluate((e) => e.open),

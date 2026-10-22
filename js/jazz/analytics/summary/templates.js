@@ -1,19 +1,20 @@
+import { focusName } from "../display.js";
 const counts = ["focus", "scope", "k", "n", "noncorrect"];
 const definitions = {
     "tentative-positive": {
         keys: ["focus", "k", "n", "days", "roots", "context", "sourceLabel"],
-        en: (p) => `${p.focus}: ${p.k}/${p.n} ${p.sourceLabel} correct. A positive observation, not established mastery: ${p.days} ${Number(p.days) === 1 ? "local day" : "local days"}, roots ${p.roots}; ${p.context}.`,
-        zh: (p) => `${p.focus}：${p.k}/${p.n} 次${p.sourceLabel} correct。這是正向觀察，尚非已掌握：${p.days} 個本地日期，根音 ${p.roots}；${p.context}。`,
+        en: (p) => `${p.focus} has a positive observed result. ${p.k}/${p.n} diagnostic answers were ${p.sourceLabel} correct. ${p.days} local days, roots ${p.roots}; ${p.context}: this does not establish stability across contexts.`,
+        zh: (p) => `${p.focus} 有正面的觀察結果。${p.n} 題診斷答案中，${p.k} 題${p.sourceLabel}正確。資料來自 ${p.days} 個日曆日、根音 ${p.roots}；${p.context}，仍不足以判定跨情境表現穩定。`,
     },
     "tentative-difficulty": {
         keys: ["focus", "k", "n", "days", "roots", "context", "sourceLabel"],
-        en: (p) => `${p.focus}: ${p.k}/${p.n} ${p.sourceLabel} correct. Worth checking with consistent settings, not an established weakness: ${p.days} local days, roots ${p.roots}; ${p.context}.`,
-        zh: (p) => `${p.focus}：${p.k}/${p.n} 次${p.sourceLabel} correct。值得用一致設定再確認，尚非確立弱項：${p.days} 個本地日期，根音 ${p.roots}；${p.context}。`,
+        en: (p) => `${p.focus} is worth checking next. ${p.k}/${p.n} diagnostic answers were ${p.sourceLabel} correct. Try consistent settings; ${p.days} local days, roots ${p.roots}, ${p.context} do not establish a weakness.`,
+        zh: (p) => `下一步值得檢查 ${p.focus}。${p.n} 題診斷答案中，${p.k} 題${p.sourceLabel}正確。建議以一致設定再確認；${p.days} 個日曆日、根音 ${p.roots}、${p.context}，尚不足以確立弱項。`,
     },
     "descriptive-peer": {
         keys: ["focus", "other", "k", "n", "otherK", "otherN", "sourceLabel"],
-        en: (p) => `${p.focus}: ${p.k}/${p.n} ${p.sourceLabel} correct; ${p.other}: ${p.otherK}/${p.otherN}. Descriptive contrast only: settings or evidence do not support a like-for-like conclusion.`,
-        zh: (p) => `${p.focus}：${p.k}/${p.n} 次${p.sourceLabel} correct；${p.other}：${p.otherK}/${p.otherN}。僅為描述性對照：設定或證據尚不足以支持同條件結論。`,
+        en: (p) => `${p.focus} is worth checking next. ${p.k}/${p.n} diagnostic answers were ${p.sourceLabel} correct, compared with ${p.otherK}/${p.otherN} for ${p.other}. Settings may differ, so this is a useful check, not an established ability difference.`,
+        zh: (p) => `下一步值得檢查 ${p.focus}。${p.n} 題診斷答案中，${p.k} 題${p.sourceLabel}正確；${p.other} 則為 ${p.otherN} 題中 ${p.otherK} 題。兩組設定可能不同，因此是值得嘗試的方向，尚未證實能力有差距。`,
     },
     "cross-quality": {
         keys: counts,
@@ -168,6 +169,9 @@ export function renderTemplate(id, params, locale = "en") {
     if (Object.keys(params).some((k) => !allowed.has(k)))
         return null;
     const localized = { ...params };
+    for (const key of ["focus", "other"])
+        if (typeof params[key] === "string")
+            localized[key] = focusName(String(params[key]), locale);
     const format = new Intl.NumberFormat(locale === "zh-Hant" ? "zh-Hant" : "en", { maximumFractionDigits: 2 });
     for (const [key, value] of Object.entries(params))
         if (typeof value === "number")
@@ -221,9 +225,5 @@ export function renderInsight(i, locale = "en") {
     const text = renderTemplate(i.templateId, i.params, locale);
     if (!text)
         return null;
-    return ((i.certainty === "tentative"
-        ? locale === "zh-Hant"
-            ? "初步資料；尚不足以判斷規律。 "
-            : "Tentative; too little evidence for a pattern. "
-        : "") + text);
+    return text;
 }

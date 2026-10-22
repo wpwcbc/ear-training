@@ -57,6 +57,27 @@ try {
       "200% browser zoom overflow at physical width " + width,
     );
   }
+  await worker.evaluate(async () => {
+    const tab = (await chrome.tabs.query({})).find((t) =>
+      t.url?.includes("jazz-ear-lab"),
+    );
+    await chrome.tabs.setZoom(tab.id, 4);
+  });
+  await page.setViewportSize({ width: 1280, height: 1000 });
+  await page.waitForFunction(() => innerWidth === 320);
+  assert.equal(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth > innerWidth,
+    ),
+    false,
+    "400% browser zoom reflows at CSS 320px",
+  );
+  await worker.evaluate(async () => {
+    const tab = (await chrome.tabs.query({})).find((t) =>
+      t.url?.includes("jazz-ear-lab"),
+    );
+    await chrome.tabs.setZoom(tab.id, 2);
+  });
   await page.setViewportSize({ width: 780, height: 1000 });
   await page.locator(".aggregate-matrix [data-cell-id]").first().focus();
   await page.keyboard.press("Enter");

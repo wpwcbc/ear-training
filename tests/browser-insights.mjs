@@ -50,7 +50,10 @@ try {
     .click();
   await page
     .locator("#selected-cell")
-    .getByRole("button", { name: "Practise 10", exact: true })
+    .getByRole("button", {
+      name: "Start Suggested Diagnostic · 10",
+      exact: true,
+    })
     .first()
     .click();
   await page.waitForURL(/#\/session\/[^/]+$/);

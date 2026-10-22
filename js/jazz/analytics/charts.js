@@ -1,6 +1,7 @@
 import { dayKey } from "./policy.js";
 import { dailyResults, resolveWindow, trendDensity } from "./windows.js";
-export function renderTrend(parent, rows, timezone, now = Date.now(), mixed = false, window = resolveWindow(now, timezone, 28)) {
+export function renderTrend(parent, rows, timezone, now = Date.now(), mixed = false, window = resolveWindow(now, timezone, 28), locale = "en") {
+    const zh = locale === "zh-Hant";
     const points = dailyResults(rows, window), density = trendDensity(points.map((p) => p.stats.eligibleCount));
     if (!points.length) {
         const status = document.createElement("p");
@@ -29,6 +30,16 @@ export function renderTrend(parent, rows, timezone, now = Date.now(), mixed = fa
                     ? "Mixed settings · practice mix changed; descriptive only, not evidence of improvement"
                     : rows[0].config.bpm +
                         " BPM · exact matched cohort · daily points are descriptive");
+        if (rows[0].mode === "m1" && metric === "outcome")
+            caption.textContent = zh
+                ? "自評正確 · 診斷首次作答樣本 · " +
+                    (mixed
+                        ? "不同設定，僅供描述，尚不足以證實進步"
+                        : "同一已知設定；每日數值僅供描述")
+                : "Self-rated correct · diagnostic first-question sample · " +
+                    (mixed
+                        ? "Mixed settings · descriptive only, not evidence of improvement"
+                        : "Known matched settings; daily points are descriptive");
         canvas.width = 900;
         canvas.height = 240;
         canvas.setAttribute("role", "img");
@@ -90,12 +101,9 @@ export function renderTrend(parent, rows, timezone, now = Date.now(), mixed = fa
         wrap.setAttribute("aria-label", metric + " daily values");
         wrap.tabIndex = 0;
         const labels = metric === "outcome"
-            ? [
-                "Local day",
-                "Correct / diagnostic questions",
-                mixed ? "Comparability" : "Wilson 95%",
-                "Source / grain",
-            ]
+            ? zh
+                ? ["本地日期", "正確 / 診斷題數", "比例"]
+                : ["Local day", "Correct / diagnostic questions", "Rate"]
             : [
                 "Local day",
                 "Median seconds",
@@ -114,24 +122,12 @@ export function renderTrend(parent, rows, timezone, now = Date.now(), mixed = fa
             const values = metric === "outcome"
                 ? [
                     p.day,
-                    p.stats.correct +
-                        "/" +
-                        p.stats.eligibleCount +
-                        " (" +
-                        ((100 * p.stats.correct) / p.stats.eligibleCount).toFixed(1) +
-                        "%)",
-                    mixed
-                        ? "Mixed settings; descriptive only"
-                        : (p.stats.interval
-                            ?.map((v) => (v * 100).toFixed(1) + "%")
-                            .join(" to ") ?? "No observations"),
-                    (rows[0].source === "self"
-                        ? "Self-assessed production"
-                        : rows[0].source === "visual"
-                            ? "Visual mapping"
-                            : "Recognition") +
-                        " / " +
-                        rows[0].grain,
+                    p.stats.correct + "/" + p.stats.eligibleCount,
+                    new Intl.NumberFormat(undefined, {
+                        style: "percent",
+                        minimumFractionDigits: 1,
+                        maximumFractionDigits: 1,
+                    }).format(p.stats.correct / p.stats.eligibleCount),
                 ]
                 : [
                     p.day,
@@ -167,6 +163,13 @@ export function renderTrend(parent, rows, timezone, now = Date.now(), mixed = fa
             figure.append(plot);
         }
         figure.append(details);
+        if (metric === "outcome" && mixed) {
+            const note = document.createElement("p");
+            note.textContent = zh
+                ? `資料來自 ${points.length} 個日曆日，設定有所不同。這些結果尚不足以確立進步。`
+                : `${points.length} recorded ${points.length === 1 ? "day" : "days"}; settings differ. These results do not establish improvement.`;
+            figure.append(note);
+        }
         parent.append(figure);
     }
 }

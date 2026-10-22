@@ -7,6 +7,12 @@ import {
 } from "../model.js";
 import type { Progression } from "../progressions.js";
 import { commandIcon, icon } from "../ui.js";
+import {
+  degreeName,
+  qualityName,
+  focusName,
+  localizeLabels,
+} from "./display.js";
 import { renderTrend } from "./charts.js";
 import {
   resolveWindow,
@@ -34,7 +40,13 @@ import {
   assistedRecovery,
   type Cell,
 } from "./metrics.js";
-import { compileDrill, compileDiagnostic, type DrillPlan } from "./drills.js";
+import {
+  compileDrill,
+  compileDiagnostic,
+  compileSuggestedDiagnostic,
+  compileMatchedBaseline,
+  type DrillPlan,
+} from "./drills.js";
 import { legacyData, type LegacyData } from "./adapters.js";
 import { policy, dayKey } from "./policy.js";
 import {
@@ -73,6 +85,7 @@ const names: Record<string, string> = {
   m7: "Ear to Bass",
 };
 let lastRuleDiagnostics: unknown = null;
+const renderRequests = new WeakMap<HTMLElement, number>();
 interface Actions {
   start(
     config: Config,
@@ -89,7 +102,9 @@ const node = <K extends keyof HTMLElementTagNameMap>(tag: K, text?: string) => {
   return n;
 };
 function presentInspection(panel: HTMLDialogElement) {
-  const close = panel.querySelector<HTMLButtonElement>(":scope > button")!;
+  const close =
+    panel.querySelector<HTMLButtonElement>("[data-dismiss]") ??
+    panel.querySelector<HTMLButtonElement>(":scope > button")!;
   panel.prepend(close);
   panel.setAttribute("aria-modal", "true");
   panel.addEventListener("cancel", (event) => {
@@ -135,6 +150,7 @@ function link(text: string, href: string) {
 function button(text: string, action: () => unknown) {
   const b = node("button", text);
   b.type = "button";
+  if (text.startsWith("Close ")) b.dataset.dismiss = "true";
   commandIcon(b);
   if (text.startsWith("Practise")) icon(b, "play");
   if (text.startsWith("Close ")) icon(b, "x", true);
@@ -212,10 +228,37 @@ function table(
 }
 const rate = (k: number, n: number) =>
   n ? `${k}/${n} (${Math.round((100 * k) / n)}%)` : "No eligible answers";
+function retainedDays(rows: Evidence[], timezone: string, now: number) {
+  return new Set(
+    rows
+      .filter(
+        (e) =>
+          Number.isFinite(Date.parse(e.createdAt)) &&
+          Date.parse(e.createdAt) <= now,
+      )
+      .map((e) => dayKey(e.createdAt, timezone)),
+  ).size;
+}
 function metric(parent: HTMLElement, label: string, value: string) {
   const item = node("div");
   item.append(node("span", label), node("strong", value));
   parent.append(item);
+}
+function summaryParagraph(text: string) {
+  const paragraph = node("p");
+  const zh = text.includes("。");
+  const boundary = text.indexOf(zh ? "。" : ". ");
+  if (boundary < 0) paragraph.textContent = text;
+  else {
+    const end = boundary + 1;
+    const lead = node("strong", text.slice(0, end));
+    lead.className = "summary-lead";
+    paragraph.append(
+      lead,
+      document.createTextNode(" " + text.slice(end).trim()),
+    );
+  }
+  return paragraph;
 }
 export async function renderAnalytics(
   host: HTMLElement,
@@ -223,6 +266,8 @@ export async function renderAnalytics(
   actions: Actions,
   workspaceMode?: string,
 ): Promise<void> {
+  const request = (renderRequests.get(host) ?? 0) + 1;
+  renderRequests.set(host, request);
   host.dataset.route = route;
   host.replaceChildren(node("p", "Loading local evidence..."));
   let evidence: Evidence[];
@@ -240,9 +285,10 @@ export async function renderAnalytics(
     );
     return;
   }
-  if (host.dataset.route !== route) return;
+  if (host.dataset.route !== route || renderRequests.get(host) !== request)
+    return;
   host.replaceChildren();
-  host.classList.add("analytics");
+  host.classList.add("analytics", "jazz-insights");
   const [path, search = ""] = route.split("?"),
     params = new URLSearchParams(search);
   let mode = path.split("/")[1] ?? "";
@@ -472,6 +518,7 @@ export async function renderAnalytics(
     ],
     navigator.language.startsWith("zh") ? "zh-Hant" : "en",
   ) as Locale;
+  host.lang = locale;
   const matrixMetric = filter(
     "metric",
     "Context metric",
@@ -667,7 +714,8 @@ export async function renderAnalytics(
     progress.textContent = String(error);
     return;
   }
-  if (host.dataset.route !== route) return;
+  if (host.dataset.route !== route || renderRequests.get(host) !== request)
+    return;
   progress.remove();
   const revision = model.revision;
   lastRuleDiagnostics = {
@@ -688,10 +736,15 @@ export async function renderAnalytics(
   announce.className = "sr-only";
   announce.setAttribute("role", "status");
   host.append(announce);
-  const openEvidence = async (refId: string) => {
-    const origin = document.activeElement as HTMLElement;
+  const openEvidence = async (
+    refId: string,
+    related: readonly string[] = [],
+    invoker?: HTMLElement,
+  ) => {
+    const origin = invoker ?? (document.activeElement as HTMLElement);
     const current = await readAll<Evidence>("assessments");
-    if (host.dataset.route !== route) return;
+    if (host.dataset.route !== route || renderRequests.get(host) !== request)
+      return;
     const ref = model.refs.get(refId),
       panel = node("dialog");
     panel.className = "insight-evidence-panel";
@@ -700,6 +753,12 @@ export async function renderAnalytics(
     panel.setAttribute("aria-label", "Evidence reference");
     panel.tabIndex = -1;
     panel.append(node("h3", "Evidence reference"));
+    for (const id of related.filter((id) => id !== refId))
+      panel.append(
+        button("View comparison sample", () =>
+          openEvidence(id, [refId], origin),
+        ),
+      );
     panel.append(
       button("Close evidence", () => {
         panel.remove();
@@ -775,6 +834,12 @@ export async function renderAnalytics(
   summary.setAttribute("aria-label", "Smart Insights Summary");
   summary.append(
     node("h3", locale === "zh-Hant" ? "練習重點" : "What stands out"),
+    node(
+      "p",
+      locale === "zh-Hant"
+        ? "根據保留的練習結果，以固定規則整理。"
+        : "Scripted from your retained practice results.",
+    ),
   );
   if (rows.length) {
     const sources = new Set(rows.map((e) => e.source));
@@ -784,7 +849,9 @@ export async function renderAnalytics(
         sources.size > 1
           ? "Separate assessment sources"
           : sources.has("self")
-            ? "Self-assessed production"
+            ? locale === "zh-Hant"
+              ? "自評唱奏"
+              : "Self-assessed production"
             : sources.has("visual")
               ? "Visual mapping, not physical playing"
               : "Submitted recognition answers",
@@ -812,38 +879,79 @@ export async function renderAnalytics(
             ),
           ),
     );
-  } else
-    for (const [index, insight] of model.statements.entries()) {
+  } else {
+    if (mode === "m1") {
+      const retainedSelf = rows.filter((e) => e.source === "self");
+      const stats = aggregate(retainedSelf, timezone, now);
+      const rated =
+        stats.ratings.correct + stats.ratings.close + stats.ratings.missed;
+      const days = retainedDays(retainedSelf, timezone, now);
+      if (rated)
+        summary.append(
+          node(
+            "p",
+            locale === "zh-Hant"
+              ? `${rated < 5 ? `你有 ${rated} 次已評分答案可供查看。` : stats.ratings.correct / rated >= 0.8 ? "你保留的 M1 評分大多是正確。" : "你保留的 M1 評分包含以下結果。"}${rated} 次已評分答案中，你自評 ${stats.ratings.correct} 次正確、${stats.ratings.close} 次接近、${stats.ratings.missed} 次未達標。這些是 ${days} 個日曆日、所選設定下的自評，不能視為量度的歌唱準確率或穩定表現。`
+              : `${rated < 5 ? `You have ${rated} rated answers to review.` : stats.ratings.correct / rated >= 0.8 ? "Your retained M1 ratings are mostly correct." : "Your retained M1 ratings include the following outcomes."} You rated ${stats.ratings.correct} of ${rated} answers correct, ${stats.ratings.close} close and ${stats.ratings.missed} missed. These are self-ratings across ${days} calendar days under the selected settings; they do not establish measured singing accuracy or a stable pattern.`,
+          ),
+        );
+      if (rated) {
+        const citation = button(
+          locale === "zh-Hant" ? "查看評分對應" : "View rating reconciliation",
+          () => {
+            const ledger = host.querySelector<HTMLDetailsElement>(
+              ".insight-reconciliation",
+            );
+            if (ledger) {
+              ledger.open = true;
+              ledger.scrollIntoView({ block: "nearest" });
+              ledger.querySelector("summary")?.focus();
+            }
+          },
+        );
+        citation.className = "insight-citation";
+        summary.lastElementChild!.append(
+          document.createTextNode(" "),
+          citation,
+        );
+      }
+    }
+    for (const [index, insight] of model.statements
+      .slice(0, mode === "m1" ? 2 : 3)
+      .entries()) {
       const statement = node("div");
       statement.className = "insight-statement";
       statement.dataset.candidateId = insight.id;
       statement.dataset.actionId = insight.actionId ?? insight.id;
       statement.append(
-        node("p", renderInsight(insight, locale) ?? "Evidence unavailable."),
-      );
-      insight.evidenceRefIds.forEach((ref, j) =>
-        statement.append(
-          button(
-            "View Evidence [E" +
-              (index + 1) +
-              (j ? String.fromCharCode(97 + j) : "") +
-              "]",
-            () => openEvidence(ref),
-          ),
+        summaryParagraph(
+          renderInsight(insight, locale) ?? "Evidence unavailable.",
         ),
       );
+      const citation = button(
+        (locale === "zh-Hant" ? "查看證據" : "View Evidence") +
+          " [E" +
+          (index + 1) +
+          "]",
+        () => openEvidence(insight.evidenceRefIds[0], insight.evidenceRefIds),
+      );
+      citation.classList.add("insight-citation");
+      statement.append(citation);
       summary.append(statement);
     }
+  }
   const decision = node("section");
   decision.className = "insight-decision";
   decision.setAttribute("aria-label", "Practice summary and next action");
   decision.append(summary);
   const queue = node("section");
   queue.className = "insight-focus-queue";
-  queue.append(node("h3", "Practise next"));
+  queue.append(
+    node("h3", locale === "zh-Hant" ? "下一步練習" : "Practise next"),
+  );
   const headings = {
     supported: "Supported priorities",
-    tentative: "Tentative signals",
+    tentative: "Worth checking",
     coverage: "Collect more evidence",
     descriptive: "Collect more evidence",
   };
@@ -888,7 +996,7 @@ export async function renderAnalytics(
             ? { targetIndex: Math.max(1, c.sample[0]?.index ?? 1) }
             : undefined,
     };
-    if (insight.category === "coverage") {
+    if (insight.category === "coverage" && c.mode !== "m1") {
       const card = node("article");
       card.className = "insight-focus";
       card.append(
@@ -924,7 +1032,15 @@ export async function renderAnalytics(
       card.append(button("View Evidence", () => openEvidence(c.evidenceRefId)));
       wrapper.append(card);
     } else {
-      focus(wrapper, cell, route, actions, timezone, true);
+      focus(
+        wrapper,
+        cell,
+        route,
+        actions,
+        timezone,
+        true,
+        suggestedOptions(cell),
+      );
       wrapper
         .querySelector("article")
         ?.append(button("View Evidence", () => openEvidence(c.evidenceRefId)));
@@ -938,7 +1054,65 @@ export async function renderAnalytics(
     else queue.append(wrapper);
   }
   if (moreActions.children.length > 1) queue.append(moreActions);
+  const primaryStart =
+    queue.querySelector<HTMLButtonElement>(".suggested-start");
+  if (primaryStart) {
+    const strip = node("div");
+    strip.className = "diagnostic-strip";
+    strip.append(
+      node(
+        "span",
+        locale === "zh-Hant"
+          ? "建議診斷 · 7 題焦點＋3 題對照"
+          : "Suggested Diagnostic · 7 focus + 3 contrast",
+      ),
+      button(primaryStart.textContent!, () =>
+        queue
+          .querySelector<HTMLButtonElement>(
+            ":scope > .insight-recommendation .suggested-start",
+          )
+          ?.click(),
+      ),
+    );
+    summary.append(strip);
+  }
   host.append(decision);
+  function suggestedOptions(cell: Cell, local = false) {
+    const n = cell.diagnosticStats?.eligibleCount ?? 0;
+    const k = cell.diagnosticStats?.correct ?? 0;
+    const peer = model.cells
+      .filter(
+        (c) =>
+          !c.stratum &&
+          c.level === "quality-degree" &&
+          c.mode === "m1" &&
+          !c.stale &&
+          c.contextState !== "unknown" &&
+          c.independentQuestionCount !== null &&
+          c.source === cell.rows[0]?.source &&
+          c.subtask === cell.rows[0]?.subtask &&
+          c.grain === cell.rows[0]?.grain &&
+          c.quality === cell.quality &&
+          c.degree !== cell.degree &&
+          (c.denominator ?? 0) >= 10 &&
+          n >= 10 &&
+          Math.abs(c.numerator! / c.denominator! - k / n) >= 0.1,
+      )
+      .sort(
+        (a, b) => b.denominator! - a.denominator! || (a.id < b.id ? -1 : 1),
+      )[0];
+    const root = (local ? params.get("cellRoot") : null) ?? params.get("root");
+    return {
+      revision,
+      contrast: peer?.degree,
+      roots: root && root !== "all" ? [root] : undefined,
+      locale,
+      evidenceRefIds: [
+        model.cells.find((c) => c.id === cell.id)?.evidenceRefId,
+        peer?.evidenceRefId,
+      ].filter((id): id is string => !!id),
+    };
+  }
   if (!mode) {
     host.append(node("h3", "Mode status"));
     const grid = node("div");
@@ -964,12 +1138,6 @@ export async function renderAnalytics(
       }
       if (!group.length) status.append(node("p", "No recorded outcomes"));
       status.append(link("Details", "#/insights/" + id));
-      if (!group.length && rows.length)
-        status.append(
-          button("Configure diagnostic set", () =>
-            actions.customize({ ...defaults, mode: id as Mode, count: 10 }, []),
-          ),
-        );
       grid.append(status);
     }
     host.append(
@@ -998,32 +1166,12 @@ export async function renderAnalytics(
         params.get("focus") ?? sessionStorage.getItem("insights:focused-mode");
       const focused = available.includes(retainedFocus ?? "")
         ? retainedFocus!
-        : (model.statements[0]?.mode ?? recent ?? available[0]);
+        : (model.recommendations[0]?.mode ?? recent ?? available[0]);
       sessionStorage.setItem("insights:focused-mode", focused);
-      const label = node("label", "Explore exercise"),
-        select = node("select"),
-        workspace = node("section");
-      workspace.className = "insight-focused-mode";
-      select.setAttribute("aria-label", "Explore exercise");
-      available.forEach((id) =>
-        select.add(new Option(id.toUpperCase() + " · " + names[id], id)),
+      host.append(
+        link("Open " + names[focused], "#/insights/" + focused),
+        queue,
       );
-      select.value = focused;
-      select.onchange = () => {
-        params.set("focus", select.value);
-        params.delete("cell");
-        sessionStorage.setItem("insights:focused-mode", select.value);
-        change();
-      };
-      label.append(select);
-      host.append(label, workspace);
-      await renderAnalytics(workspace, route, actions, focused);
-      if (host.dataset.route !== route) return;
-      workspace.querySelector(":scope > nav")?.remove();
-      workspace.querySelector(":scope > h2")?.remove();
-      workspace.querySelector(":scope > .insight-decision")?.remove();
-      workspace.querySelector(":scope > .insight-methodology")?.remove();
-      workspace.querySelector(":scope > a[href='#/insights/data']")?.remove();
     } else
       host.append(
         button("Start a diagnostic set", () =>
@@ -1053,20 +1201,32 @@ export async function renderAnalytics(
             ? "Visual mapping: exact MIDI"
             : "Retained exact answers",
         s === "self"
-          ? stats.ratings.correct +
-              " / " +
+          ? locale === "zh-Hant"
+            ? `${stats.ratings.correct} 正確 · ${stats.ratings.close} 接近 · ${stats.ratings.missed} 未達標`
+            : stats.ratings.correct +
+              " correct · " +
               stats.ratings.close +
-              " / " +
-              stats.ratings.missed
+              " close · " +
+              stats.ratings.missed +
+              " missed"
           : rate(stats.ratings.correct, stats.submitted),
       );
-      metric(strip, "Independent fresh questions", String(stats.eligibleCount));
+      metric(
+        strip,
+        "Independent fresh questions",
+        group.some((e) => e.questionId && e.capabilities.identity)
+          ? new Intl.NumberFormat(locale).format(stats.eligibleCount)
+          : locale === "zh-Hant"
+            ? "無法確定"
+            : "Unavailable",
+      );
       metric(
         strip,
         "Dated local days",
-        String(dailyResults(group, window).length),
+        new Intl.NumberFormat(locale).format(
+          retainedDays(group, timezone, now),
+        ),
       );
-      metric(strip, "Retained assessments", String(group.length));
       if (stats.median !== null)
         metric(
           strip,
@@ -1076,8 +1236,17 @@ export async function renderAnalytics(
           (stats.median / 1000).toFixed(1) + "s · valid n=" + stats.timingCount,
         );
       host.append(strip);
+      host.append(
+        node(
+          "p",
+          locale === "zh-Hant"
+            ? `保留 ${group.length} 筆評分紀錄，其中 ${stats.ratings.correct + stats.ratings.close + stats.ratings.missed} 次已評分結果。下方診斷樣本另行按條件選取。`
+            : `${group.length} retained assessments · ${stats.ratings.correct + stats.ratings.close + stats.ratings.missed} rated outcomes. The diagnostic sample is selected separately below.`,
+        ),
+      );
     }
     const ledger = node("details");
+    ledger.className = "insight-reconciliation";
     ledger.append(node("summary", "How these counts reconcile"));
     const counts = model.reconciliation;
     ledger.append(
@@ -1097,10 +1266,28 @@ export async function renderAnalytics(
     );
     table(
       ledger,
-      ["Exclusive exclusion stage", "Count"],
-      Object.entries(counts.exclusions).map(([k, v]) => [k, String(v)]),
+      ["Exclusive exclusion stage", "Count", "Assessment IDs"],
+      Object.entries(counts.exclusions).map(([k, v]) => [
+        k,
+        String(v),
+        (counts.excludedIds[k] ?? []).join(", "),
+      ]),
     );
-    host.append(node("h3", "Explore evidence"));
+    const members = node("details");
+    members.append(
+      node("summary", "Diagnostic representative IDs"),
+      node("p", counts.diagnosticIds.join(", ")),
+    );
+    ledger.append(members);
+    host.append(
+      ledger,
+      node(
+        "h3",
+        locale === "zh-Hant"
+          ? "探索和弦品質 × 音級"
+          : "Explore quality × degree",
+      ),
+    );
     const workspace = node("div");
     workspace.className = "insight-workspace";
     const matrixHost = node("section");
@@ -1119,6 +1306,7 @@ export async function renderAnalytics(
       },
       {
         selected: params.get("cell") ?? undefined,
+        locale,
         missing: (quality, degree) => {
           params.delete("cell");
           params.set("missingQuality", quality);
@@ -1158,7 +1346,10 @@ export async function renderAnalytics(
       panel.setAttribute("aria-label", "Cell details: " + selected.label);
       panel.tabIndex = -1;
       panel.append(
-        node("h3", mode.toUpperCase() + " → " + selected.label + " → roots"),
+        node(
+          "h3",
+          mode.toUpperCase() + " → " + focusName(selected.label, locale),
+        ),
         button("Close cell", () => {
           const id = selected.id;
           params.delete("cell");
@@ -1222,6 +1413,12 @@ export async function renderAnalytics(
         ),
       );
       const gates = node("details");
+      panel.append(
+        node(
+          "p",
+          `${viewed.rows.length} retained assessments · ${viewed.independentQuestionCount ?? "unavailable"} known independent questions · ${viewed.rows.filter((e) => !e.questionId || !e.capabilities.identity).length} identity-unknown assessments excluded.`,
+        ),
+      );
       gates.append(node("summary", "Evidence gates"));
       table(
         gates,
@@ -1340,6 +1537,31 @@ export async function renderAnalytics(
           e.record.chords.some((c) => parseChord(c).root === root.value),
       );
       const exact = cells(subset);
+      if (mode === "m1" && selected.quality && selected.degree) {
+        const cell: Cell = {
+          id: selected.id,
+          label: selected.label,
+          quality: selected.quality,
+          degree: selected.degree,
+          rows: subset,
+          diagnosticStats: {
+            correct: viewed.numerator ?? 0,
+            eligibleCount: viewed.denominator ?? 0,
+            sessions: viewed.sessions,
+            days: viewed.localDays,
+            label: viewed.reliability,
+          },
+        };
+        focus(
+          panel,
+          cell,
+          route,
+          actions,
+          timezone,
+          false,
+          suggestedOptions(cell, true),
+        );
+      }
       if (selected.independentQuestionCount !== null)
         paginatedTable(
           panel,
@@ -1363,7 +1585,15 @@ export async function renderAnalytics(
               String(s.eligibleCount),
               button("Inspect", () => {
                 const region = node("section");
-                focus(region, cell, route, actions, timezone);
+                focus(
+                  region,
+                  cell,
+                  route,
+                  actions,
+                  timezone,
+                  false,
+                  suggestedOptions(cell),
+                );
                 panel.append(region);
               }),
             ];
@@ -1423,10 +1653,29 @@ export async function renderAnalytics(
             ),
           ),
         );
+      if (quality && degree && mode === "m1")
+        focus(
+          panel,
+          {
+            id: "coverage",
+            label: quality + " · " + degree,
+            quality,
+            degree,
+            rows: [],
+          },
+          route,
+          actions,
+          timezone,
+          false,
+          {
+            revision,
+            locale,
+            roots: params.get("root") ? [params.get("root")!] : undefined,
+          },
+        );
       workspace.append(panel);
     }
     if (model.recommendations.length) host.append(queue);
-    host.append(ledger);
     if (mode === "m2" || (mode === "m3" && subtask === "recognize")) {
       const detail = node("details");
       detail.append(node("summary", "Recognition components and confusions"));
@@ -1670,12 +1919,21 @@ export async function renderAnalytics(
     link("Settings · Data & Diagnostics", "#/insights/data"),
   );
   if (!workspaceMode) sessionStorage.setItem("insights:return", "#/" + route);
+  localizeLabels(host, locale);
   const focusId = sessionStorage.getItem("insights:focus");
   if (focusId) {
     host
       .querySelector<HTMLElement>('[data-cell-id="' + focusId + '"]')
       ?.focus();
     sessionStorage.removeItem("insights:focus");
+  }
+  const savedScroll = sessionStorage.getItem("insights:scroll:" + route);
+  if (savedScroll !== null) {
+    sessionStorage.removeItem("insights:scroll:" + route);
+    requestAnimationFrame(() => {
+      if (host.dataset.route === route && renderRequests.get(host) === request)
+        scrollTo(0, Number(savedScroll) || 0);
+    });
   }
 }
 function renderComparisons(
@@ -1689,7 +1947,9 @@ function renderComparisons(
   const keys = new Set(rows.map((e) => e.cohortKey)),
     history = evidence.filter((e) => keys.has(e.cohortKey)),
     trends = matchedTrends(history, timezone, now);
-  host.append(node("h3", "Recent results"));
+  host.append(
+    node("h3", host.lang === "zh-Hant" ? "近期結果" : "Recent results"),
+  );
   const dailySeries = new Map<string, Evidence[]>();
   for (const e of rows) {
     const key = [
@@ -1713,6 +1973,7 @@ function renderComparisons(
       now,
       new Set(group.map((e) => e.cohortKey)).size > 1,
       window,
+      host.lang,
     );
     host.append(section);
   }
@@ -1792,6 +2053,7 @@ function renderComparisons(
         now,
         false,
         window,
+        host.lang,
       ),
     );
     table(
@@ -1841,7 +2103,7 @@ function renderComparisons(
     const draw = () => {
       chart.replaceChildren();
       const group = series.get(select.value) ?? [];
-      renderTrend(chart, group, timezone, now, true, window);
+      renderTrend(chart, group, timezone, now, true, window, host.lang);
       if (!chart.children.length)
         chart.append(
           node(
@@ -1863,20 +2125,50 @@ function renderComparisons(
     host.append(detail);
   }
 }
+let launchingPlan = false;
 async function launchPlan(plan: DrillPlan, route: string, actions: Actions) {
-  if (plan.questions.length !== 10)
-    throw new Error("The plan must contain ten validated tasks.");
-  plan.questions.forEach((q) =>
-    validateScheduled(q, { ...plan.config, ...q.presentation }),
-  );
-  await put("drillPlans", plan);
-  await actions.start(
-    plan.config,
-    plan.customSnapshots,
-    "insight:" + plan.id,
-    plan.questions,
-    plan,
-  );
+  if (launchingPlan) return;
+  launchingPlan = true;
+  try {
+    if (
+      plan.evidenceRevision &&
+      dataRevision(await readAll<Evidence>("assessments")) !==
+        plan.evidenceRevision
+    )
+      throw new Error(
+        "Results changed. Refresh this insight before starting a new diagnostic.",
+      );
+    if (plan.questions.length !== 10)
+      throw new Error("The plan must contain ten validated tasks.");
+    plan.questions.forEach((q) =>
+      validateScheduled(q, { ...plan.config, ...q.presentation }),
+    );
+    if (location.hash !== "#/" + route)
+      throw new Error(
+        "The selection changed. Start the diagnostic shown in the current insight.",
+      );
+    plan = { ...plan, originScrollY: scrollY };
+    await put("drillPlans", plan);
+    if (location.hash !== "#/" + route)
+      throw new Error(
+        "The selection changed. Start the diagnostic shown in the current insight.",
+      );
+    sessionStorage.setItem(
+      "insights:scroll:" + plan.originRoute,
+      String(scrollY),
+    );
+    await actions.start(
+      plan.config,
+      plan.customSnapshots,
+      plan.selectionPolicy === "matched"
+        ? "matched-check:" + plan.id
+        : "insight:" + plan.id,
+      plan.questions,
+      plan,
+    );
+  } finally {
+    launchingPlan = false;
+  }
 }
 function paginatedTable<T>(
   parent: HTMLElement,
@@ -1971,7 +2263,233 @@ function focus(
   actions: Actions,
   timezone: string,
   compact = false,
+  suggested?: {
+    revision: string;
+    contrast?: string;
+    roots?: string[];
+    locale: Locale;
+    config?: Partial<Config>;
+    evidenceRefIds?: string[];
+  },
 ) {
+  if (
+    (cell.rows[0]?.mode === "m1" || (!cell.rows.length && suggested)) &&
+    cell.quality &&
+    cell.degree
+  ) {
+    const box = node("article");
+    box.className = "insight-focus suggested-diagnostic";
+    const zh = suggested?.locale === "zh-Hant";
+    box.append(node("h3", zh ? "建議診斷" : "Suggested Diagnostic"));
+    const result = compileSuggestedDiagnostic(
+      cell,
+      route,
+      suggested?.revision ?? "",
+      suggested,
+    );
+    if (result.plan) {
+      const plan = result.plan;
+      const preview = node(
+        "p",
+        `M1 · ${qualityName(plan.config.quality, suggested?.locale)} · 7 × ${degreeName(plan.config.degree)} + 3 × ${degreeName(plan.config.degreePool![1])} · ${plan.config.roots} · MIDI ${plan.config.low}–${plan.config.high} · ${zh ? "完整和弦背景 · 完整提示 · 手動揭示" : "full context · full hints · manual reveal"} · ${plan.config.bpm} BPM`,
+      );
+      box.dataset.planId = plan.id;
+      box.append(
+        preview,
+        node(
+          "p",
+          zh
+            ? "新的診斷設定，並非與歷史紀錄作同條件比較。"
+            : "New diagnostic settings; not a matched comparison with your history.",
+        ),
+      );
+      const start = button(
+        zh ? "開始建議診斷 · 10 題" : "Start Suggested Diagnostic · 10",
+        () => launchPlan(plan, route, actions),
+      );
+      start.classList.add("suggested-start");
+      const edit = node("div");
+      edit.hidden = true;
+      const fields: [string, string, string][] = [
+        ["low", zh ? "最低 MIDI" : "Lowest MIDI", String(plan.config.low)],
+        ["high", zh ? "最高 MIDI" : "Highest MIDI", String(plan.config.high)],
+        ["bpm", "BPM", String(plan.config.bpm)],
+        ["roots", zh ? "根音" : "Roots", plan.config.roots],
+      ];
+      const inputs = new Map<string, HTMLInputElement>();
+      for (const [key, title, value] of fields) {
+        const label = node("label", title),
+          input = node("input");
+        input.type = key === "roots" ? "text" : "number";
+        input.value = value;
+        input.setAttribute("aria-label", title);
+        inputs.set(key, input);
+        label.append(input);
+        edit.append(label);
+      }
+      edit.append(
+        button(zh ? "驗證自訂診斷" : "Validate customized diagnostic", () => {
+          const host = box.closest<HTMLElement>(".jazz-insights");
+          const low = Number(inputs.get("low")!.value),
+            high = Number(inputs.get("high")!.value);
+          const replacement = node("div");
+          focus(replacement, cell, route, actions, timezone, compact, {
+            revision: suggested?.revision ?? "",
+            evidenceRefIds: suggested?.evidenceRefIds,
+            locale: suggested?.locale ?? "en",
+            contrast: plan.config.degreePool![1],
+            roots: inputs
+              .get("roots")!
+              .value.trim()
+              .split(/[\s,]+/)
+              .filter(Boolean),
+            config: {
+              ...plan.config,
+              low,
+              high,
+              vocalLow: low,
+              vocalHigh: high,
+              bpm: Number(inputs.get("bpm")!.value),
+            },
+          });
+          box.replaceWith(...Array.from(replacement.children));
+          if (host) {
+            const proxy = host.querySelector<HTMLButtonElement>(
+              ".diagnostic-strip button",
+            );
+            const ready = !!host.querySelector(
+              ".insight-focus-queue > .insight-recommendation .suggested-start",
+            );
+            if (proxy) proxy.disabled = !ready;
+            host
+              .querySelector(".diagnostic-strip .diagnostic-status")
+              ?.remove();
+            if (!ready) {
+              const reason = node(
+                "span",
+                zh
+                  ? "請修正下方診斷設定。"
+                  : "Correct the diagnostic settings below.",
+              );
+              reason.className = "diagnostic-status";
+              host.querySelector(".diagnostic-strip")?.append(reason);
+            }
+          }
+        }),
+      );
+      box.append(
+        start,
+        button(zh ? "自訂" : "Customize", () => {
+          edit.hidden = !edit.hidden;
+          if (!edit.hidden) inputs.get("low")!.focus();
+        }),
+        edit,
+      );
+      if (suggested?.config)
+        box.append(
+          node("p", zh ? "自訂診斷設定" : "Customized diagnostic settings"),
+        );
+      const snapshots = node("details");
+      snapshots.append(
+        node("summary", zh ? "已驗證的十題" : "Validated question schedule"),
+      );
+      table(
+        snapshots,
+        ["#", zh ? "根音" : "Root", zh ? "音級" : "Degree", "MIDI"],
+        plan.questions.map((q, i) => [
+          String(i + 1),
+          q.targets[0].chord.root,
+          degreeName(q.targets[0].degree),
+          String(q.targets[0].midi),
+        ]),
+      );
+      box.append(snapshots);
+    } else {
+      const error = node("p", result.unsupportedReason);
+      error.setAttribute("role", "alert");
+      box.append(
+        error,
+        button(zh ? "自訂" : "Customize", () =>
+          actions.customize(
+            {
+              ...defaults,
+              ...suggested?.config,
+              mode: "m1",
+              quality: cell.quality as Config["quality"],
+              qualityPool: [cell.quality!],
+              degree: cell.degree!,
+              degreePool: [cell.degree!, suggested?.contrast ?? "1"],
+              roots: suggested?.roots?.join(" ") ?? "C D F G",
+            },
+            [],
+          ),
+        ),
+      );
+    }
+    const historical = node("details");
+    historical.append(
+      node(
+        "summary",
+        zh ? "選用：配對歷史基準" : "Optional: match a historical baseline",
+      ),
+    );
+    const groups = new Map<string, Evidence[]>();
+    cell.rows.forEach((e) =>
+      groups.set(e.cohortKey, [...(groups.get(e.cohortKey) ?? []), e]),
+    );
+    const plans = [...groups]
+      .sort(([a], [b]) => (a < b ? -1 : 1))
+      .map(([, rows]) =>
+        compileMatchedBaseline(
+          { ...cell, rows },
+          route,
+          suggested?.revision ?? "",
+        ),
+      )
+      .filter((p): p is DrillPlan => !!p);
+    if (plans.length) {
+      const choice = node("select");
+      choice.setAttribute(
+        "aria-label",
+        zh ? "歷史基準" : "Historical baseline",
+      );
+      choice.add(
+        new Option(zh ? "選擇歷史設定" : "Choose historical settings", ""),
+      );
+      plans.forEach((p, i) =>
+        choice.add(
+          new Option(
+            `${p.config.roots} · ${p.config.bpm} BPM · ${p.config.context} · MIDI ${p.config.low}–${p.config.high} · ${p.config.hintLevel} hints · ${p.evidenceAssessmentIds.length} assessments`,
+            String(i),
+          ),
+        ),
+      );
+      const selected = node("div");
+      choice.onchange = () => {
+        selected.replaceChildren();
+        if (choice.value === "") return;
+        const plan = plans[Number(choice.value)];
+        selected.append(
+          node("p", plan.reason),
+          button(zh ? "開始同條件檢查" : "Start Matched check", () =>
+            launchPlan(plan, route, actions),
+          ),
+        );
+      };
+      historical.append(choice, selected);
+    } else
+      historical.append(
+        node(
+          "p",
+          zh
+            ? "這項選擇沒有可重現的歷史基準。你仍可開始建議診斷。"
+            : "No reproducible historical baseline for this selection. You can still start the Suggested Diagnostic.",
+        ),
+      );
+    box.append(historical);
+    parent.append(box);
+    return;
+  }
   const scopes = new Map<string, Evidence[]>();
   for (const e of cell.rows) {
     const key = comparisonFamily(e);

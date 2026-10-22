@@ -1,11 +1,14 @@
-import {
-  allowedTargetDegrees,
-  qualities,
-  degrees as canonicalDegrees,
-} from "../theory.js";
+import { allowedTargetDegrees, qualities } from "../theory.js";
+const canonicalDegrees = ["1", "b3", "3", "5", "b7", "maj7", "9", "11", "13"];
 import { quantile } from "./policy.js";
 import type { AggregateCell } from "./summary/types.js";
 import { registry } from "./summary/registry.js";
+import {
+  focusName,
+  degreeName,
+  localizeLabels,
+  type InsightsLocale,
+} from "./display.js";
 let activeTooltip: HTMLElement | null = null;
 if (typeof document !== "undefined")
   document.addEventListener("keydown", (event) => {
@@ -21,13 +24,39 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, text?: string) {
   return node;
 }
 function rate(c: AggregateCell) {
-  return c.independentQuestionCount === null
+  return c.independentQuestionCount === null ||
+    c.numerator === null ||
+    c.denominator === null ||
+    !Number.isInteger(c.numerator) ||
+    !Number.isInteger(c.denominator) ||
+    c.numerator < 0 ||
+    c.numerator > c.denominator
     ? null
     : c.denominator
       ? c.numerator! / c.denominator
       : null;
 }
+export function rateBucket(value: number | null): number | null {
+  if (value === null || !Number.isFinite(value) || value < 0 || value > 1)
+    return null;
+  return value < 0.5
+    ? 0
+    : value < 0.7
+      ? 1
+      : value < 0.85
+        ? 2
+        : value < 0.95
+          ? 3
+          : 4;
+}
 function value(c: AggregateCell, metric: string) {
+  if (
+    c.denominator !== null &&
+    c.denominator > 0 &&
+    rate(c) === null &&
+    c.independentQuestionCount !== null
+  )
+    return "!";
   if (c.independentQuestionCount === null) return "?";
   if (c.denominator === null && metric === "outcome") return "N/A";
   if (metric === "sample") return String(c.independentQuestionCount);
@@ -51,7 +80,9 @@ function cellButton(
   metric: string,
   inspect: (c: AggregateCell) => void,
   selected?: string,
+  locale: InsightsLocale = "en",
 ) {
+  const t = (en: string, zh: string) => (locale === "zh-Hant" ? zh : en);
   const b = el("button");
   b.type = "button";
   b.className = "matrix-value";
@@ -61,23 +92,45 @@ function cellButton(
   b.setAttribute("aria-pressed", String(c.id === selected));
   const label =
     c.independentQuestionCount === null
-      ? "Identity unknown"
+      ? t("Identity unknown", "題目身分不明")
       : c.denominator === null
-        ? "Coverage only"
+        ? registry(c).degreeUse === "outcome"
+          ? t("Not recorded", "未有記錄")
+          : t("Not applicable", "不適用")
         : c.denominator === 0
-          ? "No data"
-          : c.reliability;
+          ? t("No data", "沒有資料")
+          : rate(c) === null
+            ? t("Results unavailable", "結果無法使用")
+            : c.reliability === "early"
+              ? t("Early", "初步")
+              : c.reliability === "building"
+                ? t("Building", "累積中")
+                : t("Sufficient", "足夠");
+  const unknown = c.rows.filter(
+    (e) => !e.questionId || !e.capabilities.identity,
+  ).length;
+  b.dataset.state =
+    c.independentQuestionCount === null
+      ? "identity-unknown"
+      : c.denominator === null
+        ? "not-applicable"
+        : "value";
   b.append(
     el("strong", value(c, metric)),
     el(
       "span",
       c.independentQuestionCount === null
-        ? "Identity unknown"
+        ? "n unavailable"
         : c.denominator === null
           ? c.descriptiveItemCount + " item exposures"
           : "n=" + c.denominator,
     ),
-    el("small", label + (c.stale ? " · stale" : "")),
+    el(
+      "small",
+      label +
+        (c.stale ? " · stale" : "") +
+        (unknown && c.independentQuestionCount !== null ? " + unknown" : ""),
+    ),
   );
   const source =
     c.source === "self"
@@ -92,12 +145,20 @@ function cellButton(
         timezone: string;
       })
     : null;
-  const exact = `${c.label} · ${source} · ${c.grain} · ${c.numerator ?? "N/A"}/${c.denominator ?? "N/A"} · ${c.sessions} sessions / ${c.localDays} days · ${c.contextState} · ${label} · roots ${c.roots.map((r) => r.root).join(", ") || "unknown"}${scope ? " · " + (scope.startInclusive ?? "All retained") + " to " + (scope.endExclusive ?? "snapshot") + " · " + scope.timezone : ""}`;
-  b.setAttribute("aria-label", exact);
+  const exact = `${focusName(c.label, locale)} · ${source} correct · ${c.grain} · ${c.numerator ?? "N/A"}/${c.denominator ?? "N/A"} · ${c.sessions} sessions / ${c.localDays} days · ${c.contextState} · ${label} · roots ${c.roots.map((r) => r.root).join(", ") || "unknown"}${scope ? " · " + (scope.startInclusive ?? "All retained") + " to " + (scope.endExclusive ?? "snapshot") + " · " + scope.timezone : ""}`;
+  b.setAttribute(
+    "aria-label",
+    exact +
+      " · " +
+      value(c, metric) +
+      " · " +
+      (c.denominator ?? "unavailable") +
+      " independent questions · Open details",
+  );
   if (metric === "outcome" && rate(c) !== null)
     b.style.setProperty(
       "--outcome-color",
-      `hsl(174 28% ${96 - rate(c)! * 27}%)`,
+      `var(--ji-rate-${rateBucket(rate(c))})`,
     );
   b.onclick = () => inspect(c);
   const tooltip = el("span", exact);
@@ -114,8 +175,10 @@ function cellButton(
       box = tooltip.getBoundingClientRect();
     tooltip.style.left =
       Math.max(8, Math.min(anchor.left, innerWidth - box.width - 8)) + "px";
+    const below = anchor.bottom + 4;
+    const above = anchor.top - box.height - 4;
     tooltip.style.top =
-      Math.max(8, Math.min(anchor.bottom + 4, innerHeight - box.height - 8)) +
+      (below + box.height <= innerHeight - 8 ? below : Math.max(8, above)) +
       "px";
   };
   const leave = () =>
@@ -144,9 +207,12 @@ export function renderAggregateMatrix(
   inspect: (cell: AggregateCell) => void,
   options: {
     selected?: string;
+    locale?: InsightsLocale;
     missing?: (quality: string, degree: string) => void;
   } = {},
 ) {
+  const locale = options.locale ?? "en";
+  const t = (en: string, zh: string) => (locale === "zh-Hant" ? zh : en);
   const partitions = new Map<string, AggregateCell[]>();
   for (const c of cells.filter(
     (c) =>
@@ -168,7 +234,9 @@ export function renderAggregateMatrix(
     section.append(
       el(
         "h3",
-        (grid ? "Chord quality × degree" : "Assessed contexts") +
+        (grid
+          ? t("Chord quality × degree", "和弦品質 × 音級")
+          : t("Assessed contexts", "已評分情境")) +
           " · " +
           (group[0].source === "self"
             ? "Self-assessed"
@@ -247,7 +315,9 @@ export function renderAggregateMatrix(
     pagination.append(count, prev, next);
     const draw = () => {
       wrap.replaceChildren();
-      toggle.textContent = plain ? "Heatmap view" : "Table view";
+      toggle.textContent = plain
+        ? t("Heatmap view", "熱圖")
+        : t("Table view", "表格");
       toggle.setAttribute("aria-pressed", String(plain));
       label.hidden = !plain;
       wrap.classList.toggle("matrix-table-view", plain);
@@ -258,12 +328,17 @@ export function renderAggregateMatrix(
       table.append(
         el(
           "caption",
-          group[0].mode.toUpperCase() +
-            " · " +
-            group[0].subtask +
-            " · " +
-            group[0].grain +
-            " · diagnostic first-question sample",
+          group[0].mode === "m1"
+            ? t(
+                "M1 · Self-assessed production · diagnostic first-question sample",
+                "M1 · 自評唱奏 · 診斷首次作答樣本",
+              )
+            : group[0].mode.toUpperCase() +
+                " · " +
+                group[0].subtask +
+                " · " +
+                group[0].grain +
+                " · diagnostic first-question sample",
         ),
       );
       const headings = plain
@@ -278,7 +353,7 @@ export function renderAggregateMatrix(
             "Settings",
             "Details",
           ]
-        : [grid ? "Quality / degree" : "Context", ...columns];
+        : [grid ? "Quality / degree" : "Context", ...columns.map(degreeName)];
       headings.forEach((t) => {
         const th = el("th", t);
         th.scope = "col";
@@ -324,8 +399,14 @@ export function renderAggregateMatrix(
           ])
             tr.append(el("td", t));
           const td = el("td"),
-            { b, tooltip } = cellButton(c, metric, inspect, options.selected);
-          b.replaceChildren(document.createTextNode("Details"));
+            { b, tooltip } = cellButton(
+              c,
+              metric,
+              inspect,
+              options.selected,
+              locale,
+            );
+          b.replaceChildren(document.createTextNode(t("Details", "詳情")));
           td.append(b, tooltip);
           tr.append(td);
           body.append(tr);
@@ -355,6 +436,7 @@ export function renderAggregateMatrix(
                 metric,
                 inspect,
                 options.selected,
+                locale,
               );
               td.append(b, tooltip);
             } else if (
@@ -369,7 +451,8 @@ export function renderAggregateMatrix(
               const b = el("button", "\u2014");
               b.type = "button";
               b.className = "matrix-value matrix-missing";
-              b.append(el("small", "No data"));
+              b.append(el("small", t("No data", "沒有資料")));
+              b.append(el("small", "n=0"));
               b.setAttribute(
                 "aria-label",
                 label + " / " + degree + " · No data",
@@ -389,6 +472,7 @@ export function renderAggregateMatrix(
       pagination.hidden = grid || plain || group.length <= 12;
       table.append(head, body);
       wrap.append(table);
+      localizeLabels(section, locale);
     };
     toggle.onclick = () => {
       plain = !plain;
@@ -406,7 +490,15 @@ export function renderAggregateMatrix(
       draw();
     };
     draw();
-    section.append(toolbar, wrap, pagination);
+    const legend = el(
+      "p",
+      t(
+        `${group[0].source === "self" ? "Observed self-rated correct rate" : "Observed correct rate"} · <50%, 50–<70%, 70–<85%, 85–<95%, 95–100%. Color shows recorded outcomes, not certainty or mastery. Buckets use exact values before rounding.`,
+        "觀察到的正確率 · <50%、50–<70%、70–<85%、85–<95%、95–100%。顏色代表記錄結果，並非把握程度或熟練程度；色階按未四捨五入的數值判定。",
+      ),
+    );
+    legend.className = "matrix-legend";
+    section.append(toolbar, wrap, pagination, legend);
     parent.append(section);
     if (grid) {
       const marginal = el("details");

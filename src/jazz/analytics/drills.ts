@@ -1,4 +1,5 @@
 import {
+  defaults,
   generate,
   validateConfig,
   type Challenge,
@@ -30,7 +31,21 @@ export interface DrillPlan {
   questionCount: 10;
   compatibleGeneratorVersion: string;
   originRoute: string;
+  originScrollY?: number;
   baseline: Config;
+  baselineKind?: "historical" | "new-profile";
+  profileVersion?: string;
+  evidenceRevision?: string;
+  evidenceRefIds?: string[];
+  sourceCohortKeys?: string[];
+  variationIndex?: number;
+  seed?: string;
+  schedule?: {
+    role: "focus" | "contrast";
+    root: string;
+    quality: string;
+    degree: string;
+  }[];
   changedDifficulty: string[];
   targetPredicate?:
     | { kind: "quality-pair"; qualities: string[]; degree: string }
@@ -49,6 +64,254 @@ export interface DrillPlan {
       }
     | { kind: "bass-position"; string: string; fret: number; midi: number }
     | { kind: "diagnostic"; cells: string[] };
+}
+export function compileSuggestedDiagnostic(
+  cell: Cell,
+  route: string,
+  revision: string,
+  options: {
+    contrast?: string;
+    roots?: string[];
+    config?: Partial<Config>;
+    variationIndex?: number;
+    evidenceRefIds?: string[];
+  } = {},
+): { supported: boolean; unsupportedReason?: string; plan?: DrillPlan } {
+  try {
+    if (cell.rows.some((e) => e.mode !== "m1") || !cell.quality || !cell.degree)
+      throw new Error(
+        "This diagnostic profile supports M1 quality and degree targets only.",
+      );
+    const profileVersion = "m1-suggested/2026-10-22.1";
+    const roots = [...new Set(options.roots ?? ["C", "D", "F", "G"])];
+    if (!roots.length) throw new Error("No valid roots selected.");
+    const legal = allowedTargetDegrees(parseChord(roots[0] + cell.quality));
+    const contrast =
+      options.contrast ??
+      ["1", "b3", "3", "5", "b7", "maj7", "9", "11", "13"].find(
+        (d) => d !== cell.degree && legal.includes(d),
+      );
+    if (
+      !legal.includes(cell.degree) ||
+      !contrast ||
+      contrast === cell.degree ||
+      !legal.includes(contrast)
+    )
+      throw new Error(
+        "No lawful focus and contrast pair. Customize the target pool.",
+      );
+    const config: Config = {
+      ...structuredClone(defaults),
+      mode: "m1",
+      count: 10,
+      root: roots[0],
+      roots: roots.join(" "),
+      rootOrder: "cycle",
+      quality: cell.quality as Config["quality"],
+      qualityPool: [cell.quality],
+      degree: cell.degree,
+      degreePool: [cell.degree, contrast],
+      progressionPool: undefined,
+      heldMidi: undefined,
+      phraseFocus: undefined,
+      bassString: undefined,
+      low: 48,
+      high: 72,
+      vocalLow: 48,
+      vocalHigh: 72,
+      rangePreset: "custom",
+      bpm: 72,
+      beats: 4,
+      context: "full",
+      inversion: 0,
+      hintLevel: "full",
+      showChords: true,
+      showProgression: true,
+      revealMode: "manual",
+      countIn: 0,
+      gapBeats: 2,
+      repeats: 1,
+      timbre: "piano",
+      volume: 0.6,
+      metronome: false,
+      autoAdvance: false,
+      prepareSeconds: 0,
+      replayLimit: undefined,
+      runMode: "step",
+      targetPattern: "one",
+      targetLimit: "preset",
+      ...options.config,
+    };
+    Object.assign(config, {
+      mode: "m1",
+      count: 10,
+      root: roots[0],
+      roots: roots.join(" "),
+      rootOrder: "cycle",
+      quality: cell.quality,
+      qualityPool: [cell.quality],
+      degree: cell.degree,
+      degreePool: [cell.degree, contrast],
+    });
+    validateConfig(config, []);
+    const evidenceAssessmentIds = [
+      ...new Set(cell.rows.map((e) => e.id)),
+    ].sort();
+    const variationIndex = options.variationIndex ?? 0;
+    const seed = hash([
+      profileVersion,
+      "m1",
+      [cell.quality, cell.degree],
+      contrast,
+      config,
+      evidenceAssessmentIds,
+      revision,
+      variationIndex,
+    ]);
+    const slots = Array.from({ length: 10 }, (_, i) => {
+      const role = i < 7 ? ("focus" as const) : ("contrast" as const);
+      const root = roots[(i < 7 ? i : i - 7) % roots.length];
+      const degree = i < 7 ? cell.degree! : contrast;
+      const settings = validateConfig(
+        {
+          ...config,
+          root,
+          roots: root,
+          rootOrder: "fixed",
+          degree,
+          degreePool: [degree],
+          qualityPool: [cell.quality!],
+        },
+        [],
+      );
+      const challenge = generate(settings, 0, [], seededRandom(seed, i));
+      const target = challenge.targets[0];
+      if (
+        config.mode !== "m1" ||
+        challenge.targets.length !== 1 ||
+        target.chord.root !== root ||
+        target.chord.quality !== cell.quality ||
+        target.degree !== degree ||
+        !Number.isInteger(target.midi) ||
+        target.midi < config.low ||
+        target.midi > config.high
+      )
+        throw new Error(
+          "Generated snapshot does not match the diagnostic settings or pitch range.",
+        );
+      challenge.presentation = {
+        root,
+        roots: root,
+        rootOrder: "fixed",
+        degree,
+        degreePool: [degree],
+      };
+      return { role, root, quality: cell.quality!, degree, challenge };
+    });
+    const random = seededRandom(seed, 10);
+    for (let i = slots.length - 1; i > 0; i--) {
+      const j = Math.floor(random() * (i + 1));
+      [slots[i], slots[j]] = [slots[j], slots[i]];
+    }
+    return {
+      supported: true,
+      plan: {
+        id: "suggested-" + seed,
+        version: 1,
+        profileVersion,
+        baselineKind: "new-profile",
+        evidenceRevision: revision,
+        evidenceRefIds: options.evidenceRefIds
+          ? [...options.evidenceRefIds].sort()
+          : [],
+        sourceCohortKeys: [
+          ...new Set(cell.rows.map((e) => e.cohortKey)),
+        ].sort(),
+        variationIndex,
+        seed,
+        reason: `7 ${cell.quality} / ${cell.degree} + 3 ${cell.quality} / ${contrast}. New diagnostic settings; not a matched comparison with your history.`,
+        sourceCohortKey: [...new Set(cell.rows.map((e) => e.cohortKey))]
+          .sort()
+          .join(";"),
+        evidenceAsOf:
+          [...cell.rows.map((e) => e.createdAt)].sort().slice(-1)[0] ?? "",
+        evidenceAssessmentIds,
+        config,
+        baseline: config,
+        customSnapshots: [],
+        questions: slots.map((s) => s.challenge),
+        schedule: slots.map(({ challenge, ...s }) => s),
+        selectionPolicy: "diagnostic",
+        questionCount: 10,
+        compatibleGeneratorVersion: profileVersion,
+        originRoute: route,
+        changedDifficulty: ["New diagnostic profile", "7 focus / 3 contrast"],
+      },
+    };
+  } catch (error) {
+    return { supported: false, unsupportedReason: String(error) };
+  }
+}
+export function compileMatchedBaseline(
+  cell: Cell,
+  route: string,
+  revision: string,
+): DrillPlan | null {
+  const row = [...cell.rows].sort((a, b) => (a.id < b.id ? -1 : 1))[0];
+  if (
+    !row ||
+    row.mode !== "m1" ||
+    row.version !== "standard" ||
+    !row.record.analytics?.effectiveConfig ||
+    row.assistance !== "none" ||
+    row.exposure !== "fresh" ||
+    cell.rows.some((e) => e.cohortKey !== row.cohortKey) ||
+    Object.keys(defaults).some(
+      (key) =>
+        (row.config as unknown as Record<string, unknown>)[key] === undefined,
+    )
+  )
+    return null;
+  try {
+    const config = structuredClone({ ...row.config, count: 10 });
+    const customs = row.session.customSnapshot ?? [];
+    validateConfig(config, customs);
+    const ids = cell.rows.map((e) => e.id).sort();
+    const seed = hash(["matched-profile-1", config, ids, revision]);
+    const questions = Array.from({ length: 10 }, (_, i) =>
+      generate(config, i, customs, seededRandom(seed, i)),
+    );
+    if (
+      questions.some(
+        (q) =>
+          q.targets.length !== 1 ||
+          q.targets.some((t) => t.midi < config.low || t.midi > config.high),
+      )
+    )
+      return null;
+    return {
+      id: "matched-" + seed,
+      version: 1,
+      reason:
+        "Historical settings and sampling preserved; ten new generated questions, not a 7/3 allocation.",
+      sourceCohortKey: row.cohortKey,
+      evidenceAsOf: row.createdAt,
+      evidenceAssessmentIds: ids,
+      evidenceRevision: revision,
+      config,
+      customSnapshots: customs,
+      questions,
+      selectionPolicy: "matched",
+      questionCount: 10,
+      compatibleGeneratorVersion: "matched-profile-1",
+      originRoute: route,
+      baseline: row.config,
+      baselineKind: "historical",
+      changedDifficulty: [],
+    };
+  } catch {
+    return null;
+  }
 }
 export function compileDrill(
   cell: Cell,

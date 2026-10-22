@@ -80,8 +80,8 @@ try {
     /not evidence of improvement/,
   );
   assert.match(
-    await mixed.locator("table").innerText(),
-    /Mixed settings; descriptive only/,
+    await mixed.innerText(),
+    /settings differ.*do not establish improvement/s,
   );
   assert.doesNotMatch(await mixed.locator("table").innerText(), /Wilson/);
   const a = assessment(0, { mode: "m2", degree: "9", grade: "correct" });

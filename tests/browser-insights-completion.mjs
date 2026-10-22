@@ -25,6 +25,7 @@ async function startFocus(route) {
 async function openFocus(route) {
   await navigate(page, route);
   await page.locator(".aggregate-matrix [data-cell-id]").first().click();
+  await page.waitForURL(/cell=/);
   await page
     .locator("#selected-cell")
     .getByRole("button", { name: "Inspect", exact: true })

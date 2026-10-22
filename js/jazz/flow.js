@@ -4,7 +4,9 @@ import { progressionBank } from "./progressions.js";
 import { flowKeys, readList, rememberConfig, canonicalizeConfig, sessionStatus, missedQuestions, } from "./lifecycle.js";
 import { icon, commandIcon, relativeDate, duration } from "./ui.js";
 import { renderAnalytics } from "./analytics/views.js";
-import { readAll } from "./analytics/repository.js";
+import { compileSuggestedDiagnostic, } from "./analytics/drills.js";
+import { readAll, put } from "./analytics/repository.js";
+import { dataRevision } from "./analytics/hierarchy.js";
 export const exerciseNames = {
     m1: "Hear a Chord Degree",
     m2: "Identify a Chord Degree",
@@ -746,9 +748,17 @@ export function installFlow(engine) {
                 ? engine.unlock().then(() => "", (error) => error.message ||
                     "Audio is unavailable. Press Play context to retry.")
                 : null;
-            const session = await engine.create(checked, exact && (!plan || plan.selectionPolicy === "exact-review")
-                ? "exact-review"
-                : from, presetId, exact);
+            const pending = plan
+                ? [engine.getSession(), ...loadSessions(localStorage)].find((s) => s?.source === from && s.status === "active" && !s.completedCount)
+                : undefined;
+            let session = pending ??
+                (await engine.create(checked, exact && (!plan || plan.selectionPolicy === "exact-review")
+                    ? "exact-review"
+                    : from, presetId, exact));
+            if (pending) {
+                engine.resume(pending);
+                session = engine.getSession();
+            }
             if (plan) {
                 session.insightPlanId = plan.id;
                 session.insightOrigin = plan.originRoute;
@@ -768,6 +778,8 @@ export function installFlow(engine) {
                 }
             }
             catch (error) {
+                if (plan)
+                    throw error;
                 showError(error);
             }
             go(`session/${session.id}`);
@@ -1112,7 +1124,12 @@ export function installFlow(engine) {
         const missed = missedQuestions(session);
         controls.replaceChildren();
         if (session.insightOrigin) {
-            controls.append(action("Return to this insight", () => go(session.insightOrigin)));
+            let originScrollY;
+            controls.append(action("Return to this insight", () => {
+                if (originScrollY !== undefined)
+                    sessionStorage.setItem("insights:scroll:" + session.insightOrigin, String(originScrollY));
+                go(session.insightOrigin);
+            }));
             void readAll("drillPlans")
                 .then((plans) => {
                 if (!controls.isConnected ||
@@ -1121,8 +1138,39 @@ export function installFlow(engine) {
                 const plan = plans.find((p) => p.id === session.insightPlanId);
                 if (!plan)
                     return;
-                holder.append(node("p", `${plan.reason}. ${session.records.filter((r) => !r.referenceAssisted && r.grade !== "skipped").length} new observations collected. A focused set alone does not establish mastery or improvement.`));
-                controls.append(action("Repeat focus", () => begin(plan.config, plan.customSnapshots, "insight:" + plan.id, undefined, plan.questions, plan)), action("Matched check", () => begin({ ...plan.baseline, count: 10 }, plan.customSnapshots, "matched-check")));
+                originScrollY = plan.originScrollY;
+                holder.append(node("p", plan.baselineKind === "new-profile"
+                    ? `${session.completedCount} diagnostic questions completed. ${session.records.filter((r) => r.grade === "correct").length} self-rated correct; ${session.records.filter((r) => r.grade === "close").length} close; ${session.records.filter((r) => r.grade === "missed").length} missed; ${session.records.filter((r) => r.grade === "skipped").length} skipped. This is a new diagnostic, not a matched improvement test.`
+                    : `${plan.reason}. ${session.records.filter((r) => !r.referenceAssisted && r.grade !== "skipped").length} new observations collected. A focused set alone does not establish mastery or improvement.`));
+                controls.append(action(plan.baselineKind === "new-profile"
+                    ? "Repeat diagnostic"
+                    : "Repeat focus", async () => {
+                    let next = plan;
+                    if (plan.baselineKind === "new-profile") {
+                        const rows = await readAll("assessments");
+                        const result = compileSuggestedDiagnostic({
+                            id: plan.id,
+                            label: plan.reason,
+                            quality: plan.config.quality,
+                            degree: plan.config.degree,
+                            rows: rows.filter((e) => plan.evidenceAssessmentIds.includes(e.id)),
+                        }, plan.originRoute, dataRevision(rows), {
+                            contrast: plan.config.degreePool?.[1],
+                            roots: plan.config.roots.split(/\s+/),
+                            config: plan.config,
+                            variationIndex: (plan.variationIndex ?? 0) + 1,
+                        });
+                        if (!result.plan)
+                            throw new Error(result.unsupportedReason);
+                        next = { ...result.plan, originScrollY: plan.originScrollY };
+                        await put("drillPlans", next);
+                    }
+                    await begin(next.config, next.customSnapshots, "insight:" + next.id, undefined, next.questions, next);
+                }), ...(plan.baselineKind === "new-profile"
+                    ? []
+                    : [
+                        action("Matched check", () => begin({ ...plan.baseline, count: 10 }, plan.customSnapshots, "matched-check")),
+                    ]));
             })
                 .catch(showError);
         }

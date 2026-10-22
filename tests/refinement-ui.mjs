@@ -50,7 +50,7 @@ export async function checkRefinement(page) {
   );
   assert.match(
     await page.locator(".smart-summary").innerText(),
-    /20\/20.*positive observation/s,
+    /positive observed result.*20\/20/s,
   );
   assert.match(
     await page.locator(".smart-summary").innerText(),
@@ -58,7 +58,7 @@ export async function checkRefinement(page) {
   );
   assert.match(
     await page.locator(".insight-kpis").innerText(),
-    /101 \/ 0 \/ 11.*110.*2.*113/s,
+    /101 correct.*0 close.*11 missed.*110.*2/s,
   );
   assert.match(
     await page.locator(".insight-scope").innerText(),
@@ -73,7 +73,7 @@ export async function checkRefinement(page) {
   assert.equal(await daily.locator("canvas").count(), 0);
   assert.match(
     await daily.locator("table").innerText(),
-    /23\/29 \(79.3%\).*76\/81 \(93.8%\)/s,
+    /23\/29.*79.3%.*76\/81.*93.8%/s,
   );
   const cell = page
     .locator(".aggregate-matrix [data-cell-id]")
@@ -175,7 +175,7 @@ export async function checkRefinement(page) {
       .locator(".aggregate-matrix [data-cell-id]")
       .first()
       .boundingBox();
-    assert.ok(size.height >= 56 && size.height <= 76);
+    assert.ok(size.height >= 88);
     const wrap = page.locator(".aggregate-matrix").first();
     await wrap.evaluate((e) => {
       e.scrollLeft = e.scrollWidth;
@@ -311,17 +311,15 @@ export async function checkRefinement(page) {
     .click();
   assert.equal(await stored(), source);
   await navigate(page, "insights?days=28&focus=m1");
-  await page.locator(".insight-focused-mode .aggregate-matrix").waitFor();
-  assert.equal(
-    await page.getByLabel("Explore exercise", { exact: true }).inputValue(),
-    "m1",
-  );
+  await page.locator(".insight-mode-grid").waitFor();
+  assert.equal(await page.locator(".insight-mode-grid > article").count(), 7);
   assert.equal(
     await page.locator(".insight-focused-mode .insight-decision").count(),
     0,
   );
   await seed(unknownIdentity());
   await navigate(page, "insights/m1?days=all");
+  assert.match(await page.locator(".insight-kpis").innerText(), /Unavailable/);
   await page.locator(".aggregate-matrix").waitFor();
   assert.match(
     await page.locator(".aggregate-matrix").innerText(),
@@ -355,16 +353,15 @@ export async function checkRefinement(page) {
   await navigate(page, "insights/m1?days=28");
   await page.locator(".insight-focus-queue").waitFor();
   const action = page.locator(".insight-focus-queue > .insight-recommendation");
-  const chooser = action.getByLabel("Practice setting scope", { exact: true });
   assert.equal(
-    await action
-      .getByRole("button", { name: "Practise 10", exact: true })
-      .count(),
+    await action.getByLabel("Practice setting scope", { exact: true }).count(),
     0,
   );
-  await chooser.selectOption({ index: 1 });
   await action
-    .getByRole("button", { name: "Practise 10", exact: true })
+    .getByRole("button", {
+      name: "Start Suggested Diagnostic · 10",
+      exact: true,
+    })
     .waitFor();
   const presets = await page.evaluate(() =>
     localStorage.getItem("jazzEarLab:v1:savedPresets"),
@@ -374,7 +371,10 @@ export async function checkRefinement(page) {
       JSON.parse(localStorage.getItem("jazzEarLab:v1:sessions") ?? "[]").length,
   );
   await action
-    .getByRole("button", { name: "Practise 10", exact: true })
+    .getByRole("button", {
+      name: "Start Suggested Diagnostic · 10",
+      exact: true,
+    })
     .evaluate((e) => {
       e.click();
       e.click();

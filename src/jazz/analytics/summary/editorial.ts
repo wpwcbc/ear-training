@@ -21,10 +21,10 @@ export function composeEditorial(
       ? difficulty(i)
         ? 0
         : positive(i)
-          ? 1
+          ? 3
           : 2
       : i.category === "tentative-positive"
-        ? 3
+        ? 5
         : i.certainty === "tentative"
           ? 4
           : i.category === "descriptive-peer"
@@ -51,10 +51,9 @@ export function composeEditorial(
     return (
       rank(a) - rank(b) ||
       (positive(a) && positive(b)
-        ? n(y) - n(x) || rate(y) - rate(x) || y.last - x.last
+        ? n(y) - n(x) || rate(y) - rate(x)
         : a.certainty === "tentative" && b.certainty === "tentative"
-          ? Number(y.contextState === "matched") -
-              Number(x.contextState === "matched") ||
+          ? Number(!!x.stratum) - Number(!!y.stratum) ||
             n(y) - (y.numerator ?? 0) - (n(x) - (x.numerator ?? 0)) ||
             n(y) - n(x) ||
             rate(x) - rate(y)
@@ -65,8 +64,7 @@ export function composeEditorial(
   const visible = candidates.filter((i) => !i.suppressedBy).sort(sort);
   const statements: Insight[] = [];
   const add = (i: Insight) => {
-    if (statements.length >= (overview ? 4 : 3) || statements.includes(i))
-      return;
+    if (statements.length >= 3 || statements.includes(i)) return;
     if (
       statements.some(
         (j) =>

@@ -1,9 +1,9 @@
 import { policy } from "../policy.js";
 export const summaryPolicy = Object.freeze({
   schemaVersion: 1,
-  version: "insights-ui-refinement/1",
+  version: "insights-polish/2026-10-22.1",
   baseSufficiencyPolicyVersion: policy.version,
-  maxOverviewStatements: 4,
+  maxOverviewStatements: 3,
   maxModeStatements: 3,
   maxRecommendations: 3,
   rootMinimum: 3,

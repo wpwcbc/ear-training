@@ -31,8 +31,13 @@ import {
 } from "./lifecycle.js";
 import { icon, commandIcon, relativeDate, duration } from "./ui.js";
 import { renderAnalytics } from "./analytics/views.js";
-import type { DrillPlan } from "./analytics/drills.js";
-import { readAll } from "./analytics/repository.js";
+import {
+  compileSuggestedDiagnostic,
+  type DrillPlan,
+} from "./analytics/drills.js";
+import { readAll, put } from "./analytics/repository.js";
+import { dataRevision } from "./analytics/hierarchy.js";
+import type { Evidence } from "./analytics/types.js";
 
 interface Bridge {
   getConfig(): Config;
@@ -930,14 +935,26 @@ export function installFlow(engine: Bridge) {
                 "Audio is unavailable. Press Play context to retry.",
             )
           : null;
-      const session = await engine.create(
-        checked,
-        exact && (!plan || plan.selectionPolicy === "exact-review")
-          ? "exact-review"
-          : from,
-        presetId,
-        exact,
-      );
+      const pending = plan
+        ? [engine.getSession(), ...loadSessions(localStorage)].find(
+            (s) =>
+              s?.source === from && s.status === "active" && !s.completedCount,
+          )
+        : undefined;
+      let session =
+        pending ??
+        (await engine.create(
+          checked,
+          exact && (!plan || plan.selectionPolicy === "exact-review")
+            ? "exact-review"
+            : from,
+          presetId,
+          exact,
+        ));
+      if (pending) {
+        engine.resume(pending);
+        session = engine.getSession()!;
+      }
       if (plan) {
         session.insightPlanId = plan.id;
         session.insightOrigin = plan.originRoute;
@@ -956,6 +973,7 @@ export function installFlow(engine: Bridge) {
           }
         }
       } catch (error) {
+        if (plan) throw error;
         showError(error);
       }
       go(`session/${session.id}`);
@@ -1431,8 +1449,16 @@ export function installFlow(engine: Bridge) {
     const missed = missedQuestions(session);
     controls.replaceChildren();
     if (session.insightOrigin) {
+      let originScrollY: number | undefined;
       controls.append(
-        action("Return to this insight", () => go(session.insightOrigin!)),
+        action("Return to this insight", () => {
+          if (originScrollY !== undefined)
+            sessionStorage.setItem(
+              "insights:scroll:" + session.insightOrigin!,
+              String(originScrollY),
+            );
+          go(session.insightOrigin!);
+        }),
       );
       void readAll<DrillPlan>("drillPlans")
         .then((plans) => {
@@ -1443,30 +1469,68 @@ export function installFlow(engine: Bridge) {
             return;
           const plan = plans.find((p) => p.id === session.insightPlanId);
           if (!plan) return;
+          originScrollY = plan.originScrollY;
           holder.append(
             node(
               "p",
-              `${plan.reason}. ${session.records.filter((r) => !r.referenceAssisted && r.grade !== "skipped").length} new observations collected. A focused set alone does not establish mastery or improvement.`,
+              plan.baselineKind === "new-profile"
+                ? `${session.completedCount} diagnostic questions completed. ${session.records.filter((r) => r.grade === "correct").length} self-rated correct; ${session.records.filter((r) => r.grade === "close").length} close; ${session.records.filter((r) => r.grade === "missed").length} missed; ${session.records.filter((r) => r.grade === "skipped").length} skipped. This is a new diagnostic, not a matched improvement test.`
+                : `${plan.reason}. ${session.records.filter((r) => !r.referenceAssisted && r.grade !== "skipped").length} new observations collected. A focused set alone does not establish mastery or improvement.`,
             ),
           );
           controls.append(
-            action("Repeat focus", () =>
-              begin(
-                plan.config,
-                plan.customSnapshots,
-                "insight:" + plan.id,
-                undefined,
-                plan.questions,
-                plan,
-              ),
+            action(
+              plan.baselineKind === "new-profile"
+                ? "Repeat diagnostic"
+                : "Repeat focus",
+              async () => {
+                let next = plan;
+                if (plan.baselineKind === "new-profile") {
+                  const rows = await readAll<Evidence>("assessments");
+                  const result = compileSuggestedDiagnostic(
+                    {
+                      id: plan.id,
+                      label: plan.reason,
+                      quality: plan.config.quality,
+                      degree: plan.config.degree,
+                      rows: rows.filter((e) =>
+                        plan.evidenceAssessmentIds.includes(e.id),
+                      ),
+                    },
+                    plan.originRoute,
+                    dataRevision(rows),
+                    {
+                      contrast: plan.config.degreePool?.[1],
+                      roots: plan.config.roots.split(/\s+/),
+                      config: plan.config,
+                      variationIndex: (plan.variationIndex ?? 0) + 1,
+                    },
+                  );
+                  if (!result.plan) throw new Error(result.unsupportedReason);
+                  next = { ...result.plan, originScrollY: plan.originScrollY };
+                  await put("drillPlans", next);
+                }
+                await begin(
+                  next.config,
+                  next.customSnapshots,
+                  "insight:" + next.id,
+                  undefined,
+                  next.questions,
+                  next,
+                );
+              },
             ),
-            action("Matched check", () =>
-              begin(
-                { ...plan.baseline, count: 10 },
-                plan.customSnapshots,
-                "matched-check",
-              ),
-            ),
+            ...(plan.baselineKind === "new-profile"
+              ? []
+              : [
+                  action("Matched check", () =>
+                    begin(
+                      { ...plan.baseline, count: 10 },
+                      plan.customSnapshots,
+                      "matched-check",
+                    ),
+                  ),
+                ]),
           );
         })
         .catch(showError);

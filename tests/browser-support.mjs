@@ -63,4 +63,12 @@ export async function navigate(page, route) {
     location.hash = "#/" + route;
   }, route);
   await page.waitForURL((url) => url.hash === "#/" + route);
+  if (route.startsWith("insights"))
+    await page.waitForFunction((expected) => {
+      const host = document.getElementById("analytics-content");
+      return (
+        host?.dataset.route === expected &&
+        !!host.querySelector(".smart-summary, .insight-health")
+      );
+    }, route);
 }

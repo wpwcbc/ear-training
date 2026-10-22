@@ -1,5 +1,9 @@
 # Insights UI/UX Refinement
 
+The subsequent [October 22 polish](JAZZ_EAR_LAB_INSIGHTS_POLISH.md) supersedes
+the presentation and historical-settings prerequisite below. These notes describe
+the preceding release; the base evidence gates remain authoritative.
+
 Implemented against `Jazz_Ear_Lab_Insights_UI_UX_Refinement_Spec.md` on
 2026-10-22. Presentation version: `insights-ui-refinement/1`. Base
 `insights-2.2` statistical gates, capture schema and musical drill contracts are

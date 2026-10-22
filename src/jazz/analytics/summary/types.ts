@@ -133,5 +133,7 @@ export interface SummaryModel {
     eligible: number;
     diagnostic: number | null;
     exclusions: Record<string, number>;
+    excludedIds: Record<string, string[]>;
+    diagnosticIds: string[];
   };
 }
