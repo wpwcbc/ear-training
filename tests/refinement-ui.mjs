@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { currentUI, asOf, unknownIdentity } from "./refinement-fixtures.mjs";
-import { navigate } from "./browser-support.mjs";
+import { navigate, openSummaryEvidence } from "./browser-support.mjs";
 export async function checkRefinement(page) {
   await page.clock.setFixedTime(new Date(asOf));
   const seed = async (rows) =>
@@ -49,11 +49,11 @@ export async function checkRefinement(page) {
     "Matrix text and interactive boundaries meet contrast floors",
   );
   assert.match(
-    await page.locator(".smart-summary").innerText(),
+    await page.locator(".smart-summary").textContent(),
     /positive observed result.*20\/20/s,
   );
   assert.match(
-    await page.locator(".smart-summary").innerText(),
+    await page.locator(".smart-summary").textContent(),
     /10\/13.*12\/13|12\/13.*10\/13/s,
   );
   assert.match(
@@ -98,7 +98,7 @@ export async function checkRefinement(page) {
   const panel = page.locator("#selected-cell");
   assert.equal(await panel.evaluate((e) => e.tagName), "SECTION");
   assert.match(await panel.innerText(), /10 correct \/ 0 close \/ 3 missed/);
-  const summary = await page.locator(".smart-summary").innerText();
+  const summary = await page.locator(".smart-summary").textContent();
   await page
     .getByRole("button", { name: "Table view", exact: true })
     .first()
@@ -126,7 +126,7 @@ export async function checkRefinement(page) {
       .getElementById("selected-cell")
       ?.textContent.includes("Detail scope: root"),
   );
-  assert.equal(await page.locator(".smart-summary").innerText(), summary);
+  assert.equal(await page.locator(".smart-summary").textContent(), summary);
   await panel
     .getByRole("button", { name: "View Evidence", exact: true })
     .click();
@@ -337,6 +337,7 @@ export async function checkRefinement(page) {
     const r = await import("/js/jazz/analytics/repository.js");
     await r.clearInsights();
   });
+  await openSummaryEvidence(page);
   await page
     .locator(".smart-summary")
     .getByRole("button", { name: /View Evidence/ })

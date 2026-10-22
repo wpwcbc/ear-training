@@ -382,6 +382,20 @@ export function installFlow(engine) {
         fieldset.append(node("legend", title));
         const grid = node("div", "", "pool-grid");
         grid.dataset.pool = title;
+        const commonQualities = ["maj7", "m7", "7", "m7b5"];
+        const advanced = title === "Chord Qualities"
+            ? node("details", "", "advanced-qualities")
+            : null;
+        const advancedLabel = node("summary", "More chord qualities");
+        const advancedGrid = node("div", "", "pool-grid");
+        if (advanced) {
+            advanced.open = selected.some((value) => !commonQualities.includes(value));
+            advanced.append(advancedLabel, advancedGrid);
+        }
+        const updateAdvancedLabel = () => {
+            const count = advancedGrid.querySelectorAll("input:checked").length;
+            advancedLabel.textContent = `More chord qualities${count ? ` (${count} selected)` : ""}`;
+        };
         if (title === "Target Degrees") {
             const ordered = [
                 "1",
@@ -429,13 +443,19 @@ export function installFlow(engine) {
             checkbox.value = value;
             checkbox.checked = selected.includes(value);
             checkbox.onchange = () => {
-                change(Array.from(grid.querySelectorAll("input:checked")).map((input) => input.value));
+                change(Array.from(fieldset.querySelectorAll("input:checked")).map((input) => input.value));
+                updateAdvancedLabel();
                 syncWizardState();
             };
             wrapper.append(checkbox, node("span", label(value)));
-            grid.append(wrapper);
+            (advanced && !commonQualities.includes(value)
+                ? advancedGrid
+                : grid).append(wrapper);
         });
         fieldset.append(grid);
+        if (advanced)
+            fieldset.append(advanced);
+        updateAdvancedLabel();
         $("pool-fields").append(fieldset);
     }
     function updateWizard() {
@@ -621,7 +641,7 @@ export function installFlow(engine) {
         $("review-config").hidden = wizardStep !== 4;
         if (wizardStep === 4)
             configDetails($("review-config"), draft, true);
-        $("wizard-back").textContent = wizardStep ? "Back" : "Dashboard";
+        $("wizard-back").textContent = wizardStep ? "Back" : "Practice";
         $("wizard-next").textContent =
             wizardStep === 4 ? "Start Practice" : "Continue";
         icon($("wizard-next"), wizardStep === 4 ? "play" : "arrow-right");
@@ -666,8 +686,16 @@ export function installFlow(engine) {
                 draftSave();
                 go("setup/2");
             });
+            choice.classList.add("exercise-choice");
             choice.setAttribute("aria-pressed", String(draft.mode === mode));
-            item.append(choice, node("p", purposes[mode]), node("small", `${mode === "m2" || mode === "m3" ? "Recognition available" : "Production / self-assessment"} / ${draft.count || 10} questions / about 5 minutes`));
+            choice.setAttribute("aria-label", exerciseNames[mode]);
+            const description = node("span", purposes[mode], "exercise-description");
+            description.id = `exercise-${mode}-description`;
+            const meta = node("span", `${mode === "m2" || mode === "m3" ? "Recognition available" : "Production / self-assessment"} / ${draft.count || 10} questions / about 5 minutes`, "exercise-meta");
+            meta.id = `exercise-${mode}-meta`;
+            choice.setAttribute("aria-describedby", `${description.id} ${meta.id}`);
+            choice.replaceChildren(node("span", exerciseNames[mode], "exercise-name"), description, meta);
+            item.append(choice);
             holder.append(item);
         });
     }
@@ -882,7 +910,7 @@ export function installFlow(engine) {
             const recent = sessions
                 .filter((session) => session.mode === mode)
                 .slice(-1)[0];
-            const start = action("Start practice", () => {
+            const start = action("Set up practice", () => {
                 openWizard({
                     ...defaults,
                     mode,
@@ -895,7 +923,8 @@ export function installFlow(engine) {
                 draftSave();
                 go("setup/2");
             }, true);
-            start.setAttribute("aria-label", `Start ${exerciseNames[mode]}`);
+            start.setAttribute("aria-label", `Set up ${exerciseNames[mode]}`);
+            icon(start, "sliders-horizontal");
             card.append(header, node("h4", exerciseNames[mode]), node("p", purposes[mode]), node("small", recent
                 ? `Last practised ${relativeDate(recent.timestamp)}`
                 : "Not practised yet"), start);
@@ -930,7 +959,10 @@ export function installFlow(engine) {
         holder.setAttribute("aria-labelledby", "dashboard-" + dashboardTab);
         holder.replaceChildren();
         if (dashboardTab === "suggested") {
-            renderSuggested(holder);
+            if (currentRoute === "suggested")
+                renderSuggested(holder);
+            else
+                renderQuickStarts(holder);
         }
         else if (dashboardTab === "saved") {
             const saved = presets().sort((a, b) => Number(b.favorite) - Number(a.favorite) ||
@@ -970,8 +1002,13 @@ export function installFlow(engine) {
         }
         else {
             const recent = readList(localStorage, flowKeys.recent);
-            if (!recent.length)
-                holder.append(node("p", "No recent practice yet."));
+            if (!recent.length) {
+                holder.append(node("p", "No recent practice yet."), action("Browse quick starts", () => {
+                    dashboardTab = "suggested";
+                    renderDashboard();
+                    $("dashboard-suggested").focus();
+                }));
+            }
             (showAllRecent ? recent : recent.slice(0, 5)).forEach((item) => holder.append(configRow(exerciseNames[item.config.mode], item.config, item.lastUsedAt, item.customs, "recent")));
             if (recent.length > 5)
                 holder.append(action(showAllRecent
@@ -980,15 +1017,6 @@ export function installFlow(engine) {
                     showAllRecent = !showAllRecent;
                     renderDashboard();
                 }));
-            if (!recent.length) {
-                const quick = node("div", "", "quick-starts");
-                for (const [name, config] of quickStarts) {
-                    const row = node("article", "", "quick-start");
-                    row.append(node("h3", name), node("p", summary(config).slice(1, 3).join(" / "), "config-description"), action("Practice", () => begin(config, engine.getCustoms(), "quick-start"), false), action("Customize", () => openWizard(config, engine.getCustoms(), true)));
-                    quick.append(row);
-                }
-                holder.append(quick);
-            }
         }
         const complete = sessions.filter((s) => sessionStatus(s) === "completed");
         const days = new Set(sessions.map((s) => new Date(s.timestamp).toLocaleDateString())).size;
@@ -1064,6 +1092,15 @@ export function installFlow(engine) {
         row.append(controls);
         return row;
     }
+    function renderQuickStarts(holder) {
+        const quick = node("div", "", "quick-starts");
+        for (const [name, config] of quickStarts) {
+            const row = node("article", "", "quick-start");
+            row.append(node("h3", name), node("p", summary(config).slice(1, 3).join(" / "), "config-description"), action("Practice", () => begin(config, engine.getCustoms(), "quick-start"), false), action("Customize", () => openWizard(config, engine.getCustoms(), true)));
+            quick.append(row);
+        }
+        holder.append(quick);
+    }
     function renderSuggested(holder) {
         holder.replaceChildren();
         const rec = recommendation(loadSessions(localStorage));
@@ -1077,8 +1114,8 @@ export function installFlow(engine) {
         const recActions = node("div", "", "actions");
         recActions.append(action("Practice Recommendation", () => begin(recommended, engine.getCustoms(), "suggested")), action("Customize Recommendation", () => openWizard(recommended, engine.getCustoms(), true, "suggested")));
         holder.append(recActions);
+        renderQuickStarts(holder);
         const recommendations = [
-            ...quickStarts,
             [
                 "Progression Continuity",
                 { ...defaults, mode: "m5", runMode: "continuous", path: "nearest" },
@@ -1229,7 +1266,7 @@ export function installFlow(engine) {
             })
                 .catch(showError);
         }
-        controls.append(action("Practice Same Settings", () => begin(session.config, session.customSnapshot ?? engine.getCustoms(), "history"), missed.length > 0), action("Edit Settings", () => openWizard(session.config, session.customSnapshot, true, "history")), action("Save Configuration", () => savePreset(session.config, session.customSnapshot ?? [])), action("Back to Dashboard", () => go("home")));
+        controls.append(action("Practice Same Settings", () => begin(session.config, session.customSnapshot ?? engine.getCustoms(), "history"), missed.length > 0), action("Edit Settings", () => openWizard(session.config, session.customSnapshot, true, "history")), action("Save Configuration", () => savePreset(session.config, session.customSnapshot ?? [])), action("Back to Practice", () => go("home")));
         if (missed.length)
             controls.prepend(action("Review Missed", () => begin({ ...session.config, count: 0 }, session.customSnapshot ?? [], "history", undefined, missed), false));
         if (session.questions?.length)

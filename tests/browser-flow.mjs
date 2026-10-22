@@ -77,7 +77,8 @@ try {
     localStorage.setItem("eartrain:questionHistory", "keep-old"),
   );
   assert.equal(await page.locator("#dashboard-view").isVisible(), true);
-  assert.equal(await page.locator("#configuration-list article").count(), 3);
+  assert.equal(await page.locator("#configuration-list article").count(), 0);
+  assert.equal(await page.getByRole("button", { name: "Browse quick starts" }).count(), 1);
   await page.locator("#start-practicing").click();
   await page
     .getByRole("button", { name: "Hear a Chord Degree", exact: true })

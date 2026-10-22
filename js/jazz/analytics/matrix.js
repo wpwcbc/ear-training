@@ -2,8 +2,16 @@ import { allowedTargetDegrees, qualities } from "../theory.js";
 const canonicalDegrees = ["1", "b3", "3", "5", "b7", "maj7", "9", "11", "13"];
 import { quantile } from "./policy.js";
 import { registry } from "./summary/registry.js";
+import { icon } from "../ui.js";
 import { focusName, degreeName, localizeLabels, } from "./display.js";
 let activeTooltip = null;
+const matrixLayouts = new WeakMap();
+if (typeof window !== "undefined")
+    window.addEventListener("resize", () => {
+        document
+            .querySelectorAll(".aggregate-matrix")
+            .forEach((wrap) => matrixLayouts.get(wrap)?.());
+    });
 if (typeof document !== "undefined")
     document.addEventListener("keydown", (event) => {
         if (event.key === "Escape" && activeTooltip) {
@@ -211,6 +219,54 @@ export function renderAggregateMatrix(parent, cells, metric, inspect, options = 
         wrap.setAttribute("aria-label", key + " · matrix");
         const store = "insights:matrix:" + key;
         let plain = sessionStorage.getItem(store) === "table", page = 0;
+        const navigation = el("nav");
+        navigation.className = "matrix-navigation";
+        navigation.setAttribute("aria-label", t("Matrix columns", "熱圖欄位"));
+        const backColumn = el("button", t("Previous columns", "前面的欄位"));
+        const forwardColumn = el("button", t("Next columns", "後面的欄位"));
+        const visibleColumns = el("span");
+        visibleColumns.className = "matrix-column-range";
+        backColumn.type = forwardColumn.type = "button";
+        icon(backColumn, "arrow-left", true);
+        icon(forwardColumn, "arrow-right", true);
+        navigation.append(backColumn, visibleColumns, forwardColumn);
+        const updateColumns = () => {
+            if (!wrap.isConnected)
+                return;
+            const overflow = wrap.scrollWidth > wrap.clientWidth + 1;
+            navigation.hidden = !overflow;
+            backColumn.disabled = wrap.scrollLeft <= 1;
+            forwardColumn.disabled =
+                wrap.scrollLeft + wrap.clientWidth >= wrap.scrollWidth - 2;
+            const headers = Array.from(wrap.querySelectorAll("thead th")).slice(1);
+            const bounds = wrap.getBoundingClientRect();
+            const pinnedWidth = wrap.querySelector("thead th")?.getBoundingClientRect().width ?? 0;
+            const visible = headers.filter((header) => {
+                const rect = header.getBoundingClientRect();
+                return (rect.right > bounds.left + pinnedWidth + 8 &&
+                    rect.left < bounds.right - 8);
+            });
+            if (visible.length) {
+                const first = headers.indexOf(visible[0]) + 1;
+                const last = headers.indexOf(visible[visible.length - 1]) + 1;
+                visibleColumns.textContent = plain
+                    ? `${t("Columns", "欄位")} ${first}–${last} / ${headers.length}`
+                    : `${visible[0].textContent} – ${visible[visible.length - 1].textContent} · ${first}–${last} / ${headers.length}`;
+            }
+        };
+        const scrollColumns = (direction) => {
+            const pinnedWidth = wrap.querySelector("thead th")?.getBoundingClientRect().width ?? 0;
+            wrap.scrollBy({
+                left: direction * Math.max(96, wrap.clientWidth - pinnedWidth),
+                behavior: matchMedia("(prefers-reduced-motion: reduce)").matches
+                    ? "auto"
+                    : "smooth",
+            });
+        };
+        backColumn.onclick = () => scrollColumns(-1);
+        forwardColumn.onclick = () => scrollColumns(1);
+        wrap.addEventListener("scroll", updateColumns, { passive: true });
+        matrixLayouts.set(wrap, updateColumns);
         const qualityOrder = (a, b) => qualities.indexOf(a) - qualities.indexOf(b);
         const degreeOrder = (a, b) => canonicalDegrees.indexOf(a) -
             canonicalDegrees.indexOf(b);
@@ -362,6 +418,7 @@ export function renderAggregateMatrix(parent, cells, metric, inspect, options = 
             table.append(head, body);
             wrap.append(table);
             localizeLabels(section, locale);
+            requestAnimationFrame(updateColumns);
         };
         toggle.onclick = () => {
             plain = !plain;
@@ -381,7 +438,7 @@ export function renderAggregateMatrix(parent, cells, metric, inspect, options = 
         draw();
         const legend = el("p", t(`${group[0].source === "self" ? "Observed self-rated correct rate" : "Observed correct rate"} · <50%, 50–<70%, 70–<85%, 85–<95%, 95–100%. Color shows recorded outcomes, not certainty or mastery. Buckets use exact values before rounding.`, "觀察到的正確率 · <50%、50–<70%、70–<85%、85–<95%、95–100%。顏色代表記錄結果，並非把握程度或熟練程度；色階按未四捨五入的數值判定。"));
         legend.className = "matrix-legend";
-        section.append(toolbar, wrap, pagination, legend);
+        section.append(toolbar, navigation, wrap, pagination, legend);
         parent.append(section);
         if (grid) {
             const marginal = el("details");

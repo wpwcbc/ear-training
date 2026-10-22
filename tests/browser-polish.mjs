@@ -22,7 +22,7 @@ try {
   }, currentUI());
   await navigate(page, "insights/m1?days=28");
   await page.locator(".aggregate-matrix").waitFor();
-  const summary = await page.locator(".smart-summary").innerText();
+  const summary = await page.locator(".smart-summary").textContent();
   assert.match(summary, /101 of 112/);
   assert.match(summary, /10\/13.*12\/13/s);
   assert.match(summary, /positive observed result.*20\/20/s);
@@ -78,7 +78,7 @@ try {
   await navigate(page, "insights/m1?days=28&lang=zh-Hant");
   await page.locator(".suggested-start").first().waitFor();
   assert.doesNotMatch(
-    await page.locator(".smart-summary").innerText(),
+    await page.locator(".smart-summary").textContent(),
     /\bcorrect\b/,
   );
   assert.match(

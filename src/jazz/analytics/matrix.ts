@@ -3,6 +3,7 @@ const canonicalDegrees = ["1", "b3", "3", "5", "b7", "maj7", "9", "11", "13"];
 import { quantile } from "./policy.js";
 import type { AggregateCell } from "./summary/types.js";
 import { registry } from "./summary/registry.js";
+import { icon } from "../ui.js";
 import {
   focusName,
   degreeName,
@@ -10,6 +11,13 @@ import {
   type InsightsLocale,
 } from "./display.js";
 let activeTooltip: HTMLElement | null = null;
+const matrixLayouts = new WeakMap<HTMLElement, () => void>();
+if (typeof window !== "undefined")
+  window.addEventListener("resize", () => {
+    document
+      .querySelectorAll<HTMLElement>(".aggregate-matrix")
+      .forEach((wrap) => matrixLayouts.get(wrap)?.());
+  });
 if (typeof document !== "undefined")
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && activeTooltip) {
@@ -274,6 +282,59 @@ export function renderAggregateMatrix(
     const store = "insights:matrix:" + key;
     let plain = sessionStorage.getItem(store) === "table",
       page = 0;
+    const navigation = el("nav");
+    navigation.className = "matrix-navigation";
+    navigation.setAttribute("aria-label", t("Matrix columns", "熱圖欄位"));
+    const backColumn = el("button", t("Previous columns", "前面的欄位"));
+    const forwardColumn = el("button", t("Next columns", "後面的欄位"));
+    const visibleColumns = el("span");
+    visibleColumns.className = "matrix-column-range";
+    backColumn.type = forwardColumn.type = "button";
+    icon(backColumn, "arrow-left", true);
+    icon(forwardColumn, "arrow-right", true);
+    navigation.append(backColumn, visibleColumns, forwardColumn);
+    const updateColumns = () => {
+      if (!wrap.isConnected) return;
+      const overflow = wrap.scrollWidth > wrap.clientWidth + 1;
+      navigation.hidden = !overflow;
+      backColumn.disabled = wrap.scrollLeft <= 1;
+      forwardColumn.disabled =
+        wrap.scrollLeft + wrap.clientWidth >= wrap.scrollWidth - 2;
+      const headers = Array.from(
+        wrap.querySelectorAll<HTMLTableCellElement>("thead th"),
+      ).slice(1);
+      const bounds = wrap.getBoundingClientRect();
+      const pinnedWidth =
+        wrap.querySelector("thead th")?.getBoundingClientRect().width ?? 0;
+      const visible = headers.filter((header) => {
+        const rect = header.getBoundingClientRect();
+        return (
+          rect.right > bounds.left + pinnedWidth + 8 &&
+          rect.left < bounds.right - 8
+        );
+      });
+      if (visible.length) {
+        const first = headers.indexOf(visible[0]) + 1;
+        const last = headers.indexOf(visible[visible.length - 1]) + 1;
+        visibleColumns.textContent = plain
+          ? `${t("Columns", "欄位")} ${first}–${last} / ${headers.length}`
+          : `${visible[0].textContent} – ${visible[visible.length - 1].textContent} · ${first}–${last} / ${headers.length}`;
+      }
+    };
+    const scrollColumns = (direction: number) => {
+      const pinnedWidth =
+        wrap.querySelector("thead th")?.getBoundingClientRect().width ?? 0;
+      wrap.scrollBy({
+        left: direction * Math.max(96, wrap.clientWidth - pinnedWidth),
+        behavior: matchMedia("(prefers-reduced-motion: reduce)").matches
+          ? "auto"
+          : "smooth",
+      });
+    };
+    backColumn.onclick = () => scrollColumns(-1);
+    forwardColumn.onclick = () => scrollColumns(1);
+    wrap.addEventListener("scroll", updateColumns, { passive: true });
+    matrixLayouts.set(wrap, updateColumns);
     const qualityOrder = (a: string, b: string) =>
       qualities.indexOf(a as never) - qualities.indexOf(b as never);
     const degreeOrder = (a: string, b: string) =>
@@ -475,6 +536,7 @@ export function renderAggregateMatrix(
       table.append(head, body);
       wrap.append(table);
       localizeLabels(section, locale);
+      requestAnimationFrame(updateColumns);
     };
     toggle.onclick = () => {
       plain = !plain;
@@ -500,7 +562,7 @@ export function renderAggregateMatrix(
       ),
     );
     legend.className = "matrix-legend";
-    section.append(toolbar, wrap, pagination, legend);
+    section.append(toolbar, navigation, wrap, pagination, legend);
     parent.append(section);
     if (grid) {
       const marginal = el("details");

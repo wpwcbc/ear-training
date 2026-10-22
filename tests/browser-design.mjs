@@ -85,6 +85,7 @@ try {
     .getByRole("button", { name: "Hear a Chord Degree", exact: true })
     .click();
   await page.setViewportSize({ width: 390, height: 844 });
+  await page.locator(".advanced-qualities > summary").click();
   await page
     .getByRole("group", { name: "Chord Qualities", exact: true })
     .locator("input[value=m]")

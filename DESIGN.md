@@ -29,3 +29,15 @@ Mobile navigation supports Escape, a focus loop, inert closed content and focus 
 Reduced motion and system color preference are respected.
 
 The Impeccable context launcher was unavailable; existing source and supplied specs were read directly.
+
+## Critique Follow-up (2026-10-23)
+
+The user selected all five critique priorities and action-first Insights with expandable evidence.
+The leading recommendation keeps sample count, assessment grain and essential limitations visible.
+Full scripted observations, citations and reconciliation remain available via native disclosure.
+An unselected cell-detail pane does not reserve heatmap width. Overflowing matrices expose
+column ranges and 44px labelled arrow controls, while retaining table view and sticky row labels.
+Exercise choices use the entire card as one accessible button. Header and mode controls target 44px.
+Recent remains actual recent configurations; supplied templates belong to Quick starts.
+Harmony begins with maj7, m7, 7 and m7b5. All other qualities remain in an expandable catalogue;
+existing advanced selections automatically expand, and edits preserve hidden selections.

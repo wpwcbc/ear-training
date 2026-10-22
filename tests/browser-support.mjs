@@ -58,6 +58,14 @@ export async function configure(page, config, customs) {
 }
 export const ready = (page) =>
   page.waitForFunction(() => !document.getElementById("reveal").disabled);
+export async function openSummaryEvidence(page) {
+  const disclosure = page.locator(".summary-evidence");
+  if (
+    (await disclosure.count()) &&
+    !(await disclosure.evaluate((element) => element.open))
+  )
+    await disclosure.locator(":scope > summary").click();
+}
 export async function navigate(page, route) {
   await page.evaluate((route) => {
     location.hash = "#/" + route;

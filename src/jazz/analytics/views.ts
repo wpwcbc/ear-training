@@ -147,9 +147,15 @@ function link(text: string, href: string) {
   a.href = href;
   return a;
 }
-function button(text: string, action: () => unknown) {
+const errorAnchors = new WeakMap<HTMLButtonElement, HTMLElement>();
+function button(
+  text: string,
+  action: () => unknown,
+  practiceAction?: "practice" | "configure",
+) {
   const b = node("button", text);
   b.type = "button";
+  if (practiceAction) b.dataset.practiceAction = practiceAction;
   if (text.startsWith("Close ")) b.dataset.dismiss = "true";
   commandIcon(b);
   if (text.startsWith("Practise")) icon(b, "play");
@@ -157,7 +163,10 @@ function button(text: string, action: () => unknown) {
   const failed = (error: unknown) => {
     const p = node("p", String(error));
     p.setAttribute("role", "alert");
-    b.after(p);
+    const anchor = errorAnchors.get(b) ?? b;
+    errorAnchors.delete(b);
+    if (anchor !== b) p.className = "forwarded-error";
+    anchor.after(p);
   };
   b.onclick = () => {
     if (b.disabled) return;
@@ -172,8 +181,9 @@ function button(text: string, action: () => unknown) {
           .catch(failed)
           .finally(() => {
             b.disabled = false;
+            errorAnchors.delete(b);
           });
-      }
+      } else errorAnchors.delete(b);
     } catch (error) {
       failed(error);
     }
@@ -268,6 +278,8 @@ export async function renderAnalytics(
 ): Promise<void> {
   const request = (renderRequests.get(host) ?? 0) + 1;
   renderRequests.set(host, request);
+  const summaryExpanded =
+    host.querySelector<HTMLDetailsElement>(".summary-evidence")?.open ?? false;
   host.dataset.route = route;
   host.replaceChildren(node("p", "Loading local evidence..."));
   let evidence: Evidence[];
@@ -1017,16 +1029,23 @@ export async function renderAnalytics(
           node("p", plan.reason),
         );
         card.append(
-          button("Practise 10", () => launchPlan(plan, route, actions)),
+          button(
+            "Practise 10",
+            () => launchPlan(plan, route, actions),
+            "practice",
+          ),
           planDetail,
         );
       } else
         card.append(
-          button("Customize", () =>
-            actions.customize(
-              c.rows[0].config,
-              c.rows[0].session.customSnapshot ?? [],
-            ),
+          button(
+            "Customize",
+            () =>
+              actions.customize(
+                c.rows[0].config,
+                c.rows[0].session.customSnapshot ?? [],
+              ),
+            "configure",
           ),
         );
       card.append(button("View Evidence", () => openEvidence(c.evidenceRefId)));
@@ -1054,27 +1073,97 @@ export async function renderAnalytics(
     else queue.append(wrapper);
   }
   if (moreActions.children.length > 1) queue.append(moreActions);
-  const primaryStart =
-    queue.querySelector<HTMLButtonElement>(".suggested-start");
-  if (primaryStart) {
-    const strip = node("div");
-    strip.className = "diagnostic-strip";
-    strip.append(
+  const primaryCard = queue.querySelector<HTMLElement>(
+    ":scope > .insight-recommendation",
+  );
+  const primaryAction = () =>
+    primaryCard
+      ?.querySelector(".insight-focus")
+      ?.querySelector<HTMLButtonElement>(
+        ":scope > button[data-practice-action]",
+      );
+  const primaryStart = primaryAction();
+  const primaryRecommendation = model.recommendations.find(
+    (insight) => insight.id === primaryCard?.dataset.actionId,
+  );
+  const primaryCell = model.cells.find(
+    (cell) => cell.id === primaryRecommendation?.cellId,
+  );
+  if (primaryStart && primaryCell) {
+    const details = node("details");
+    details.className = "summary-evidence";
+    details.open = summaryExpanded;
+    details.append(
       node(
-        "span",
-        locale === "zh-Hant"
-          ? "建議診斷 · 7 題焦點＋3 題對照"
-          : "Suggested Diagnostic · 7 focus + 3 contrast",
-      ),
-      button(primaryStart.textContent!, () =>
-        queue
-          .querySelector<HTMLButtonElement>(
-            ":scope > .insight-recommendation .suggested-start",
-          )
-          ?.click(),
+        "summary",
+        locale === "zh-Hant" ? "完整摘要與證據" : "Full summary & evidence",
       ),
     );
-    summary.append(strip);
+    details.append(...Array.from(summary.childNodes));
+    const strip = node("div");
+    strip.className = "diagnostic-strip";
+    const context = node("div");
+    context.className = "diagnostic-overview";
+    const zh = locale === "zh-Hant";
+    const setting =
+      primaryCell.contextState === "matched"
+        ? zh
+          ? "歷史樣本為同一已知設定"
+          : "Known matched historical settings"
+        : primaryCell.contextState === "unknown"
+          ? zh
+            ? "歷史設定不明"
+            : "Historical settings unknown"
+          : zh
+            ? "歷史設定不同，僅供描述"
+            : "Mixed historical settings; descriptive only";
+    const units = {
+      answer: zh ? "診斷題正確" : "diagnostic questions correct",
+      sequence: zh ? "序列正確" : "sequences correct",
+      transition: zh ? "轉換正確" : "transitions correct",
+      "target-pair": zh ? "目標音組正確" : "target pairs correct",
+      run: zh ? "整段正確" : "runs correct",
+      "phrase-stage": zh ? "樂句階段正確" : "phrase stages correct",
+    };
+    context.dataset.grain = primaryCell.grain;
+    context.append(
+      node("strong", focusName(primaryCell.label, locale)),
+      node(
+        "p",
+        `${primaryCell.numerator ?? "?"}/${primaryCell.denominator ?? "?"} ${units[primaryCell.grain]} · ${primaryCell.localDays} ${zh ? "個日曆日" : primaryCell.localDays === 1 ? "local day" : "local days"}`,
+      ),
+      node("p", setting),
+    );
+    const caveat = node(
+      "p",
+      primaryCell.source === "self"
+        ? zh
+          ? "自評結果，並非量度的歌唱準確率。新的診斷設定不代表同條件的進步比較。"
+          : "Self-ratings, not measured singing accuracy. New diagnostic settings are not a matched progress comparison."
+        : primaryCell.source === "visual"
+          ? zh
+            ? "視覺作答結果，並非實際演奏準確率。"
+            : "Visual answers, not physical playing accuracy."
+          : zh
+            ? "已提交的辨識答案，並非唱奏準確率。"
+            : "Submitted recognition answers, not singing or playing accuracy.",
+    );
+    caveat.className = "diagnostic-caveat";
+    const proxy = button(primaryStart.textContent!, () => {
+      strip.querySelector(".forwarded-error")?.remove();
+      const current = primaryAction();
+      if (current) {
+        errorAnchors.set(current, proxy);
+        current.click();
+      }
+    });
+    strip.append(context, proxy);
+    summary.append(
+      node("h3", zh ? "建議下一步練習" : "Suggested next practice"),
+      strip,
+      caveat,
+      details,
+    );
   }
   host.append(decision);
   function suggestedOptions(cell: Cell, local = false) {
@@ -1619,7 +1708,11 @@ export async function renderAnalytics(
           "Selected cell is unavailable after the evidence or filters changed. Select a matrix cell again.",
         ),
       );
-    if (!selected) {
+    if (
+      !selected &&
+      params.has("missingQuality") &&
+      params.has("missingDegree")
+    ) {
       const panel = node("section");
       panel.className = "insight-cell-detail insight-cell-empty";
       const quality = params.get("missingQuality"),
@@ -2306,6 +2399,7 @@ function focus(
       const start = button(
         zh ? "開始建議診斷 · 10 題" : "Start Suggested Diagnostic · 10",
         () => launchPlan(plan, route, actions),
+        "practice",
       );
       start.classList.add("suggested-start");
       const edit = node("div");
@@ -2409,20 +2503,23 @@ function focus(
       error.setAttribute("role", "alert");
       box.append(
         error,
-        button(zh ? "自訂" : "Customize", () =>
-          actions.customize(
-            {
-              ...defaults,
-              ...suggested?.config,
-              mode: "m1",
-              quality: cell.quality as Config["quality"],
-              qualityPool: [cell.quality!],
-              degree: cell.degree!,
-              degreePool: [cell.degree!, suggested?.contrast ?? "1"],
-              roots: suggested?.roots?.join(" ") ?? "C D F G",
-            },
-            [],
-          ),
+        button(
+          zh ? "自訂" : "Customize",
+          () =>
+            actions.customize(
+              {
+                ...defaults,
+                ...suggested?.config,
+                mode: "m1",
+                quality: cell.quality as Config["quality"],
+                qualityPool: [cell.quality!],
+                degree: cell.degree!,
+                degreePool: [cell.degree!, suggested?.contrast ?? "1"],
+                roots: suggested?.roots?.join(" ") ?? "C D F G",
+              },
+              [],
+            ),
+          "configure",
         ),
       );
     }
@@ -2548,11 +2645,14 @@ function focus(
     box.append(
       label,
       preview,
-      button("Customize", () =>
-        actions.customize(
-          cell.rows[0].config,
-          cell.rows[0].session.customSnapshot ?? [],
-        ),
+      button(
+        "Customize",
+        () =>
+          actions.customize(
+            cell.rows[0].config,
+            cell.rows[0].session.customSnapshot ?? [],
+          ),
+        "configure",
       ),
     );
     parent.append(box);
@@ -2659,7 +2759,7 @@ function focus(
     }
     box.append(
       node("p", compact ? "10 questions · targeted practice" : plan.reason),
-      button("Practise 10", () => launchPlan(plan, route, actions)),
+      button("Practise 10", () => launchPlan(plan, route, actions), "practice"),
     );
     const preview = node("details");
     preview.append(node("summary", "Scheduled targets and settings"));

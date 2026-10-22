@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { navigate, labURL } from "./browser-support.mjs";
+import { navigate, labURL, openSummaryEvidence } from "./browser-support.mjs";
 import { checkRefinement } from "./refinement-ui.mjs";
 import {
   screenshot113,
@@ -68,6 +68,7 @@ try {
   );
   assert.equal(await page.locator(".insight-trend canvas:visible").count(), 0);
   // Citation values resolve to actual IDs; reference export is not a remote service.
+  await openSummaryEvidence(page);
   await page
     .locator(".smart-summary")
     .getByRole("button", { name: /View Evidence/ })
@@ -101,14 +102,14 @@ try {
       .getAttribute("data-certainty"),
     "supported",
   );
-  assert.match(await page.locator(".smart-summary").innerText(), /25\/50/);
+  assert.match(await page.locator(".smart-summary").textContent(), /25\/50/);
   // Route-preserved selection and locale change facts without changing evidence identity.
   await page.locator(".insight-advanced summary").click();
   await page
     .getByLabel("Summary language", { exact: true })
     .selectOption("zh-Hant");
   await page.locator(".smart-summary").waitFor();
-  assert.match(await page.locator(".smart-summary").innerText(), /自評/);
+  assert.match(await page.locator(".smart-summary").textContent(), /自評/);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({
     path: process.env.TEMP + "/jazz-smart-summary-mobile.png",

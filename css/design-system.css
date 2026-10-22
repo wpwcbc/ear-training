@@ -368,10 +368,10 @@ summary {
 }
 .app-icon-button {
   padding: 10px;
-  width: 40px;
-  height: 40px;
-  min-height: 40px;
-  flex: 0 0 40px;
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
+  flex: 0 0 44px;
   background: transparent;
   color: var(--ds-text);
   border: 1px solid var(--ds-border);
@@ -617,7 +617,7 @@ summary {
   margin-bottom: 16px;
 }
 .mode-card button {
-  min-height: 40px;
+  min-height: 44px;
   padding: 9px 14px;
 }
 .app-ready .config-item,
@@ -678,14 +678,64 @@ summary {
   background: transparent;
 }
 .app-ready .exercise-item {
+  padding: 0;
   border-radius: 14px;
   background: var(--ds-surface);
   border-color: var(--ds-border);
 }
 .app-ready .exercise-item button {
-  border-radius: 0;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 12px;
+  min-height: 144px;
+  height: 100%;
+  padding: 20px;
+  text-align: left;
+  border-radius: 14px;
+  border: 0;
   background: transparent;
   color: var(--ds-text);
+}
+.app-ready .exercise-item button::after {
+  position: absolute;
+  right: 20px;
+  top: 22px;
+}
+.app-ready .exercise-item:has([aria-pressed="true"]) {
+  box-shadow: none;
+  border-color: var(--ds-primary);
+}
+.exercise-name {
+  padding-right: 28px;
+  font-size: 16px;
+  font-weight: 650;
+}
+.exercise-description {
+  color: var(--ds-secondary);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+.exercise-meta {
+  margin-top: auto;
+  color: var(--ds-secondary);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+.advanced-qualities {
+  margin-top: 16px;
+}
+.advanced-qualities > summary {
+  min-height: 44px;
+  padding-block: 10px;
+  color: var(--ds-accent);
+}
+.advanced-qualities > .pool-grid {
+  margin-top: 12px;
 }
 .app-ready .exercise-list button[aria-pressed="true"],
 .app-ready .choice-grid label:has(input:checked) {
@@ -788,6 +838,78 @@ summary {
 }
 .app-ready .analytics .smart-summary {
   padding: 24px;
+}
+.app-ready .analytics .diagnostic-strip {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  margin: 16px 0 12px;
+}
+.diagnostic-overview {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+.diagnostic-overview strong {
+  display: block;
+  font-size: 18px;
+}
+.app-ready .analytics .diagnostic-overview p {
+  margin: 4px 0 0;
+  font-size: 14px;
+}
+.app-ready .analytics .diagnostic-caveat {
+  margin-block: 8px 16px;
+  font-size: 14px;
+}
+.summary-evidence {
+  padding-top: 12px;
+  border-top: 1px solid var(--ds-border);
+}
+.summary-evidence > summary {
+  min-height: 44px;
+  padding-block: 10px;
+  font-size: 14px;
+  color: var(--ds-accent);
+}
+.summary-evidence > h3 {
+  margin-top: 16px;
+}
+.app-ready .analytics .insight-workspace:not(:has(.insight-cell-detail)) {
+  grid-template-columns: minmax(0, 1fr);
+}
+.matrix-navigation {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.app-ready .analytics .matrix-navigation button {
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  padding: 0;
+  gap: 0;
+  font-size: 0;
+}
+.matrix-column-range {
+  min-width: 0;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: var(--ds-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.diagnostic-strip .forwarded-error {
+  flex-basis: 100%;
+  color: var(--ds-danger);
+}
+.app-ready .aggregate-matrix th:first-child {
+  background: var(--ds-surface);
 }
 .app-ready .analytics .smart-summary .insight-statement {
   border: 0;

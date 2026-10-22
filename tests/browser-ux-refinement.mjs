@@ -22,6 +22,7 @@ const screenshot = (name) =>
   page.screenshot({ path: path.join(os.tmpdir(), "jazz-ux-" + name + ".png") });
 try {
   await page.goto(labURL + "#/home");
+  await page.getByRole("button", { name: "Browse quick starts" }).click();
   await page.locator(".quick-start").first().waitFor();
   assert.equal(await page.locator(".app-navigation a:visible").count(), 5);
   assert.equal(await page.locator("#dashboard-overview").isVisible(), false);

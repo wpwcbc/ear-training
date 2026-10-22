@@ -214,7 +214,7 @@ try {
   }, currentUI());
   await navigate(page, "insights/m1?days=28");
   await page.locator(".aggregate-matrix").waitFor();
-  assert.match(await page.locator(".smart-summary").innerText(), /101 of 112/);
+  assert.match(await page.locator(".smart-summary").textContent(), /101 of 112/);
   for (const value of ["light", "dark"]) {
     await theme(value);
     await contrast();
