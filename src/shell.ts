@@ -1,5 +1,6 @@
 const base = new URL("../", import.meta.url);
 const lab = new URL("jazz-ear-lab/", base);
+const v2 = new URL("jazz-ear-lab-v2/", base);
 const isLab = location.pathname.replace(/\/$/, "").endsWith("/jazz-ear-lab");
 const themeKey = "earTrain:ui:theme";
 type Theme = "light" | "dark";
@@ -67,7 +68,7 @@ function mount() {
   shell.innerHTML = `<a class="app-skip" href="#app-content">Skip to content</a>
     <div class="app-backdrop" hidden></div>
     <aside class="app-sidebar" id="app-sidebar" aria-label="Application sidebar">
-      <a class="app-brand" href="${lab}#/home"><span class="app-brand-mark app-icon" style='--app-icon:${iconURL("audio-lines")}'></span><span>Ear Train<small>Jazz Ear Lab</small></span></a>
+      <a class="app-brand" href="${v2}#home"><span class="app-brand-mark app-icon" style='--app-icon:${iconURL("audio-lines")}'></span><span>Ear Train<small>Jazz Ear Lab V2</small></span></a>
       <button class="app-drawer-close app-icon-button" type="button" aria-label="Close navigation" title="Close navigation" style='--app-icon:${iconURL("x")}'></button>
       <nav class="app-navigation" aria-label="Main navigation"></nav>
       <nav class="app-legacy" aria-label="Legacy training"><h2>Training tools</h2></nav>
@@ -93,9 +94,15 @@ function mount() {
     ["insights", "Insights", "chart-no-axes-combined"],
     ["review", "Review", "bookmark"],
   ]) {
+    if (!isLab && route !== "home" && route !== "insights") continue;
     const link = document.createElement("a");
     link.className = "app-nav-link";
-    link.href = `${lab}#/${route}`;
+    link.href =
+      route === "home"
+        ? `${v2}#home`
+        : !isLab && route === "insights"
+          ? `${v2}#insights`
+          : `${lab}#/${route}`;
     link.dataset.route = route;
     link.innerHTML = `<span class="app-icon" style='--app-icon:${iconURL(icon)}'></span><span>${name}</span>`;
     link.title = name;
@@ -103,6 +110,7 @@ function mount() {
   }
   const legacy = shell.querySelector(".app-legacy")!;
   for (const [path, name] of [
+    ["jazz-ear-lab", "Jazz Ear Lab V1 (Legacy)"],
     ["degree-trainer", "Scale degrees"],
     ["interval-trainer", "Intervals"],
     ["chord-quality", "Chord quality"],
@@ -197,7 +205,7 @@ function mount() {
       settings: "Settings",
     };
     shell.querySelectorAll<HTMLElement>("[data-route]").forEach((link) => {
-      if (isLab && section === link.dataset.route)
+      if (isLab && section !== "home" && section === link.dataset.route)
         link.setAttribute("aria-current", "page");
       else link.removeAttribute("aria-current");
     });

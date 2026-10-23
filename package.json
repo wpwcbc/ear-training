@@ -15,6 +15,7 @@
 		"test:critique": "node tests/browser-critique-fixes.mjs",
 		"test:quality": "node tests/browser-quality.mjs",
 		"test:v2": "node tests/browser-v2.mjs",
+		"test:entry": "node tests/browser-entry.mjs",
 		"benchmark:summary": "node scripts/benchmark-summary.mjs",
 		"watch": "tsc -p . -w"
 	}
