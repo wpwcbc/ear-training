@@ -15,3 +15,10 @@ unframed rows, including the original Thirds and Guide Tones presets. Use the
 primary action color for the main exercise starts, not every saved preset.
 No degree-support badges or explanatory card copy. Keep primary exercise identity
 fixed; configuration exposes the independent pools without adding new modes.
+
+Confirmed Practice UX plan (2026-10-24):
+[V2_PRACTICE_UX_REDESIGN_PLAN.md](../V2_PRACTICE_UX_REDESIGN_PLAN.md).
+It covers Customize, the M1/M2 listening workspace and Results handoff, including
+the explicitly approved end/save-then-navigate behavior. It is a planning record,
+not an implemented visual replacement. Preserve the existing identity and exercise
+contracts; desktop/mobile visual compositions come before implementation.
