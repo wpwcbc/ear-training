@@ -1,0 +1,20 @@
+{
+  "status": "Visual direction selected by the user through the comparison page; application implementation not started.",
+  "date": "2026-10-24",
+  "seed": "6d59acfa",
+  "optionId": "challenger-wayfinding",
+  "label": "Signal Route",
+  "buildPath": "comp",
+  "buildPathFlipped": false,
+  "decisionComp": ".impeccable/mocks/decision/2026-10-24/signal-route.png",
+  "source": "serve-question --wait --key 57725d5e returned the user's selection",
+  "scope": "V2 whole flow; Legacy unchanged; Ear Train / Jazz Ear Lab naming unchanged",
+  "compositionApproved": false,
+  "next": "Use this decision comp as compositional option one; add two variations within this identity for a separate composition approval before application implementation.",
+  "constraints": [
+    "UX_PRINCIPLES.md and approved flows remain binding.",
+    "Yellow for navigation/task direction and commands, not all content surfaces.",
+    "No hidden labels, swipe progression, new exercise mode or metric definition.",
+    "Generated numerical bar lengths, mobile labels and metric prominence require specification and verification."
+  ]
+}
