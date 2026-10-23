@@ -106,7 +106,8 @@ try {
     1,
     "grade alone cannot skip the natural reference tail",
   );
-  await page.evaluate(() => window.testAudio.resume());
+  assert.equal(await page.evaluate(() => window.references[0].end), "interrupted");
+  await page.getByRole("button", { name: "Retry audio", exact: true }).click();
   await page.waitForFunction(
     () =>
       JSON.parse(localStorage.getItem("jazzEarLab:v2:sessions")).at(-1).attempts

@@ -117,7 +117,8 @@ try {
     (await latest()).attempts[0].firstResponseMs,
     locked.firstResponseMs,
   );
-  await page.evaluate(() => window.testAudio.resume());
+  assert.equal((await page.evaluate(() => window.trace))[1].end, "interrupted");
+  await page.getByRole("button", { name: "Retry audio", exact: true }).click();
   await page.waitForURL(/#results\//);
   assert.equal((await latest()).attempts.length, 1);
   assert.equal((await latest()).attempts[0].firstCorrect, true);
