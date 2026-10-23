@@ -158,7 +158,7 @@ export function attempt(c, q, sessionId, exposure) {
         firstAnswer: null,
         firstCorrect: null,
         firstResponseMs: null,
-        timingVersion,
+        timingVersion: c.exercise === "m1" ? "v2-m1-chord-onset-2" : timingVersion,
         timingValidity: "unavailable",
         replaysBeforeFirst: 0,
         replaysAfterFirst: 0,

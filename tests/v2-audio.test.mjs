@@ -58,6 +58,70 @@ async function audioClock(t) {
 // Node has no AudioContext; the stub is replaced/restored by each test.
 globalThis.AudioContext = function () {};
 
+test("M1 question withholds the target pitch class and is ready at chord onset", async (t) => {
+  const { audio, sources, advance } = await audioClock(t);
+  const question = audio.playSingle(parseChord("G7"), null, 0.5, true, { excludeTarget: 83 });
+  const midiNotes = sources.map((s) => Math.round(69 + 12 * Math.log2(s.frequency.value / 440)));
+  assert.deepEqual(midiNotes, [55, 62, 65], "B is withheld even when target is in another octave");
+  assert.equal(question.readyMs, 40);
+  advance(0.04);
+  assert.equal(await question.ready, true);
+  assert.equal(question.activeVoices, 3, "Done readiness does not wait for the chord tail");
+  const root = audio.playSingle(parseChord("G7"), null, 0.5, true, { excludeTarget: 79 });
+  assert.equal(root.activeVoices, 3);
+  assert.ok(sources.slice(-3).every((s) => Math.round(69 + 12 * Math.log2(s.frequency.value / 440)) % 12 !== 7));
+  const tension = audio.playSingle(parseChord("G7"), null, 0.5, true, { excludeTarget: 68 });
+  assert.equal(tension.activeVoices, 4, "b9 does not remove unrelated chord tones");
+});
+
+test("M1 live reference adds only the target and completes after its natural tail", async (t) => {
+  const { audio, sources, gains, advance } = await audioClock(t);
+  const chord = parseChord("G7");
+  const question = audio.playSingle(chord, null, 0.5, true, { excludeTarget: 71 });
+  advance(0.3);
+  const originalSources = sources.slice();
+  const originalStops = originalSources.map((s) => s.stopTime);
+  const originalEnvelopes = gains.map((g) => g.events.slice());
+  const reference = audio.playReference(chord, 71, 0.5, question);
+  assert.equal(sources.length, 4, "no duplicate chord voices");
+  assert.deepEqual(originalSources.map((s) => s.stopTime), originalStops, "chord is not stopped or reattacked");
+  assert.deepEqual(gains.slice(0, 3).map((g) => g.events), originalEnvelopes);
+  let completed = false;
+  reference.completed.then(() => { completed = true; });
+  advance(0.34);
+  assert.equal(await reference.ready, true, "rating is available at reference onset");
+  advance(2.6);
+  await Promise.resolve();
+  assert.equal(completed, false, "old chord completion cannot finish the layered reference");
+  assert.equal(reference.activeVoices, 1);
+  advance(2.87);
+  assert.equal(await reference.completed, "completed");
+  assert.equal(reference.activeVoices, 0);
+});
+
+test("M1 expired chord (even with queued end events) and context-off use a fresh full reference", async (t) => {
+  const { audio, context, sources, advance } = await audioClock(t);
+  const chord = parseChord("G7");
+  const question = audio.playSingle(chord, null, 0.5, true, { excludeTarget: 71 });
+  context.currentTime = 3; // Audio has ended, but the browser has not delivered onended yet.
+  assert.equal(question.activeVoices, 3);
+  const reference = audio.playReference(chord, 71, 0.5, question);
+  const fresh = sources.slice(3);
+  assert.equal(fresh.length, 4, "G D F plus target B, without doubled B");
+  assert.ok(fresh.every((s) => s.startTime === 3.04), "chord and target start together");
+  assert.equal(reference.readyMs, 40);
+  advance(3.05);
+  assert.equal(await reference.ready, true);
+  advance(5.57);
+  assert.equal(await reference.completed, "completed");
+  const silent = audio.playSingle(chord, null, 0.5, false, { excludeTarget: 71 });
+  assert.equal(await silent.ready, true);
+  const before = sources.length;
+  const contextOff = audio.playReference(chord, 68, 0.5, silent);
+  assert.equal(sources.length - before, 5, "context-off reference restores the full G7 plus b9");
+  assert.equal(contextOff.activeVoices, 5);
+});
+
 test("V2 readiness keeps M2 onset; completion waits for every natural voice release", async (t) => {
   const { audio, sources, advance } = await audioClock(t);
   const playback = audio.playSingle(parseChord("G7"), 71, 0.5, true);
