@@ -624,12 +624,6 @@ async function play(replay: boolean, reference = false): Promise<boolean> {
       else a.replaysBeforeFirst++;
     }
     if (!(await plan.ready)) return false;
-    if (
-      reference &&
-      c.exercise === "m2" &&
-      (await plan.completed) !== "completed"
-    )
-      return false;
     if (token !== operation) return false;
     if (!started && !reference) {
       started = performance.now();
@@ -776,7 +770,7 @@ function renderPractice() {
           "Reveal Answer",
           async () => {
             if (current !== a || busy || resolved) return;
-            if (await play(false, true)) {
+            if ((await play(false, true)) && current === a && session) {
               resolved = true;
               feedback = "Reference revealed. First answer unchanged.";
               persist();

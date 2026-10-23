@@ -92,6 +92,15 @@ try {
     true,
     "Reveal has harmony even with question context off",
   );
+  await page.locator(".question p").filter({ hasText: /^Answer: b3$/ }).waitFor();
+  assert.equal(
+    (await page.evaluate(() => window.trace))[1].end,
+    undefined,
+    "Reveal displays the answer while its reference is still sounding",
+  );
+  const revealing = (await latest()).attempts[0];
+  for (const key of ["firstAnswer", "firstCorrect", "firstResponseMs"])
+    assert.deepEqual(revealing[key], first[key]);
   await page.evaluate(() => window.testAudio.suspend());
   await page.waitForTimeout(2800);
   assert.equal(
