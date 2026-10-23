@@ -104,6 +104,11 @@ try {
     localStorage.getItem("jazzEarLab:v2:sessions"),
   );
   await customize();
+  const autoAdvanceLabel = await page
+    .getByLabel("Auto Advance", { exact: true })
+    .locator("..")
+    .boundingBox();
+  assert.ok(autoAdvanceLabel.height >= 44, "Auto Advance label has a 44px hit area");
   assert.equal(
     await page.getByLabel("Auto Advance", { exact: true }).isChecked(),
     true,

@@ -175,12 +175,11 @@ label:has(input[type="range"]) {
   margin: 20px 0;
   max-width: 480px;
 }
-main > label:has(> input[type="checkbox"]) {
+main > .actions > label:has(> input[type="checkbox"]) {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   min-height: 44px;
-  margin-inline-end: 16px;
 }
 input,
 select {
