@@ -137,7 +137,11 @@ function button(
   b.type = "button";
   b.disabled = disabled;
   b.onclick = () => {
-    Promise.resolve().then(fn).catch(report);
+    Promise.resolve()
+      .then(() => {
+        if (b.isConnected && !b.disabled) return fn();
+      })
+      .catch(report);
   };
   return b;
 }
@@ -620,7 +624,12 @@ async function play(replay: boolean, reference = false): Promise<boolean> {
       else a.replaysBeforeFirst++;
     }
     if (!(await plan.ready)) return false;
-    if (reference && c.exercise === "m2" && (await plan.completed) !== "completed") return false;
+    if (
+      reference &&
+      c.exercise === "m2" &&
+      (await plan.completed) !== "completed"
+    )
+      return false;
     if (token !== operation) return false;
     if (!started && !reference) {
       started = performance.now();
@@ -629,8 +638,7 @@ async function play(replay: boolean, reference = false): Promise<boolean> {
     if (reference) a.revealedReference = true;
     ready = true;
     persist();
-    if (reference && c.exercise === "m1" && resolved)
-      scheduleAdvance({ after: plan.completed });
+    if (reference && resolved) scheduleAdvance({ after: plan.completed });
     return true;
   } catch (e) {
     if (token !== operation) return false;
@@ -731,7 +739,11 @@ function renderPractice() {
       actions(
         button(
           ready ? "Replay" : "Retry audio",
-          () => play(started > 0 && (!done || a.revealedReference), done || resolved),
+          () =>
+            play(
+              started > 0 && (!done || a.revealedReference),
+              done || resolved,
+            ),
           true,
           busy,
         ),
@@ -793,7 +805,13 @@ function renderPractice() {
     );
   } else if (a.revealedReference && a.firstCorrect === null) {
     const grade = (correct: boolean, wrong?: string) => {
-      if (current !== a || !ready || busy || resolved || a.firstCorrect !== null)
+      if (
+        current !== a ||
+        !ready ||
+        busy ||
+        resolved ||
+        a.firstCorrect !== null
+      )
         return;
       if (correct ? choosingWrong : !choosingWrong) return;
       rate(a, correct, wrong);
@@ -818,8 +836,11 @@ function renderPractice() {
         wrong.append(o);
       }
       wrong.onchange = () => {
-        if (wrong.value && wrong.value !== a.target.degree &&
-            (wrong.value === "unknown" || a.target.options.includes(wrong.value)))
+        if (
+          wrong.value &&
+          wrong.value !== a.target.degree &&
+          (wrong.value === "unknown" || a.target.options.includes(wrong.value))
+        )
           grade(false, wrong.value);
       };
       wrongLabel.append(wrong);
@@ -828,12 +849,18 @@ function renderPractice() {
       host.append(
         actions(
           button("Correct", () => grade(true), false, busy),
-          button("Incorrect", () => {
-            if (current !== a || !ready || busy || resolved || choosingWrong) return;
-            choosingWrong = true;
-            feedback = "Which degree did you imagine?";
-            renderPractice();
-          }, true, busy),
+          button(
+            "Incorrect",
+            () => {
+              if (current !== a || !ready || busy || resolved || choosingWrong)
+                return;
+              choosingWrong = true;
+              feedback = "Incorrect";
+              renderPractice();
+            },
+            true,
+            busy,
+          ),
         ),
       );
     }
@@ -867,8 +894,8 @@ function renderPractice() {
           (b) => b.textContent === "Next" || b.textContent === "Finish session",
         )
       : done
-        ? host.querySelector<HTMLElement>("#wrong-degree") ??
-          buttons.find((b) => b.textContent === "Correct")
+        ? (host.querySelector<HTMLElement>("#wrong-degree") ??
+          buttons.find((b) => b.textContent === "Correct"))
         : c.exercise === "m2"
           ? host.querySelector<HTMLElement>(".answers button:not(:disabled)")
           : buttons.find((b) => b.textContent?.startsWith("Done"));

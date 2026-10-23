@@ -47,8 +47,14 @@ export class AudioEngine {
             throw new Error("Audio unavailable. Press Retry audio.");
         this.stop();
         const ctx = this.context, dispatch = ctx.currentTime, start = dispatch + 0.04, readyMs = midi === null
-            ? (context ? (options.excludeTarget !== undefined ? 40 : 900) : 0)
-            : (options.fullReference ? 40 : 120);
+            ? context
+                ? options.excludeTarget !== undefined
+                    ? 40
+                    : 900
+                : 0
+            : options.fullReference
+                ? 40
+                : 120;
         const pending = new Set();
         let endTime = dispatch, settled = false, fading = false;
         let timer;
@@ -56,8 +62,12 @@ export class AudioEngine {
         let signalReferenceReady;
         let signalReady;
         let signalEnd;
-        const ready = new Promise((resolve) => { signalReady = resolve; });
-        const completed = new Promise((resolve) => { signalEnd = resolve; });
+        const ready = new Promise((resolve) => {
+            signalReady = resolve;
+        });
+        const completed = new Promise((resolve) => {
+            signalEnd = resolve;
+        });
         const settle = (end) => {
             if (settled)
                 return;
@@ -70,8 +80,12 @@ export class AudioEngine {
         };
         const playback = {
             readyMs,
-            get durationMs() { return (endTime - dispatch) * 1000; },
-            get activeVoices() { return pending.size; },
+            get durationMs() {
+                return (endTime - dispatch) * 1000;
+            },
+            get activeVoices() {
+                return pending.size;
+            },
             ready,
             completed,
             cancel: () => {
@@ -125,11 +139,16 @@ export class AudioEngine {
         };
         this.layerTarget = (target, level) => {
             // onended may be queued after the audio clock has passed the chord tail.
-            if (settled || fading || options.excludeTarget === undefined ||
-                ![...pending].some((voice) => voice.startTime <= ctx.currentTime && voice.endTime > ctx.currentTime))
+            if (settled ||
+                fading ||
+                options.excludeTarget === undefined ||
+                ![...pending].some((voice) => voice.startTime <= ctx.currentTime &&
+                    voice.endTime > ctx.currentTime))
                 return null;
             const onset = ctx.currentTime + 0.04;
-            const referenceReady = new Promise((resolve) => { signalReferenceReady = resolve; });
+            const referenceReady = new Promise((resolve) => {
+                signalReferenceReady = resolve;
+            });
             schedule(target, onset, level * 0.24);
             const checkReferenceReady = () => {
                 if (settled || fading) {
@@ -145,8 +164,12 @@ export class AudioEngine {
             checkReferenceReady();
             return {
                 readyMs: 40,
-                get durationMs() { return (endTime - onset + 0.04) * 1000; },
-                get activeVoices() { return playback.activeVoices; },
+                get durationMs() {
+                    return (endTime - onset + 0.04) * 1000;
+                },
+                get activeVoices() {
+                    return playback.activeVoices;
+                },
                 ready: referenceReady,
                 completed,
                 cancel: playback.cancel,
@@ -157,8 +180,12 @@ export class AudioEngine {
             if (context)
                 chordNotes(chord)
                     .filter((note) => {
-                    const excluded = options.fullReference ? midi : options.excludeTarget;
-                    return excluded === undefined || excluded === null || note % 12 !== excluded % 12;
+                    const excluded = options.fullReference
+                        ? midi
+                        : options.excludeTarget;
+                    return (excluded === undefined ||
+                        excluded === null ||
+                        note % 12 !== excluded % 12);
                 })
                     .forEach((note) => schedule(note, start, volume * 0.09));
             if (midi !== null)
@@ -226,7 +253,12 @@ export class AudioEngine {
         };
         oscillator.start(start);
         oscillator.stop(start + duration + 0.02);
-        return { source: oscillator, gain, startTime: start, endTime: start + duration + 0.02 };
+        return {
+            source: oscillator,
+            gain,
+            startTime: start,
+            endTime: start + duration + 0.02,
+        };
     }
     click(start, volume) {
         const ctx = this.context;
