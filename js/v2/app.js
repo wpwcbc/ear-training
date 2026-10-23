@@ -1,7 +1,48 @@
-import { AudioEngine } from "../jazz/audio.js";
+import { AudioEngine, } from "../jazz/audio.js";
 import { builtins, primaryPresets, roots, qualities, degrees, roles, validate, stream, attempt, answer, rate, read, write, keys, metrics, cohort, } from "./model.js";
 const host = document.getElementById("app"), error = document.getElementById("error");
 const audio = new AudioEngine();
+let playback = null;
+let transition = 0, transitionTimer;
+function cancelAdvance() {
+    transition++;
+    clearTimeout(transitionTimer);
+    transitionTimer = undefined;
+}
+function scheduleAdvance({ after, delayMs = 0, fade = false } = {}) {
+    cancelAdvance();
+    if (!session || !current || !resolved || session.config.autoAdvance === false)
+        return;
+    const token = transition, a = current, s = session, op = operation;
+    const active = () => token === transition && current === a && session === s &&
+        operation === op && resolved && s.config.autoAdvance !== false &&
+        location.hash === "#practice" && !document.hidden;
+    const advance = async () => {
+        try {
+            if (after && (await after) !== "completed")
+                return;
+            if (!active())
+                return;
+            if (fade && playback && (await playback.fadeOut()) === "cancelled")
+                return;
+            if (active())
+                next();
+        }
+        catch (e) {
+            if (active()) {
+                cancelAdvance();
+                ready = false;
+                feedback = "Audio unavailable. Retry audio before continuing.";
+                renderPractice();
+                report(e);
+            }
+        }
+    };
+    if (delayMs)
+        transitionTimer = setTimeout(() => void advance(), delayMs);
+    else
+        void advance();
+}
 let seenMaterial = new Set();
 let presets = [], sessions = [], activeId = builtins[0].id, draft;
 let session = null, current = null, generate = null;
@@ -245,7 +286,15 @@ function config() {
             autoSave();
         };
         l.append(check, el("span", " Audible chord context"));
-        host.append(l);
+        const advanceLabel = el("label"), advance = el("input");
+        advance.type = "checkbox";
+        advance.checked = draft.autoAdvance !== false;
+        advance.onchange = () => {
+            draft.autoAdvance = advance.checked;
+            autoSave();
+        };
+        advanceLabel.append(advance, el("span", " Auto Advance"));
+        host.append(actions(l, advanceLabel));
         const countLabel = el("label", "Questions (0 = Unlimited)"), count = el("input");
         count.type = "number";
         count.min = "0";
@@ -345,6 +394,11 @@ function material(a) {
 function next() {
     if (!session || !generate)
         return;
+    cancelAdvance();
+    operation++;
+    audio.stop();
+    playback = null;
+    busy = false;
     if (session.config.count && session.attempts.length >= session.config.count) {
         finish();
         return;
@@ -373,6 +427,7 @@ function elapsed() {
 async function play(replay, reference = false) {
     if (!session || !current || busy)
         return false;
+    cancelAdvance();
     const a = current, c = session.config, token = ++operation;
     busy = true;
     ready = false;
@@ -391,6 +446,7 @@ async function play(replay, reference = false) {
         if (token !== operation)
             return false;
         const plan = audio.playSingle(a.target.chord, c.exercise === "m2" || reference ? a.target.midi : null, c.volume, reference ? false : c.context);
+        playback = plan;
         if (replay) {
             if (done || a.firstAnswer !== null)
                 a.replaysAfterFirst++;
@@ -434,9 +490,11 @@ async function play(replay, reference = false) {
 function finish() {
     if (!session)
         return;
+    cancelAdvance();
     operation++;
     busy = false;
     audio.stop();
+    playback = null;
     // A displayed but untouched question is not a submitted attempt.
     if (current &&
         !done &&
@@ -452,9 +510,15 @@ function finish() {
     location.hash = "results/" + id;
     render();
 }
-function afterResponse() {
+function afterResponse(fastAdvance = false) {
     persist();
+    if (fastAdvance) {
+        renderPractice();
+        scheduleAdvance({ delayMs: 1000, fade: true });
+        return;
+    }
     if (resolved &&
+        session?.config.autoAdvance !== false &&
         session?.config.count &&
         session.attempts.length >= session.config.count)
         finish();
@@ -495,7 +559,7 @@ function renderPractice() {
                         a.revealedReference = true;
                     resolved = correct;
                     feedback = correct ? "Correct" : "Incorrect";
-                    afterResponse();
+                    afterResponse(correct);
                 }, true, !ready || busy));
             host.append(answers);
         }
@@ -545,13 +609,16 @@ function renderPractice() {
     if (resolved)
         host.append(button(c.count && session.attempts.length >= c.count
             ? "Finish session"
-            : "Next", next, false, busy));
+            : "Next", () => {
+            if (current === a && resolved && !busy)
+                next();
+        }, false, busy));
     if (c.exercise === "m1")
         host.append(el("p", "Self-assessment only; singing and playing are not pitch-verified. Completion time includes your response and interaction."));
     if (!busy && document.activeElement === document.body) {
         const buttons = Array.from(host.querySelectorAll("button:not(:disabled)"));
         const focus = resolved
-            ? buttons.find((b) => b.textContent === "Next")
+            ? buttons.find((b) => b.textContent === "Next" || b.textContent === "Finish session")
             : done
                 ? host.querySelector("#wrong-degree")
                 : c.exercise === "m2"
@@ -744,6 +811,7 @@ function render() {
         return;
     }
     if (!session) {
+        cancelAdvance();
         operation++;
         audio.stop();
     }
@@ -762,6 +830,7 @@ function render() {
 window.addEventListener("hashchange", render);
 document.addEventListener("visibilitychange", () => {
     if (document.hidden && current) {
+        cancelAdvance();
         operation++;
         busy = false;
         ready = false;
@@ -775,6 +844,8 @@ document.addEventListener("visibilitychange", () => {
     }
 });
 window.addEventListener("pagehide", () => {
+    cancelAdvance();
+    operation++;
     if (current) {
         if (current.firstAnswer === null && !done)
             current.timingValidity = "interrupted";

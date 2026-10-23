@@ -10,6 +10,7 @@ const base = {
     targets: ["Third", "Seventh"],
     method: "imagined",
     context: true,
+    autoAdvance: true,
     count: 10,
     volume: 0.6,
 };
@@ -73,8 +74,10 @@ export function validate(input) {
         !["m1", "m2"].includes(c.exercise) ||
         !["functional", "exact"].includes(c.targetMode) ||
         !["imagined", "sung", "played"].includes(c.method) ||
-        typeof c.context !== "boolean")
+        typeof c.context !== "boolean" ||
+        (c.autoAdvance !== undefined && typeof c.autoAdvance !== "boolean"))
         throw new Error("Unsupported exercise settings.");
+    c.autoAdvance ?? (c.autoAdvance = true);
     for (const [items, vocabulary, label] of [
         [c.roots, roots, "root"],
         [c.qualities, qualities, "chord quality"],
