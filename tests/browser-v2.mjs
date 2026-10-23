@@ -10,7 +10,7 @@ const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
 page.setDefaultTimeout(15000);
 const errors = [];
 page.on("pageerror", (e) => errors.push(e.message));
-const url = "http://127.0.0.1:4173/jazz-ear-lab-v2/",
+const url = `${process.env.BASE_URL || "http://127.0.0.1:4173"}/jazz-ear-lab-v2/`,
   folder = join(tmpdir(), "eartrain-v2");
 await mkdir(folder, { recursive: true });
 const sessions = () =>
@@ -35,13 +35,28 @@ async function seed(config) {
     const { AudioEngine } = await import("/js/jazz/audio.js");
     const play = AudioEngine.prototype.playSingle;
     window.calls = [];
+    window.playbacks = [];
     AudioEngine.prototype.playSingle = function (chord, midi, volume, context) {
       window.calls.push({ midi, context });
       if (window.failAudio) {
         window.failAudio = false;
         throw new Error("Simulated audio failure");
       }
-      return play.call(this, chord, midi, volume, context);
+      const playback = play.call(this, chord, midi, volume, context);
+      window.playbacks.push(playback);
+      window.lastPlan = {
+        readyMs: playback.readyMs,
+        durationMs: playback.durationMs,
+      };
+      if (window.holdReady) {
+        const gate = new Promise((resolve) => { window.releaseReady = resolve; });
+        return { ...playback, ready: Promise.all([playback.ready, gate]).then(([ready]) => ready) };
+      }
+      if (window.holdCompletion) {
+        const gate = new Promise((resolve) => { window.releaseCompletion = resolve; });
+        return { ...playback, completed: Promise.all([playback.completed, gate]).then(([end]) => end) };
+      }
+      return playback;
     };
   });
 }
@@ -127,8 +142,17 @@ try {
     targetMode: "exact",
     targets: ["b3"],
   });
+  await page.evaluate(() => { window.holdReady = true; });
   await start();
+  await page.waitForTimeout(250);
+  assert.equal(await page.locator(".answers button:enabled").count(), 0,
+    "answers wait for playback readiness, not a UI timeout");
+  await page.evaluate(() => { window.holdReady = false; window.releaseReady(); });
   await ready();
+  const plan = await page.evaluate(() => window.lastPlan);
+  assert.equal(plan.readyMs, 120, "M2 keeps its first-target timing boundary");
+  assert.ok(plan.durationMs >= 2000 && plan.durationMs <= 3000,
+    "V2 piano-like playback includes a natural 2-3 second tail");
   assert.equal(await page.locator(".answers button").count(), 12);
   const q = (await latest()).attempts[0].target;
   assert.equal(q.degree, "b3");
@@ -136,6 +160,10 @@ try {
   await page.waitForTimeout(60);
   await page.getByRole("button", { name: "Replay", exact: true }).click();
   await ready();
+  assert.deepEqual(await page.evaluate(async () => ({
+    end: await window.playbacks[0].completed,
+    voices: window.playbacks[0].activeVoices,
+  })), { end: "cancelled", voices: 0 });
   await page.getByRole("button", { name: "5", exact: true }).click();
   assert.equal(await page.locator("#feedback").textContent(), "Incorrect");
   assert.doesNotMatch(
@@ -144,6 +172,7 @@ try {
   );
   const first = (await latest()).attempts[0];
   assert.equal(first.firstCorrect, false);
+  assert.equal(first.timingVersion, "v2-answer-ready-1");
   assert.equal(first.replaysBeforeFirst, 1);
   assert.ok(first.firstResponseMs >= 60);
   await capture("m2-wrong-desktop");
@@ -175,6 +204,30 @@ try {
   assert.equal(reviewed.replaysAfterFirst, recorded.replaysAfterFirst + 1);
   assert.equal(reviewed.firstResponseMs, recorded.firstResponseMs);
   assert.equal(reviewed.firstCorrect, false);
+  await seed({ exercise: "m2", count: 0, context: true,
+    roots: ["G"], qualities: ["7"], targetMode: "exact", targets: ["b3"] });
+  await start();
+  await ready();
+  await page.getByRole("button", { name: "5", exact: true }).click();
+  await page.evaluate(() => { window.holdCompletion = true; });
+  await page.getByRole("button", { name: "Reveal Answer", exact: true }).click();
+  await page.waitForFunction(() => !!window.releaseCompletion);
+  await page.waitForTimeout(200);
+  await page.getByRole("button", { name: "Stop", exact: true }).click();
+  await page.waitForURL(/#results\//);
+  assert.equal(await page.evaluate(() => window.playbacks.every((p) => p.activeVoices === 0)), true);
+  await page.getByRole("link", { name: "Practice", exact: true }).click();
+  await page.evaluate(() => { window.holdCompletion = false; });
+  await start();
+  await ready();
+  const newerQuestion = await latest();
+  await page.evaluate(() => window.releaseCompletion());
+  await page.waitForTimeout(100);
+  assert.equal(await page.locator(".answers button:enabled").count(), 12,
+    "stopped Reveal completion cannot resolve a newer question");
+  assert.deepEqual(await latest(), newerQuestion);
+  await page.getByRole("button", { name: "Stop", exact: true }).click();
+  await page.waitForURL(/#results\//);
   for (const method of ["imagined", "sung", "played"]) {
     await seed({
       exercise: "m1",
@@ -193,9 +246,17 @@ try {
     if (method === "imagined") assert.equal(calls.length, 0);
     else assert.equal(calls[0].context, true);
     if (method === "sung") await page.evaluate(() => (window.failAudio = true));
+    if (method === "imagined")
+      await page.evaluate(() => { window.holdCompletion = true; });
     await page
       .getByRole("button", { name: "Done - " + method, exact: true })
       .click();
+    if (method === "imagined") {
+      await page.waitForTimeout(2800);
+      assert.equal(await page.getByRole("button", { name: "Correct", exact: true }).count(), 0,
+        "reference grading waits for audio completion, not its planned duration");
+      await page.evaluate(() => { window.holdCompletion = false; window.releaseCompletion(); });
+    }
     if (method === "sung") {
       await page.waitForFunction(() =>
         document
@@ -446,7 +507,7 @@ try {
     ),
     legacy.records,
   );
-  await page.goto("http://127.0.0.1:4173/jazz-ear-lab/#/history");
+  await page.goto(new URL("/jazz-ear-lab/#/history", url).href);
   await page.locator("#history-list .history-row").first().waitFor();
   assert.equal(
     await page.evaluate(
