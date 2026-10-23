@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { seedM1Preset } from "./m1-preset.mjs";
 const { chromium } = await import(
   process.env.PLAYWRIGHT_MODULE || "playwright"
 );
@@ -23,28 +24,7 @@ const latest = () =>
   );
 async function start(overrides = {}, failure = null) {
   await page.goto(url);
-  await page.evaluate(async (overrides) => {
-    const { builtins, keys } = await import("/js/v2/model.js");
-    localStorage.setItem(
-      keys.presets,
-      JSON.stringify([
-        {
-          ...builtins[0],
-          config: {
-            ...builtins[0].config,
-            exercise: "m1",
-            roots: ["G"],
-            qualities: ["7"],
-            targetMode: "exact",
-            targets: ["3"],
-            count: 1,
-            ...overrides,
-          },
-        },
-      ]),
-    );
-  }, overrides);
-  await page.reload();
+  await seedM1Preset(page, { count: 1, ...overrides });
   await page.evaluate(async (failure) => {
     const { AudioEngine } = await import("/js/jazz/audio.js");
     window.trace = [];
