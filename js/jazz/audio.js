@@ -20,6 +20,7 @@ export class AudioEngine {
         this.context = null;
         this.voices = new Set();
         this.single = null;
+        this.layerTarget = null;
         this.playbackStart = 0;
         this.plan = {
             events: [],
@@ -41,14 +42,18 @@ export class AudioEngine {
         if (this.context?.state === "running")
             await this.context.suspend();
     }
-    playSingle(chord, midi, volume, context) {
+    playSingle(chord, midi, volume, context, options = {}) {
         if (!this.context || this.context.state !== "running")
             throw new Error("Audio unavailable. Press Retry audio.");
         this.stop();
-        const ctx = this.context, dispatch = ctx.currentTime, start = dispatch + 0.04, readyMs = midi === null ? (context ? 900 : 0) : 120;
+        const ctx = this.context, dispatch = ctx.currentTime, start = dispatch + 0.04, readyMs = midi === null
+            ? (context ? (options.excludeTarget !== undefined ? 40 : 900) : 0)
+            : (options.fullReference ? 40 : 120);
         const pending = new Set();
         let endTime = dispatch, settled = false, fading = false;
         let timer;
+        let referenceTimer;
+        let signalReferenceReady;
         let signalReady;
         let signalEnd;
         const ready = new Promise((resolve) => { signalReady = resolve; });
@@ -58,6 +63,8 @@ export class AudioEngine {
                 return;
             settled = true;
             clearTimeout(timer);
+            clearTimeout(referenceTimer);
+            signalReferenceReady?.(false);
             signalReady(false);
             signalEnd(end);
         };
@@ -116,11 +123,46 @@ export class AudioEngine {
             pending.add(voice);
             endTime = Math.max(endTime, voice.endTime);
         };
+        this.layerTarget = (target, level) => {
+            // onended may be queued after the audio clock has passed the chord tail.
+            if (settled || fading || options.excludeTarget === undefined ||
+                ![...pending].some((voice) => voice.startTime <= ctx.currentTime && voice.endTime > ctx.currentTime))
+                return null;
+            const onset = ctx.currentTime + 0.04;
+            const referenceReady = new Promise((resolve) => { signalReferenceReady = resolve; });
+            schedule(target, onset, level * 0.24);
+            const checkReferenceReady = () => {
+                if (settled || fading) {
+                    signalReferenceReady?.(false);
+                    return;
+                }
+                const remaining = onset - ctx.currentTime;
+                if (ctx.state === "running" && remaining <= 0.000001)
+                    signalReferenceReady?.(true);
+                else
+                    referenceTimer = setTimeout(checkReferenceReady, Math.max(10, Math.ceil(remaining * 1000)));
+            };
+            checkReferenceReady();
+            return {
+                readyMs: 40,
+                get durationMs() { return (endTime - onset + 0.04) * 1000; },
+                get activeVoices() { return playback.activeVoices; },
+                ready: referenceReady,
+                completed,
+                cancel: playback.cancel,
+                fadeOut: playback.fadeOut,
+            };
+        };
         try {
             if (context)
-                chordNotes(chord).forEach((note) => schedule(note, start, volume * 0.09));
+                chordNotes(chord)
+                    .filter((note) => {
+                    const excluded = options.fullReference ? midi : options.excludeTarget;
+                    return excluded === undefined || excluded === null || note % 12 !== excluded % 12;
+                })
+                    .forEach((note) => schedule(note, start, volume * 0.09));
             if (midi !== null)
-                schedule(midi, start + 0.08, volume * 0.24);
+                schedule(midi, start + (options.fullReference ? 0 : 0.08), volume * 0.24);
         }
         catch (e) {
             this.stop();
@@ -142,9 +184,20 @@ export class AudioEngine {
             settle("completed");
         return playback;
     }
+    playReference(chord, midi, volume, continuing) {
+        if (!this.context || this.context.state !== "running")
+            throw new Error("Audio unavailable. Press Retry audio.");
+        if (continuing && continuing === this.single) {
+            const reference = this.layerTarget?.(midi, volume);
+            if (reference)
+                return reference;
+        }
+        return this.playSingle(chord, midi, volume, true, { fullReference: true });
+    }
     stop() {
         this.single?.cancel();
         this.single = null;
+        this.layerTarget = null;
         for (const voice of this.voices) {
             try {
                 voice.stop();
