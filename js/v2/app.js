@@ -51,7 +51,7 @@ function scheduleAdvance({ after, delayMs = 0, fade = false, } = {}) {
 let seenMaterial = new Set();
 let presets = [], sessions = [], activeId = builtins[0].id, draft;
 let session = null, current = null, generate = null;
-let step = "Harmony", busy = false, ready = false, done = false, resolved = false, feedback = "", started = 0, operation = 0, dirty = false, fatal = false;
+let step = "Harmony", busy = false, ready = false, done = false, choosingWrong = false, resolved = false, feedback = "", started = 0, operation = 0, dirty = false, fatal = false;
 let selectedCohort = "", rootFilter = "", qualityFilter = "";
 function el(tag, text = "", cls = "") {
     const e = document.createElement(tag);
@@ -417,6 +417,7 @@ function next() {
     session.attempts.push(current);
     persist();
     done = false;
+    choosingWrong = false;
     resolved = false;
     ready = false;
     started = 0;
@@ -604,28 +605,48 @@ function renderPractice() {
         }, false, !ready || busy));
     }
     else if (a.revealedReference && a.firstCorrect === null) {
-        const wrongLabel = el("label", "If incorrect, which degree did you imagine?"), wrong = el("select");
-        wrong.id = "wrong-degree";
-        const placeholder = el("option", "Choose a degree or Unknown");
-        placeholder.value = "";
-        wrong.append(placeholder);
-        for (const d of [
-            ...a.target.options.filter((d) => d !== a.target.degree),
-            "unknown",
-        ]) {
-            const o = el("option", d === "unknown" ? "Unknown" : d);
-            o.value = d;
-            wrong.append(o);
-        }
-        wrongLabel.append(wrong);
-        host.append(wrongLabel);
-        const grade = (correct) => {
-            rate(a, correct, wrong.value);
+        const grade = (correct, wrong) => {
+            if (current !== a || !ready || busy || resolved || a.firstCorrect !== null)
+                return;
+            if (correct ? choosingWrong : !choosingWrong)
+                return;
+            rate(a, correct, wrong);
             resolved = true;
             feedback = correct ? "Self-rated Correct" : "Self-rated Incorrect";
             afterResponse();
         };
-        host.append(actions(button("Correct", () => grade(true), false, busy), button("Incorrect", () => grade(false), true, busy)));
+        if (choosingWrong) {
+            const wrongLabel = el("label", "Which degree did you imagine?"), wrong = el("select");
+            wrong.id = "wrong-degree";
+            wrong.disabled = busy || !ready;
+            const placeholder = el("option", "Choose a degree or Unknown");
+            placeholder.value = "";
+            wrong.append(placeholder);
+            for (const d of [
+                ...a.target.options.filter((d) => d !== a.target.degree),
+                "unknown",
+            ]) {
+                const o = el("option", d === "unknown" ? "Unknown" : d);
+                o.value = d;
+                wrong.append(o);
+            }
+            wrong.onchange = () => {
+                if (wrong.value && wrong.value !== a.target.degree &&
+                    (wrong.value === "unknown" || a.target.options.includes(wrong.value)))
+                    grade(false, wrong.value);
+            };
+            wrongLabel.append(wrong);
+            host.append(wrongLabel);
+        }
+        else {
+            host.append(actions(button("Correct", () => grade(true), false, busy), button("Incorrect", () => {
+                if (current !== a || !ready || busy || resolved || choosingWrong)
+                    return;
+                choosingWrong = true;
+                feedback = "Which degree did you imagine?";
+                renderPractice();
+            }, true, busy)));
+        }
     }
     if (resolved)
         host.append(button(c.count && session.attempts.length >= c.count
@@ -641,7 +662,8 @@ function renderPractice() {
         const focus = resolved
             ? buttons.find((b) => b.textContent === "Next" || b.textContent === "Finish session")
             : done
-                ? host.querySelector("#wrong-degree")
+                ? host.querySelector("#wrong-degree") ??
+                    buttons.find((b) => b.textContent === "Correct")
                 : c.exercise === "m2"
                     ? host.querySelector(".answers button:not(:disabled)")
                     : buttons.find((b) => b.textContent?.startsWith("Done"));

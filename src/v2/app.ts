@@ -94,6 +94,7 @@ let step = "Harmony",
   busy = false,
   ready = false,
   done = false,
+  choosingWrong = false,
   resolved = false,
   feedback = "",
   started = 0,
@@ -566,6 +567,7 @@ function next() {
   session.attempts.push(current);
   persist();
   done = false;
+  choosingWrong = false;
   resolved = false;
   ready = false;
   started = 0;
@@ -790,37 +792,51 @@ function renderPractice() {
       ),
     );
   } else if (a.revealedReference && a.firstCorrect === null) {
-    const wrongLabel = el(
-        "label",
-        "If incorrect, which degree did you imagine?",
-      ),
-      wrong = el("select");
-    wrong.id = "wrong-degree";
-    const placeholder = el("option", "Choose a degree or Unknown");
-    placeholder.value = "";
-    wrong.append(placeholder);
-    for (const d of [
-      ...a.target.options.filter((d) => d !== a.target.degree),
-      "unknown",
-    ]) {
-      const o = el("option", d === "unknown" ? "Unknown" : d);
-      o.value = d;
-      wrong.append(o);
-    }
-    wrongLabel.append(wrong);
-    host.append(wrongLabel);
-    const grade = (correct: boolean) => {
-      rate(a, correct, wrong.value);
+    const grade = (correct: boolean, wrong?: string) => {
+      if (current !== a || !ready || busy || resolved || a.firstCorrect !== null)
+        return;
+      if (correct ? choosingWrong : !choosingWrong) return;
+      rate(a, correct, wrong);
       resolved = true;
       feedback = correct ? "Self-rated Correct" : "Self-rated Incorrect";
       afterResponse();
     };
-    host.append(
-      actions(
-        button("Correct", () => grade(true), false, busy),
-        button("Incorrect", () => grade(false), true, busy),
-      ),
-    );
+    if (choosingWrong) {
+      const wrongLabel = el("label", "Which degree did you imagine?"),
+        wrong = el("select");
+      wrong.id = "wrong-degree";
+      wrong.disabled = busy || !ready;
+      const placeholder = el("option", "Choose a degree or Unknown");
+      placeholder.value = "";
+      wrong.append(placeholder);
+      for (const d of [
+        ...a.target.options.filter((d) => d !== a.target.degree),
+        "unknown",
+      ]) {
+        const o = el("option", d === "unknown" ? "Unknown" : d);
+        o.value = d;
+        wrong.append(o);
+      }
+      wrong.onchange = () => {
+        if (wrong.value && wrong.value !== a.target.degree &&
+            (wrong.value === "unknown" || a.target.options.includes(wrong.value)))
+          grade(false, wrong.value);
+      };
+      wrongLabel.append(wrong);
+      host.append(wrongLabel);
+    } else {
+      host.append(
+        actions(
+          button("Correct", () => grade(true), false, busy),
+          button("Incorrect", () => {
+            if (current !== a || !ready || busy || resolved || choosingWrong) return;
+            choosingWrong = true;
+            feedback = "Which degree did you imagine?";
+            renderPractice();
+          }, true, busy),
+        ),
+      );
+    }
   }
   if (resolved)
     host.append(
@@ -851,7 +867,8 @@ function renderPractice() {
           (b) => b.textContent === "Next" || b.textContent === "Finish session",
         )
       : done
-        ? host.querySelector<HTMLElement>("#wrong-degree")
+        ? host.querySelector<HTMLElement>("#wrong-degree") ??
+          buttons.find((b) => b.textContent === "Correct")
         : c.exercise === "m2"
           ? host.querySelector<HTMLElement>(".answers button:not(:disabled)")
           : buttons.find((b) => b.textContent?.startsWith("Done"));
