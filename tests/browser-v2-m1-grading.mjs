@@ -116,7 +116,8 @@ try {
   await page.waitForFunction(() =>
     document.activeElement.textContent.startsWith("Done -"),
   );
-  assert.deepEqual((await latest()).attempts[0], graded);
+  const recoveredGrade = { ...graded, replaysAfterFirst: 1 };
+  assert.deepEqual((await latest()).attempts[0], recoveredGrade);
   assert.equal(
     await page.evaluate(() =>
       document.activeElement.textContent.startsWith("Done -"),
@@ -140,7 +141,7 @@ try {
   assert.equal((await latest()).attempts[1].firstCorrect, true);
   await page.waitForURL(/#results\//);
   assert.equal((await latest()).attempts.length, 2);
-  assert.deepEqual((await latest()).attempts[0], graded);
+  assert.deepEqual((await latest()).attempts[0], recoveredGrade);
 
   // Tail first: audio alone cannot grade, and Unknown is an explicit choice.
   await page.setViewportSize({ width: 390, height: 844 });

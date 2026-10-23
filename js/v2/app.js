@@ -524,7 +524,9 @@ function audioUnavailable(a, e) {
 }
 async function revealReference(a) {
     const s = session;
-    if ((await play(false, true)) && current === a && session === s) {
+    if ((await play(started > 0 && a.revealedReference, true)) &&
+        current === a &&
+        session === s) {
         resolved = true;
         feedback = "Reference revealed. First answer unchanged.";
         persist();
@@ -597,9 +599,12 @@ function renderPractice() {
     status.setAttribute("role", "status");
     host.append(status);
     if (!(c.exercise === "m1" && !c.context && !done))
-        host.append(actions(button(ready ? "Replay" : "Retry audio", () => c.exercise === "m2" && referencePending && !resolved
-            ? revealReference(a)
-            : play(ready && started > 0 && (!done || a.revealedReference), done || resolved || referencePending), true, busy)));
+        host.append(actions(button(ready ? "Replay" : "Retry audio", () => {
+            const reference = done || resolved || referencePending;
+            return c.exercise === "m2" && referencePending && !resolved
+                ? revealReference(a)
+                : play(started > 0 && (!reference || a.revealedReference), reference);
+        }, true, busy)));
     if (c.exercise === "m2") {
         if (!resolved) {
             const answers = el("div", "", "answers");

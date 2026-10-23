@@ -673,7 +673,11 @@ function audioUnavailable(a: Attempt, e: unknown) {
 }
 async function revealReference(a: Attempt) {
   const s = session;
-  if ((await play(false, true)) && current === a && session === s) {
+  if (
+    (await play(started > 0 && a.revealedReference, true)) &&
+    current === a &&
+    session === s
+  ) {
     resolved = true;
     feedback = "Reference revealed. First answer unchanged.";
     persist();
@@ -764,13 +768,15 @@ function renderPractice() {
       actions(
         button(
           ready ? "Replay" : "Retry audio",
-          () =>
-            c.exercise === "m2" && referencePending && !resolved
+          () => {
+            const reference = done || resolved || referencePending;
+            return c.exercise === "m2" && referencePending && !resolved
               ? revealReference(a)
               : play(
-                  ready && started > 0 && (!done || a.revealedReference),
-                  done || resolved || referencePending,
-                ),
+                  started > 0 && (!reference || a.revealedReference),
+                  reference,
+                );
+          },
           true,
           busy,
         ),

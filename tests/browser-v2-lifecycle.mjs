@@ -74,6 +74,11 @@ try {
     const recovered = (await latest()).attempts[0];
     assert.equal(recovered.timingValidity, "interrupted");
     assert.equal(recovered.firstResponseMs, null);
+    assert.equal(
+      recovered.replaysBeforeFirst,
+      0,
+      "never-ready playback is not a replay",
+    );
     assert.equal(await page.evaluate(() => window.testAudio.state), "running");
     await page.getByRole("button", { name: "Stop", exact: true }).click();
   }
@@ -91,6 +96,7 @@ try {
   await page.getByRole("button", { name: "b3", exact: true }).click();
   assert.equal((await latest()).attempts[0].timingValidity, "interrupted");
   assert.equal((await latest()).attempts[0].firstResponseMs, null);
+  assert.equal((await latest()).attempts[0].replaysBeforeFirst, 1);
   await page.getByRole("button", { name: "Stop", exact: true }).click();
 
   await start();
@@ -111,11 +117,13 @@ try {
         .attempts.length === 2,
   );
   const recoveredFirst = (await latest()).attempts[0];
+  assert.equal(recoveredFirst.replaysAfterFirst, 1);
   for (const key of [
     "firstAnswer",
     "firstCorrect",
     "firstResponseMs",
     "timingValidity",
+    "replaysBeforeFirst",
   ])
     assert.deepEqual(recoveredFirst[key], beforeInterruption[key]);
   await page.getByRole("button", { name: "Stop", exact: true }).click();

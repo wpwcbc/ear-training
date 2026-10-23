@@ -185,9 +185,14 @@ try {
       "firstCorrect",
       "firstResponseMs",
       "timingValidity",
-      "replaysAfterFirst",
+      "replaysBeforeFirst",
     ])
       assert.deepEqual(recovered[key], locked[key]);
+    assert.equal(
+      recovered.replaysAfterFirst,
+      phase === "before-ready" ? 0 : 1,
+      "only a previously available reference makes recovery a review replay",
+    );
     await page.getByRole("button", { name: "Stop", exact: true }).click();
   }
 

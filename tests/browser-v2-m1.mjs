@@ -122,6 +122,7 @@ try {
   await page.waitForURL(/#results\//);
   assert.equal((await latest()).attempts.length, 1);
   assert.equal((await latest()).attempts[0].firstCorrect, true);
+  assert.equal((await latest()).attempts[0].replaysAfterFirst, 1);
 
   // The same stored M1 evidence must stay intact and outside new-onset cohorts.
   const oldSession = await latest();
