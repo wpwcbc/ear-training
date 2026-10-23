@@ -9,14 +9,19 @@ function cancelAdvance() {
     clearTimeout(transitionTimer);
     transitionTimer = undefined;
 }
-function scheduleAdvance({ after, delayMs = 0, fade = false } = {}) {
+function scheduleAdvance({ after, delayMs = 0, fade = false, } = {}) {
     cancelAdvance();
     if (!session || !current || !resolved || session.config.autoAdvance === false)
         return;
     const token = transition, a = current, s = session, op = operation;
-    const active = () => token === transition && current === a && session === s &&
-        operation === op && resolved && s.config.autoAdvance !== false &&
-        location.hash === "#practice" && !document.hidden;
+    const active = () => token === transition &&
+        current === a &&
+        session === s &&
+        operation === op &&
+        resolved &&
+        s.config.autoAdvance !== false &&
+        location.hash === "#practice" &&
+        !document.hidden;
     const advance = async () => {
         try {
             if (after && (await after) !== "completed")
@@ -445,7 +450,7 @@ async function play(replay, reference = false) {
         await audio.ready();
         if (token !== operation)
             return false;
-        const plan = audio.playSingle(a.target.chord, c.exercise === "m2" || reference ? a.target.midi : null, c.volume, reference ? false : c.context);
+        const plan = audio.playSingle(a.target.chord, c.exercise === "m2" || reference ? a.target.midi : null, c.volume, reference ? c.exercise === "m2" : c.context);
         playback = plan;
         if (replay) {
             if (done || a.firstAnswer !== null)
@@ -565,10 +570,15 @@ function renderPractice() {
         }
         if (a.firstAnswer !== null && !resolved)
             host.append(button("Reveal Answer", async () => {
-                if (await play(true, true)) {
+                if (current !== a || busy || resolved)
+                    return;
+                if (await play(false, true)) {
                     resolved = true;
                     feedback = "Reference revealed. First answer unchanged.";
-                    afterResponse();
+                    persist();
+                    renderPractice();
+                    if (playback)
+                        scheduleAdvance({ after: playback.completed });
                 }
             }, true, busy));
     }
