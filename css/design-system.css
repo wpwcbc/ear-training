@@ -633,6 +633,36 @@ summary {
 .app-ready .config-details > summary {
   color: var(--ds-secondary);
 }
+.app-ready .config-main {
+  min-width: 0;
+}
+.app-ready .config-item h3 {
+  overflow-wrap: anywhere;
+}
+.app-ready .config-details > summary {
+  min-height: 44px;
+  align-items: center;
+}
+.app-ready .config-item .row-menu > summary {
+  width: 44px;
+  min-width: 44px;
+  min-height: 44px;
+}
+.app-ready #flow-status:not(:empty),
+.app-ready #wizard-validation:not(:empty) {
+  border: 1px solid var(--ds-control);
+  border-radius: 8px;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.app-ready #flow-status[data-tone="error"]:not(:empty),
+.app-ready #wizard-validation:not(:empty) {
+  border-color: var(--ds-danger);
+}
+.app-ready #wizard-view > #flow-status {
+  flex-shrink: 0;
+  margin-block: 8px 0;
+}
 .app-ready .exercise-type {
   color: var(--ds-accent);
   background: var(--ds-selected);
@@ -1304,6 +1334,14 @@ summary {
   }
 }
 @media (max-width: 479px) {
+  .app-ready .wizard-stepper {
+    gap: 4px;
+  }
+  .app-ready .wizard-stepper button {
+    padding-inline: 2px;
+    font-size: 11px;
+    overflow-wrap: normal;
+  }
   .mode-grid,
   .dashboard-workspace .mode-grid {
     grid-template-columns: minmax(0, 1fr);
@@ -1327,6 +1365,15 @@ summary {
   }
   .mode-card button {
     width: auto;
+  }
+}
+@media (forced-colors: active) {
+  .app-icon,
+  .app-icon-button::before,
+  .app-ready .with-icon::before,
+  .app-ready .config-summary-row button::before {
+    forced-color-adjust: none;
+    background-color: CanvasText;
   }
 }
 @media (prefers-reduced-motion: reduce) {

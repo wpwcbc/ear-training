@@ -106,9 +106,11 @@ function action(
   return button;
 }
 function showError(error: unknown): void {
-  $("flow-status").dataset.tone = "error";
-  $("flow-status").textContent =
-    error instanceof Error ? error.message : String(error);
+  const notice = $("flow-status");
+  notice.dataset.tone = "error";
+  notice.setAttribute("role", "alert");
+  notice.setAttribute("aria-live", "assertive");
+  notice.textContent = error instanceof Error ? error.message : String(error);
 }
 function summary(config: Config): string[] {
   return [
@@ -151,6 +153,7 @@ export function installFlow(engine: Bridge) {
   let source = "wizard",
     sourcePresetId: string | undefined;
   let creating = false;
+  let draftStorageError = "";
   let showAllRecent = false;
   let prepareTimer = 0;
   let startingContext = false;
@@ -365,13 +368,32 @@ export function installFlow(engine: Bridge) {
     return readList<Preset>(localStorage, flowKeys.presets);
   }
   function draftSave() {
-    write(flowKeys.draft, {
-      schemaVersion: 1,
-      config: draft,
-      customs: draftCustoms,
-      step: wizardStep,
-      maxStep,
-    });
+    try {
+      write(flowKeys.draft, {
+        schemaVersion: 1,
+        config: draft,
+        customs: draftCustoms,
+        step: wizardStep,
+        maxStep,
+      });
+      if (
+        draftStorageError &&
+        $("flow-status").textContent === draftStorageError
+      )
+        $("flow-status").textContent = "";
+      draftStorageError = "";
+      return true;
+    } catch (error) {
+      const name = error instanceof Error ? error.name : "";
+      draftStorageError =
+        name === "QuotaExceededError"
+          ? "Draft could not be saved: browser storage is full. Your changes remain open. Free some storage, then choose Save Draft to retry."
+          : name === "SecurityError"
+            ? "Draft could not be saved: browser storage is blocked. Your changes remain open. Allow storage for this site, then choose Save Draft to retry."
+            : "Draft could not be saved. Your changes remain open. Choose Save Draft to retry before closing this page.";
+      showError(draftStorageError);
+      return false;
+    }
   }
   function hydrate(
     config: Config,
@@ -944,6 +966,7 @@ export function installFlow(engine: Bridge) {
     source = from;
     sourcePresetId = presetId;
     if (config) hydrate(config, customs);
+    else if (draftStorageError) hydrate(draft, draftCustoms);
     else {
       const raw = localStorage.getItem(flowKeys.draft);
       if (raw) {
@@ -1055,6 +1078,8 @@ export function installFlow(engine: Bridge) {
     };
     write(flowKeys.presets, [...presets(), preset]);
     $("flow-status").dataset.tone = "info";
+    $("flow-status").setAttribute("role", "status");
+    $("flow-status").setAttribute("aria-live", "polite");
     $("flow-status").textContent = "Preset saved.";
   }
   const quickStarts: [string, Config][] = [
@@ -1366,7 +1391,10 @@ export function installFlow(engine: Bridge) {
     trigger.setAttribute("aria-label", `More actions for ${name}`);
     const items = node("div", "", "row-menu-items");
     items.addEventListener("click", (event) => {
-      if ((event.target as HTMLElement).closest("button")) menu.open = false;
+      if ((event.target as HTMLElement).closest("button")) {
+        menu.open = false;
+        trigger.focus({ preventScroll: true });
+      }
     });
     items.append(
       action("Edit & Practice", () =>
@@ -1914,6 +1942,7 @@ export function installFlow(engine: Bridge) {
   }
   function routePage() {
     const route = location.hash.replace(/^#\/?/, "") || "home";
+    const changedRoute = currentRoute !== route;
     document
       .querySelectorAll<HTMLDialogElement>("#analytics-content dialog[open]")
       .forEach((panel) => panel.close());
@@ -1989,6 +2018,14 @@ export function installFlow(engine: Bridge) {
       $("session-count").textContent = "Practice saved locally";
     $("flow-status").textContent = "";
     $("flow-status").dataset.tone = "info";
+    $("flow-status").setAttribute("role", "status");
+    $("flow-status").setAttribute("aria-live", "polite");
+    if (route.startsWith("setup/"))
+      $("wizard-view").insertBefore(
+        $("flow-status"),
+        document.querySelector(".wizard-footer"),
+      );
+    else shell.prepend($("flow-status"));
     if (route.startsWith("setup/")) {
       $("wizard-view").hidden = false;
       wizardStep = Math.max(
@@ -2062,6 +2099,18 @@ export function installFlow(engine: Bridge) {
     } else {
       $("dashboard-view").hidden = false;
       renderDashboard();
+    }
+    if (draftStorageError) showError(draftStorageError);
+    if (changedRoute && !route.startsWith("insights")) {
+      const heading = route.startsWith("setup/")
+        ? $("wizard-section-title")
+        : Array.from(main.querySelectorAll<HTMLElement>("h2")).find(
+            (item) => item.getClientRects().length > 0,
+          );
+      if (heading?.getClientRects().length) {
+        heading.tabIndex = -1;
+        heading.focus({ preventScroll: true });
+      }
     }
     window.scrollTo(0, 0);
   }
@@ -2236,9 +2285,11 @@ export function installFlow(engine: Bridge) {
   $("save-draft").onclick = () => {
     try {
       readDraft();
-      draftSave();
+      if (!draftSave()) return;
       $("flow-status").textContent = "Draft saved.";
       $("flow-status").dataset.tone = "info";
+      $("flow-status").setAttribute("role", "status");
+      $("flow-status").setAttribute("aria-live", "polite");
     } catch (error) {
       showError(error);
     }

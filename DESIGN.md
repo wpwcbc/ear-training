@@ -41,3 +41,14 @@ Exercise choices use the entire card as one accessible button. Header and mode c
 Recent remains actual recent configurations; supplied templates belong to Quick starts.
 Harmony begins with maj7, m7, 7 and m7b5. All other qualities remain in an expandable catalogue;
 existing advanced selections automatically expand, and edits preserve hidden selections.
+
+## Quality Follow-up (2026-10-23)
+
+Setup navigation focuses the current step heading; Insights keeps its own focus handling.
+Draft write failures preserve in-memory choices, including leaving and returning to setup,
+and expose a recoverable alert beside the persistent footer. Successful saves use a polite
+status. Long saved names wrap without changing stored text. Configuration disclosures and
+row-menu triggers target 44px, including mobile. Status notices use semantic full borders
+and 14px secondary text; compact step labels remain whole at 320px.
+In forced-color mode only masked icon fills opt out of automatic recoloring,
+using CanvasText; the rest of the interface retains the user's system colors.
