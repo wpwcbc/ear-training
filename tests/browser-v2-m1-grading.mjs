@@ -47,7 +47,7 @@ async function start(overrides = {}) {
     .locator('[data-preset-id="recognition-guides"]')
     .getByRole("button", { name: "Start", exact: true })
     .click();
-  await page.getByRole("button", { name: /^Done -/ }).click();
+  await page.getByRole("button", { name: /^Done$/ }).click();
   await page.getByRole("button", { name: "Correct", exact: true }).waitFor();
 }
 async function waitReference() {
@@ -96,7 +96,7 @@ try {
   assert.equal(graded.firstResponseMs, locked.firstResponseMs);
   assert.equal(graded.replaysAfterFirst, 0);
   await page
-    .getByRole("status")
+    .locator("#feedback")
     .filter({ hasText: /^Self-rated Incorrect$/ })
     .waitFor();
   await page.evaluate(() => window.testAudio.suspend());
@@ -114,13 +114,13 @@ try {
         .length === 2,
   );
   await page.waitForFunction(() =>
-    document.activeElement.textContent.startsWith("Done -"),
+    document.activeElement.textContent.startsWith("Done"),
   );
   const recoveredGrade = { ...graded, replaysAfterFirst: 1 };
   assert.deepEqual((await latest()).attempts[0], recoveredGrade);
   assert.equal(
     await page.evaluate(() =>
-      document.activeElement.textContent.startsWith("Done -"),
+      document.activeElement.textContent.startsWith("Done"),
     ),
     true,
   );
@@ -135,7 +135,7 @@ try {
   );
   await page.keyboard.press("Enter");
   await page
-    .getByRole("status")
+    .locator("#feedback")
     .filter({ hasText: /^Self-rated Correct$/ })
     .waitFor();
   assert.equal((await latest()).attempts[1].firstCorrect, true);
@@ -233,7 +233,7 @@ try {
     (await latest()).attempts[0].firstResponseMs,
     manualLocked.firstResponseMs,
   );
-  await page.getByRole("button", { name: "Replay", exact: true }).click();
+  await page.getByRole("button", { name: /^Replay(?: context| reference)?$/ }).click();
   await waitReference();
   const reviewed = (await latest()).attempts[0];
   assert.equal(reviewed.replaysAfterFirst, 1);
@@ -241,7 +241,7 @@ try {
   assert.equal(reviewed.firstResponseMs, manualLocked.firstResponseMs);
   assert.equal((await latest()).attempts.length, 1);
   await page.getByRole("button", { name: "Next", exact: true }).click();
-  await page.getByRole("button", { name: /^Done -/ }).click();
+  await page.getByRole("button", { name: /^Done$/ }).click();
   await page.getByRole("button", { name: "Incorrect", exact: true }).waitFor();
   await page.evaluate(() => {
     window.oldCorrect.click();
@@ -287,9 +287,9 @@ try {
         n + 1,
       ordinal,
     );
-    await page.getByRole("button", { name: /^Done -/ }).waitFor();
+    await page.getByRole("button", { name: /^Done$/ }).waitFor();
     if (ordinal === 1) {
-      await page.getByRole("button", { name: /^Done -/ }).click();
+      await page.getByRole("button", { name: /^Done$/ }).click();
       await page
         .getByRole("button", { name: "Correct", exact: true })
         .waitFor();

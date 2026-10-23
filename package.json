@@ -14,7 +14,7 @@
 		"test:redesign": "node tests/browser-redesign.mjs",
 		"test:critique": "node tests/browser-critique-fixes.mjs",
 		"test:quality": "node tests/browser-quality.mjs",
-		"test:v2": "node tests/browser-v2.mjs && node tests/browser-v2-homepage.mjs && node tests/browser-v2-auto-advance.mjs && node tests/browser-v2-reveal.mjs && node tests/browser-v2-m1.mjs && node tests/browser-v2-m1-grading.mjs && node tests/browser-v2-lifecycle.mjs",
+		"test:v2": "node tests/browser-v2.mjs && node tests/browser-v2-homepage.mjs && node tests/browser-v2-auto-advance.mjs && node tests/browser-v2-reveal.mjs && node tests/browser-v2-m1.mjs && node tests/browser-v2-m1-grading.mjs && node tests/browser-v2-lifecycle.mjs && node tests/browser-v2-split-desk.mjs",
 		"test:entry": "node tests/browser-entry.mjs",
 		"benchmark:summary": "node scripts/benchmark-summary.mjs",
 		"watch": "tsc -p . -w"

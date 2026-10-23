@@ -62,7 +62,7 @@ async function start(interruption = null, overrides = {}) {
     await page.waitForFunction(() =>
       document.querySelector(".answers button:enabled") ||
       [...document.querySelectorAll("button:enabled")].some((b) =>
-        b.textContent.startsWith("Done -"),
+        b.textContent.startsWith("Done"),
       ),
     );
 }
@@ -90,7 +90,7 @@ try {
   await start();
   await page.evaluate(() => window.testAudio.suspend());
   await page
-    .getByRole("status")
+    .locator("#feedback")
     .filter({ hasText: /Audio unavailable/ })
     .waitFor();
   await page.getByRole("button", { name: "Retry audio", exact: true }).click();
@@ -149,7 +149,7 @@ try {
   await start();
   await page.getByRole("button", { name: "b3", exact: true }).click();
   const first = (await latest()).attempts[0];
-  await page.getByRole("button", { name: "Replay", exact: true }).click();
+  await page.getByRole("button", { name: /^Replay(?: context| reference)?$/ }).click();
   await page.waitForTimeout(1400);
   assert.equal(
     (await latest()).attempts.length,
@@ -183,7 +183,7 @@ try {
     for (const exit of ["navigation", "hidden", "pagehide"]) {
       await start(null, { exercise });
       if (exercise === "m1") {
-        await page.getByRole("button", { name: "Done - imagined", exact: true }).click();
+        await page.getByRole("button", { name: "Done", exact: true }).click();
         await page.getByRole("button", { name: "Correct", exact: true }).click();
       } else {
         await page.getByRole("button", { name: "5", exact: true }).click();
@@ -234,7 +234,7 @@ try {
   await page.evaluate(() => window.releaseOldReference());
   await page.waitForTimeout(2800);
   assert.deepEqual(await latest(), replacement, "late successful readiness cannot resolve a replacement question");
-  assert.equal(await page.locator(".question p").textContent(), "Which chord degree?");
+  assert.equal(await page.locator(".question-prompt").textContent(), "Which chord degree?");
   assert.deepEqual(await page.evaluate((id) => JSON.parse(localStorage.getItem("jazzEarLab:v2:sessions")).find((s) => s.id === id), replaced.id), replaced);
   await page.getByRole("button", { name: "Stop", exact: true }).click();
   console.log(

@@ -17,6 +17,8 @@ export interface QuestionView {
   readonly choosingWrong: boolean;
   readonly resolved: boolean;
   readonly feedback: string;
+  readonly sounding: boolean;
+  readonly reference: boolean;
 }
 
 interface QuestionEffects {
@@ -58,7 +60,7 @@ export class QuestionLifecycle {
   ) {}
 
   get view(): QuestionView {
-    return { ...this.state };
+    return { ...this.state, sounding: !this.disposed && this.state.ready && (this.playback?.activeVoices ?? 0) > 0, reference: this.referencePending };
   }
 
   async act(action: QuestionAction): Promise<void> {
@@ -274,6 +276,7 @@ export class QuestionLifecycle {
           this.audioUnavailable(
             new Error("Audio playback interrupted. Press Retry audio."),
           );
+        else if (active()) this.effects.change();
       });
       if (replay) {
         if (s.done || a.firstAnswer !== null) a.replaysAfterFirst++;

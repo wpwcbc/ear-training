@@ -63,16 +63,16 @@ async function start(overrides = {}, failure = null) {
     .locator('[data-preset-id="recognition-guides"]')
     .getByRole("button", { name: "Start", exact: true })
     .click();
-  await page.getByRole("button", { name: /^Done -/ }).waitFor();
+  await page.getByRole("button", { name: /^Done$/ }).waitFor();
 }
 async function done() {
-  await page.getByRole("button", { name: /^Done -/ }).click();
+  await page.getByRole("button", { name: /^Done$/ }).click();
 }
 try {
   await start();
   await page.waitForFunction(() =>
     [...document.querySelectorAll("button")].some(
-      (b) => b.textContent.startsWith("Done -") && !b.disabled,
+      (b) => b.textContent.startsWith("Done") && !b.disabled,
     ),
   );
   const initial = await page.evaluate(() => window.trace[0]);
@@ -193,7 +193,7 @@ try {
     /#practice$/,
     "manual M1 stays resolved after reference completion",
   );
-  await page.getByRole("button", { name: "Replay", exact: true }).click();
+  await page.getByRole("button", { name: /^Replay(?: context| reference)?$/ }).click();
   await page.waitForFunction(() => window.trace.at(-1).ready === true);
   assert.equal((await latest()).attempts[0].replaysAfterFirst, 1);
   assert.equal(
@@ -206,7 +206,7 @@ try {
   await page.waitForURL(/#results\//);
 
   await start({ method: "played", count: 2, autoAdvance: false });
-  await page.getByRole("button", { name: "Replay", exact: true }).click();
+  await page.getByRole("button", { name: /^Replay(?: context| reference)?$/ }).click();
   await page.waitForFunction(() => window.trace.at(-1).end === "completed");
   await done();
   await page.getByRole("button", { name: "Correct", exact: true }).waitFor();
@@ -236,7 +236,7 @@ try {
       response = (await latest()).attempts[0].firstResponseMs;
     }
     await page
-      .getByRole("status")
+      .locator("#feedback")
       .filter({ hasText: /Audio unavailable/ })
       .waitFor();
     assert.equal(

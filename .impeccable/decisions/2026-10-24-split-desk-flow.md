@@ -1,11 +1,13 @@
 # Split Desk: Remaining V2 Flow Mockups
 
-Status: Flow-extension mockups awaiting user confirmation, 2026-10-24.
+Status: Flow-extension mockups approved by the user, 2026-10-24.
 The user approved **C - Split Desk** for M2 Practice and Insights, including
 extension to the other V2 screens. That approval is recorded in the selected
 comp's sidecar and the [selection record](2026-10-24-visual-identity-selection.json).
-The new boards below are not yet approved. No application implementation,
-metric change, new mode or Legacy change is part of this update.
+The user approved all three boards below and explicitly requested application
+implementation. Delivery and verification are tracked in
+[V2 Split Desk implementation](../../V2_SPLIT_DESK_IMPLEMENTATION.md).
+This approval does not authorize metric changes, new modes or Legacy changes.
 
 ## Fixed Direction
 
@@ -96,11 +98,11 @@ The engine's comp gate has passed with three composition options and one
 user-approved C. Its scanner requires flat PNGs plus .png.json sidecars, so
 byte-identical mirrors of the original composition boards live directly under
 .impeccable/mocks/; the nested user-facing links remain unchanged. Workflow
-state is at spec, with measurement/application implementation deliberately
-not started while this flow confirmation is pending. The six-block direction
+state now tracks measurement and verification of the approved implementation.
+The six-block direction
 contract is recorded in the V2 development-only surface brief; it must not be
 embedded in application source, runtime UI or production bundles.
 
-Next: confirm these extensions as the implementation reference, or request a
-specific correction. Confirmation must not silently change any exercise,
-scoring, timing, storage or analytical semantics.
+These extensions are the approved implementation reference. Exercise,
+scoring, timing, storage and analytical semantics remain governed by the
+existing specifications and explicitly approved navigation/focus changes.

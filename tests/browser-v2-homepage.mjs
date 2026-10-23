@@ -181,12 +181,12 @@ try {
     assert.ok(saved.qualities.includes(target.chord.quality));
     if (id === "m1-general") {
       const done = page.getByRole("button", {
-        name: "Done - imagined",
+        name: "Done",
         exact: true,
       });
       await page.waitForFunction(() =>
         [...document.querySelectorAll("button")].some(
-          (b) => b.textContent === "Done - imagined" && !b.disabled,
+          (b) => b.textContent === "Done" && !b.disabled,
         ),
       );
       assert.deepEqual(await page.evaluate(() => window.calls), [
@@ -219,6 +219,7 @@ try {
     await page.evaluate(() => {
       location.hash = "insights";
     });
+    await page.locator(".insight-detail > summary").click();
     await page
       .getByRole("button", { name: "Customize focus", exact: true })
       .first()
@@ -240,6 +241,7 @@ try {
     await page.evaluate(() => {
       location.hash = "insights";
     });
+    await page.locator(".insight-detail > summary").click();
     await page
       .getByRole("button", { name: "Customize focus", exact: true })
       .first()

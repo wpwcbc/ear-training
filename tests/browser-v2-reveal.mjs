@@ -159,7 +159,7 @@ try {
       await page.evaluate(() => window.testAudio.close());
     }
     await page
-      .getByRole("status")
+      .locator("#feedback")
       .filter({ hasText: /Audio unavailable/ })
       .waitFor();
     await page.waitForTimeout(2800);
@@ -206,7 +206,7 @@ try {
   await page.waitForTimeout(1200);
   assert.match(page.url(), /#practice$/);
   const manual = (await latest()).attempts[0];
-  await page.getByRole("button", { name: "Replay", exact: true }).click();
+  await page.getByRole("button", { name: /^Replay(?: context| reference)?$/ }).click();
   await page.waitForFunction(() =>
     [...document.querySelectorAll("button")].some(
       (b) => b.textContent === "Finish session" && !b.disabled,

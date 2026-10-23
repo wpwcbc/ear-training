@@ -94,7 +94,7 @@ async function ready() {
     () =>
       [...document.querySelectorAll("button")].some(
         (b) =>
-          (b.textContent === "Replay" || b.textContent.startsWith("Done")) &&
+          (b.textContent.startsWith("Replay") || b.textContent.startsWith("Done")) &&
           !b.disabled,
       ) &&
       !document.querySelector(".answers button:disabled") &&
@@ -191,7 +191,7 @@ try {
   assert.equal(q.degree, "b3");
   assert.equal(q.options.includes("#9"), false);
   await page.waitForTimeout(60);
-  await page.getByRole("button", { name: "Replay", exact: true }).click();
+  await page.getByRole("button", { name: /^Replay(?: context| reference)?$/ }).click();
   await ready();
   assert.deepEqual(
     await page.evaluate(async () => ({
@@ -227,13 +227,13 @@ try {
   await page.waitForURL(/#results\//);
   assert.match(
     await page.locator("main").textContent(),
-    /First-answer Accuracy: 1\/2/,
+    /First-answer Accuracy[\s\S]*1 \/ 2 assessed/,
   );
   assert.match(await page.locator("main").textContent(), /b3 → 5/);
   await capture("results-desktop");
   await page.reload();
   assert.equal((await latest()).attempts[0].firstCorrect, false);
-  await page.locator("details > summary").click();
+  await page.locator(".question-review > summary").click();
   const recorded = (await latest()).attempts[0];
   await page
     .getByRole("button", { name: "Replay reference", exact: true })
@@ -311,7 +311,7 @@ try {
         window.holdCompletion = true;
       });
     await page
-      .getByRole("button", { name: "Done - " + method, exact: true })
+      .getByRole("button", { name: "Done", exact: true })
       .click();
     if (method === "sung") {
       await page.waitForFunction(() =>
@@ -345,7 +345,7 @@ try {
     );
     assert.equal(
       await page
-        .getByRole("button", { name: "Replay", exact: true })
+        .getByRole("button", { name: /^Replay(?: context| reference)?$/ })
         .isVisible(),
       true,
     );

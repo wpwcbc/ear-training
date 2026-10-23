@@ -22,7 +22,7 @@ export class QuestionLifecycle {
         this.transition = 0;
     }
     get view() {
-        return { ...this.state };
+        return { ...this.state, sounding: !this.disposed && this.state.ready && (this.playback?.activeVoices ?? 0) > 0, reference: this.referencePending };
     }
     async act(action) {
         if (!this.active())
@@ -220,6 +220,8 @@ export class QuestionLifecycle {
             void plan.completed.then((end) => {
                 if (end === "interrupted" && active())
                     this.audioUnavailable(new Error("Audio playback interrupted. Press Retry audio."));
+                else if (active())
+                    this.effects.change();
             });
             if (replay) {
                 if (s.done || a.firstAnswer !== null)

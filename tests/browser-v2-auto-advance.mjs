@@ -148,7 +148,7 @@ try {
   await start();
   await correct();
   await page
-    .getByRole("status")
+    .locator("#feedback")
     .filter({ hasText: /^Correct$/ })
     .waitFor();
   const confirmationAt = await page.evaluate(() => performance.now());
@@ -194,7 +194,7 @@ try {
   );
   await correct();
   await page
-    .getByRole("status")
+    .locator("#feedback")
     .filter({ hasText: /^Correct$/ })
     .waitFor();
   await page.waitForTimeout(500);
@@ -208,7 +208,7 @@ try {
 
   await seed({ count: 0 });
   await start();
-  await page.getByRole("button", { name: "Replay", exact: true }).click();
+  await page.getByRole("button", { name: /^Replay(?: context| reference)?$/ }).click();
   await ready();
   await page.getByRole("button", { name: "5", exact: true }).click();
   const wrong = (await latest()).attempts[0];
@@ -230,7 +230,7 @@ try {
     await page.getByRole("button", { name: "Next", exact: true }).count(),
     0,
   );
-  await page.getByRole("button", { name: "Replay", exact: true }).click();
+  await page.getByRole("button", { name: /^Replay(?: context| reference)?$/ }).click();
   await ready();
   await correct();
   const retry = (await latest()).attempts[0];
@@ -272,7 +272,7 @@ try {
   const manual = (await latest()).attempts[0];
   await page.waitForTimeout(1400);
   assert.match(page.url(), /#practice$/);
-  await page.getByRole("button", { name: "Replay", exact: true }).click();
+  await page.getByRole("button", { name: /^Replay(?: context| reference)?$/ }).click();
   await page.waitForFunction(() =>
     [...document.querySelectorAll("button")].some(
       (b) => b.textContent === "Finish session" && !b.disabled,
@@ -316,7 +316,7 @@ try {
         delete document.hidden;
       });
     } else {
-      await page.getByRole("button", { name: action, exact: true }).click();
+      await page.getByRole("button", { name: action === "Replay" ? /^Replay(?: context| reference)?$/ : action, exact: true }).click();
     }
     if (action === "Next") await ready();
     const settled = await latest();
@@ -407,9 +407,9 @@ try {
     };
   });
   const faulted = (await latest()).attempts[1];
-  await page.getByRole("button", { name: "Replay", exact: true }).click();
+  await page.getByRole("button", { name: /^Replay(?: context| reference)?$/ }).click();
   await page
-    .getByRole("status")
+    .locator("#feedback")
     .filter({ hasText: /Audio unavailable/ })
     .waitFor();
   await page.waitForTimeout(1400);
