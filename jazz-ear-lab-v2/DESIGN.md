@@ -22,3 +22,10 @@ It covers Customize, the M1/M2 listening workspace and Results handoff, includin
 the explicitly approved end/save-then-navigate behavior. It is a planning record,
 not an implemented visual replacement. Preserve the existing identity and exercise
 contracts; desktop/mobile visual compositions come before implementation.
+
+Confirmed Insights UX and information architecture plan (2026-10-24):
+[V2_INSIGHTS_UX_REDESIGN_PLAN.md](../V2_INSIGHTS_UX_REDESIGN_PLAN.md).
+Use the approved performance-to-decision hierarchy, progressive disclosure and
+evidence limits. Focused presets will follow the active Root filter and remain
+editable in Customize. This is a planning record, not an implemented change;
+preserve metric definitions, cohort boundaries, history and the visual identity.
