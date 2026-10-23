@@ -16,6 +16,16 @@ export interface PlaybackEvent {
   start: number;
   duration: number;
 }
+export type SinglePlaybackEnd = "completed" | "cancelled" | "faded";
+export interface SinglePlayback {
+  readonly readyMs: number;
+  readonly durationMs: number;
+  readonly activeVoices: number;
+  readonly ready: Promise<boolean>;
+  readonly completed: Promise<SinglePlaybackEnd>;
+  cancel(): void;
+  fadeOut(durationMs?: number): Promise<SinglePlaybackEnd>;
+}
 export function playbackPlan(
   targets: Target[],
   config: Config,
@@ -44,6 +54,7 @@ export function playbackPlan(
 export class AudioEngine {
   private context: AudioContext | null = null;
   private voices = new Set<AudioScheduledSourceNode>();
+  private single: SinglePlayback | null = null;
   private playbackStart = 0;
   plan: ReturnType<typeof playbackPlan> = {
     events: [],
@@ -68,23 +79,102 @@ export class AudioEngine {
     midi: number | null,
     volume: number,
     context: boolean,
-  ): { readyMs: number; durationMs: number } {
+  ): SinglePlayback {
     if (!this.context || this.context.state !== "running")
       throw new Error("Audio unavailable. Press Retry audio.");
     this.stop();
-    const start = this.context.currentTime + 0.04;
-    if (context)
-      chordNotes(chord).forEach((note) =>
-        this.tone(note, start, 0.8, volume * 0.09, false),
-      );
-    if (midi !== null)
-      this.tone(midi, start + 0.08, 0.75, volume * 0.24, false);
-    return {
-      readyMs: midi === null ? (context ? 900 : 0) : 120,
-      durationMs: 900,
+    const ctx = this.context,
+      dispatch = ctx.currentTime,
+      start = dispatch + 0.04,
+      readyMs = midi === null ? (context ? 900 : 0) : 120;
+    const pending = new Set<ReturnType<AudioEngine["tone"]>>();
+    let endTime = dispatch, settled = false, fading = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let signalReady!: (ready: boolean) => void;
+    let signalEnd!: (end: SinglePlaybackEnd) => void;
+    const ready = new Promise<boolean>((resolve) => { signalReady = resolve; });
+    const completed = new Promise<SinglePlaybackEnd>((resolve) => { signalEnd = resolve; });
+    const settle = (end: SinglePlaybackEnd) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      signalReady(false);
+      signalEnd(end);
     };
+    const playback: SinglePlayback = {
+      readyMs,
+      get durationMs() { return (endTime - dispatch) * 1000; },
+      get activeVoices() { return pending.size; },
+      ready,
+      completed,
+      cancel: () => {
+        if (settled) return;
+        for (const voice of pending) {
+          voice.gain.gain.cancelScheduledValues(ctx.currentTime);
+          voice.gain.gain.setValueAtTime(0, ctx.currentTime);
+          voice.source.stop();
+          this.voices.delete(voice.source);
+        }
+        pending.clear();
+        endTime = ctx.currentTime;
+        settle("cancelled");
+      },
+      fadeOut: (durationMs = 80) => {
+        if (settled || fading) return completed;
+        if (!Number.isFinite(durationMs) || durationMs < 0)
+          throw new RangeError("Fade duration must be a nonnegative number.");
+        fading = true;
+        clearTimeout(timer);
+        signalReady(false);
+        const now = ctx.currentTime, fadeEnd = now + durationMs / 1000;
+        endTime = now;
+        for (const voice of pending) {
+          const end = voice.startTime > now ? now : Math.min(voice.endTime, fadeEnd);
+          if (voice.startTime > now) {
+            voice.gain.gain.cancelScheduledValues(now);
+            voice.gain.gain.setValueAtTime(0, now);
+          } else {
+            voice.gain.gain.cancelAndHoldAtTime(now);
+            voice.gain.gain.linearRampToValueAtTime(0, end);
+          }
+          voice.source.stop(end);
+          endTime = Math.max(endTime, end);
+        }
+        return completed;
+      },
+    };
+    this.single = playback;
+    const schedule = (note: number, at: number, level: number) => {
+      const voice = this.tone(note, at, 2.5, level, false, true, () => {
+        pending.delete(voice);
+        if (!pending.size) settle(fading ? "faded" : "completed");
+      });
+      pending.add(voice);
+      endTime = Math.max(endTime, voice.endTime);
+    };
+    try {
+      if (context)
+        chordNotes(chord).forEach((note) => schedule(note, start, volume * 0.09));
+      if (midi !== null) schedule(midi, start + 0.08, volume * 0.24);
+    } catch (e) {
+      this.stop();
+      throw e;
+    }
+    // Check the audio clock so a suspended context cannot become answer-ready
+    // merely because wall-clock time elapsed.
+    const checkReady = () => {
+      if (settled) return;
+      const remaining = dispatch + readyMs / 1000 - ctx.currentTime;
+      if (ctx.state === "running" && remaining <= 0.000001) signalReady(true);
+      else timer = setTimeout(checkReady, Math.max(10, Math.ceil(remaining * 1000)));
+    };
+    checkReady();
+    if (!pending.size) settle("completed");
+    return playback;
   }
   stop(): void {
+    this.single?.cancel();
+    this.single = null;
     for (const voice of this.voices) {
       try {
         voice.stop();
@@ -98,7 +188,9 @@ export class AudioEngine {
     duration: number,
     volume: number,
     pad: boolean,
-  ): void {
+    natural = false,
+    onEnd?: () => void,
+  ): { source: OscillatorNode; gain: GainNode; startTime: number; endTime: number } {
     const ctx = this.context!;
     const oscillator = ctx.createOscillator(),
       gain = ctx.createGain();
@@ -107,8 +199,8 @@ export class AudioEngine {
     gain.gain.setValueAtTime(0, start);
     gain.gain.linearRampToValueAtTime(volume, start + (pad ? 0.12 : 0.015));
     gain.gain.exponentialRampToValueAtTime(
-      Math.max(volume * 0.35, 0.0001),
-      start + duration * 0.8,
+      Math.max(volume * (natural ? 0.04 : 0.35), 0.0001),
+      start + duration * (natural ? 0.75 : 0.8),
     );
     gain.gain.linearRampToValueAtTime(0, start + duration);
     oscillator.connect(gain);
@@ -118,9 +210,11 @@ export class AudioEngine {
       this.voices.delete(oscillator);
       oscillator.disconnect();
       gain.disconnect();
+      onEnd?.();
     };
     oscillator.start(start);
     oscillator.stop(start + duration + 0.02);
+    return { source: oscillator, gain, startTime: start, endTime: start + duration + 0.02 };
   }
   private click(start: number, volume: number): void {
     const ctx = this.context!;

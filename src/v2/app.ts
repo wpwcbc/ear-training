@@ -507,8 +507,8 @@ function elapsed() {
     ? Math.max(0, performance.now() - started)
     : null;
 }
-async function play(replay: boolean, reference = false) {
-  if (!session || !current || busy) return;
+async function play(replay: boolean, reference = false): Promise<boolean> {
+  if (!session || !current || busy) return false;
   const a = current,
     c = session.config,
     token = ++operation;
@@ -522,10 +522,10 @@ async function play(replay: boolean, reference = false) {
         if (a.timingValidity !== "interrupted") a.timingValidity = "valid";
       }
       ready = true;
-      return;
+      return true;
     }
     await audio.ready();
-    if (token !== operation) return;
+    if (token !== operation) return false;
     const plan = audio.playSingle(
       a.target.chord,
       c.exercise === "m2" || reference ? a.target.midi : null,
@@ -536,10 +536,9 @@ async function play(replay: boolean, reference = false) {
       if (done || a.firstAnswer !== null) a.replaysAfterFirst++;
       else a.replaysBeforeFirst++;
     }
-    await new Promise((resolve) =>
-      setTimeout(resolve, reference ? plan.durationMs : plan.readyMs),
-    );
-    if (token !== operation) return;
+    if (!(await plan.ready)) return false;
+    if (reference && (await plan.completed) !== "completed") return false;
+    if (token !== operation) return false;
     if (!started && !reference) {
       started = performance.now();
       if (a.timingValidity !== "interrupted") a.timingValidity = "valid";
@@ -547,12 +546,14 @@ async function play(replay: boolean, reference = false) {
     if (reference) a.revealedReference = true;
     ready = true;
     persist();
+    return true;
   } catch (e) {
-    if (token !== operation) return;
+    if (token !== operation) return false;
     if (!done && a.firstAnswer === null) a.timingValidity = "interrupted";
     persist();
     feedback = "Audio unavailable. Retry audio before responding.";
     report(e);
+    return false;
   } finally {
     if (token === operation) {
       busy = false;
@@ -662,8 +663,7 @@ function renderPractice() {
         button(
           "Reveal Answer",
           async () => {
-            await play(true, true);
-            if (ready) {
+            if (await play(true, true)) {
               resolved = true;
               feedback = "Reference revealed. First answer unchanged.";
               afterResponse();

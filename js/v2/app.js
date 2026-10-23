@@ -372,7 +372,7 @@ function elapsed() {
 }
 async function play(replay, reference = false) {
     if (!session || !current || busy)
-        return;
+        return false;
     const a = current, c = session.config, token = ++operation;
     busy = true;
     ready = false;
@@ -385,11 +385,11 @@ async function play(replay, reference = false) {
                     a.timingValidity = "valid";
             }
             ready = true;
-            return;
+            return true;
         }
         await audio.ready();
         if (token !== operation)
-            return;
+            return false;
         const plan = audio.playSingle(a.target.chord, c.exercise === "m2" || reference ? a.target.midi : null, c.volume, reference ? false : c.context);
         if (replay) {
             if (done || a.firstAnswer !== null)
@@ -397,9 +397,12 @@ async function play(replay, reference = false) {
             else
                 a.replaysBeforeFirst++;
         }
-        await new Promise((resolve) => setTimeout(resolve, reference ? plan.durationMs : plan.readyMs));
+        if (!(await plan.ready))
+            return false;
+        if (reference && (await plan.completed) !== "completed")
+            return false;
         if (token !== operation)
-            return;
+            return false;
         if (!started && !reference) {
             started = performance.now();
             if (a.timingValidity !== "interrupted")
@@ -409,15 +412,17 @@ async function play(replay, reference = false) {
             a.revealedReference = true;
         ready = true;
         persist();
+        return true;
     }
     catch (e) {
         if (token !== operation)
-            return;
+            return false;
         if (!done && a.firstAnswer === null)
             a.timingValidity = "interrupted";
         persist();
         feedback = "Audio unavailable. Retry audio before responding.";
         report(e);
+        return false;
     }
     finally {
         if (token === operation) {
@@ -496,8 +501,7 @@ function renderPractice() {
         }
         if (a.firstAnswer !== null && !resolved)
             host.append(button("Reveal Answer", async () => {
-                await play(true, true);
-                if (ready) {
+                if (await play(true, true)) {
                     resolved = true;
                     feedback = "Reference revealed. First answer unchanged.";
                     afterResponse();

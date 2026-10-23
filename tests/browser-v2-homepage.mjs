@@ -8,7 +8,7 @@ const { chromium } = await import(
 const browser = await chromium.launch({ channel: "msedge", headless: true });
 const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
 page.setDefaultTimeout(15000);
-const url = "http://127.0.0.1:4173/jazz-ear-lab-v2/";
+const url = `${process.env.BASE_URL || "http://127.0.0.1:4173"}/jazz-ear-lab-v2/`;
 const errors = [];
 page.on("pageerror", (e) => errors.push(e.message));
 const folder = join(tmpdir(), "eartrain-v2-homepage");
