@@ -1,60 +1,14 @@
-import { AudioEngine, } from "../jazz/audio.js";
-import { builtins, primaryPresets, roots, qualities, degrees, roles, validate, stream, attempt, answer, rate, read, write, keys, metrics, cohort, } from "./model.js";
+import { AudioEngine } from "../jazz/audio.js";
+import { QuestionLifecycle } from "./question.js";
+import { builtins, primaryPresets, roots, qualities, degrees, roles, validate, stream, attempt, read, write, keys, metrics, cohort, } from "./model.js";
 const host = document.getElementById("app"), error = document.getElementById("error");
 const audio = new AudioEngine();
-let playback = null;
-let transition = 0, transitionTimer;
-function cancelAdvance() {
-    transition++;
-    clearTimeout(transitionTimer);
-    transitionTimer = undefined;
-}
-function scheduleAdvance({ after, delayMs = 0, fade = false, } = {}) {
-    cancelAdvance();
-    if (!session || !current || !resolved || session.config.autoAdvance === false)
-        return;
-    const token = transition, a = current, s = session, op = operation;
-    const active = () => token === transition &&
-        current === a &&
-        session === s &&
-        operation === op &&
-        resolved &&
-        s.config.autoAdvance !== false &&
-        location.hash === "#practice" &&
-        !document.hidden;
-    const advance = async () => {
-        try {
-            if (after && (await after) !== "completed")
-                return;
-            if (!active())
-                return;
-            if (fade && playback) {
-                const end = await playback.fadeOut();
-                if (end !== "completed" && end !== "faded")
-                    return;
-            }
-            if (active())
-                next();
-        }
-        catch (e) {
-            if (active()) {
-                cancelAdvance();
-                ready = false;
-                feedback = "Audio unavailable. Retry audio before continuing.";
-                renderPractice();
-                report(e);
-            }
-        }
-    };
-    if (delayMs)
-        transitionTimer = setTimeout(() => void advance(), delayMs);
-    else
-        void advance();
-}
+let question = null;
+let reviewOperation = 0;
 let seenMaterial = new Set();
 let presets = [], sessions = [], activeId = builtins[0].id, draft;
 let session = null, current = null, generate = null;
-let step = "Harmony", busy = false, ready = false, done = false, choosingWrong = false, resolved = false, referencePending = false, feedback = "", started = 0, operation = 0, dirty = false, fatal = false;
+let step = "Harmony", dirty = false, fatal = false;
 let selectedCohort = "", rootFilter = "", qualityFilter = "";
 function el(tag, text = "", cls = "") {
     const e = document.createElement(tag);
@@ -383,7 +337,7 @@ function configRender() {
     config();
 }
 async function start(p) {
-    if (busy || session)
+    if (session)
         return;
     const c = validate(p.config);
     activeId = p.id;
@@ -407,11 +361,11 @@ function material(a) {
 function next() {
     if (!session || !generate)
         return;
-    cancelAdvance();
-    operation++;
-    audio.stop();
-    playback = null;
-    busy = false;
+    if (question)
+        question.dispose();
+    else
+        audio.stop();
+    reviewOperation++;
     if (session.config.count && session.attempts.length >= session.config.count) {
         finish();
         return;
@@ -424,128 +378,23 @@ function next() {
     current = attempt(session.config, q, session.id, seen ? "previously-seen" : "fresh");
     session.attempts.push(current);
     persist();
-    done = false;
-    choosingWrong = false;
-    resolved = false;
-    referencePending = false;
-    ready = false;
-    started = 0;
-    feedback = "";
+    question = new QuestionLifecycle(current, audio, {
+        save: persist,
+        change: renderPractice,
+        advance: next,
+        error: report,
+        present: () => location.hash === "#practice" && !document.hidden,
+    });
     render();
-    void play(false);
-}
-function elapsed() {
-    return current?.timingValidity === "valid" && started
-        ? Math.max(0, performance.now() - started)
-        : null;
-}
-async function play(replay, reference = false) {
-    if (!session || !current || busy)
-        return false;
-    cancelAdvance();
-    const a = current, c = session.config, token = ++operation;
-    if (reference)
-        referencePending = true;
-    busy = true;
-    if (!ready)
-        feedback = "";
-    ready = false;
-    renderPractice();
-    try {
-        if (c.exercise === "m1" && !c.context && !reference) {
-            if (!started) {
-                started = performance.now();
-                if (a.timingValidity !== "interrupted")
-                    a.timingValidity = "valid";
-            }
-            ready = true;
-            return true;
-        }
-        await audio.ready();
-        if (token !== operation)
-            return false;
-        const plan = reference
-            ? audio.playReference(a.target.chord, a.target.midi, c.volume, c.exercise === "m1" && !replay ? playback : null)
-            : audio.playSingle(a.target.chord, c.exercise === "m2" ? a.target.midi : null, c.volume, c.context, c.exercise === "m1" ? { excludeTarget: a.target.midi } : {});
-        playback = plan;
-        void plan.completed.then((end) => {
-            if (end === "interrupted" && token === operation && current === a)
-                audioUnavailable(a, new Error("Audio playback interrupted. Press Retry audio."));
-        });
-        if (replay) {
-            if (done || a.firstAnswer !== null)
-                a.replaysAfterFirst++;
-            else
-                a.replaysBeforeFirst++;
-        }
-        if (!(await plan.ready))
-            return false;
-        if (token !== operation)
-            return false;
-        if (!started && !reference) {
-            started = performance.now();
-            if (a.timingValidity !== "interrupted")
-                a.timingValidity = "valid";
-        }
-        if (reference)
-            a.revealedReference = true;
-        ready = true;
-        persist();
-        if (reference && resolved)
-            scheduleAdvance({ after: plan.completed });
-        return true;
-    }
-    catch (e) {
-        if (token !== operation)
-            return false;
-        audioUnavailable(a, e);
-        return false;
-    }
-    finally {
-        if (token === operation) {
-            busy = false;
-            renderPractice();
-        }
-    }
-}
-function audioUnavailable(a, e) {
-    cancelAdvance();
-    operation++;
-    audio.stop();
-    playback = null;
-    ready = false;
-    busy = false;
-    if (!done && a.firstAnswer === null)
-        a.timingValidity = "interrupted";
-    persist();
-    feedback = "Audio unavailable. Retry audio before responding.";
-    report(e);
-    renderPractice();
-}
-async function revealReference(a) {
-    const s = session;
-    if ((await play(started > 0 && a.revealedReference, true)) &&
-        current === a &&
-        session === s) {
-        resolved = true;
-        feedback = "Reference revealed. First answer unchanged.";
-        persist();
-        renderPractice();
-        if (playback)
-            scheduleAdvance({ after: playback.completed });
-    }
+    void question.act({ type: "start" });
 }
 function finish() {
     if (!session)
         return;
-    cancelAdvance();
-    operation++;
-    busy = false;
-    audio.stop();
-    playback = null;
+    question?.dispose();
     // A displayed but untouched question is not a submitted attempt.
     if (current &&
-        !done &&
+        !question?.view.done &&
         current.firstAnswer === null &&
         !current.replaysBeforeFirst)
         session.attempts = session.attempts.filter((a) => a !== current);
@@ -554,105 +403,48 @@ function finish() {
     persist();
     session = null;
     current = null;
+    question = null;
     generate = null;
     location.hash = "results/" + id;
     render();
 }
-function afterResponse(fastAdvance = false) {
-    persist();
-    if (session?.config.exercise === "m1" && playback) {
-        renderPractice();
-        scheduleAdvance({ after: playback.completed });
-        return;
-    }
-    if (fastAdvance) {
-        renderPractice();
-        scheduleAdvance({ delayMs: 1000, fade: true });
-        return;
-    }
-    if (resolved &&
-        session?.config.autoAdvance !== false &&
-        session?.config.count &&
-        session.attempts.length >= session.config.count)
-        finish();
-    else
-        renderPractice();
-}
 function renderPractice() {
-    if (location.hash !== "#practice" || !session || !current)
+    if (location.hash !== "#practice" || !session || !current || !question)
         return;
+    const lifecycle = question, { busy, ready, done, choosingWrong, resolved, feedback } = lifecycle.view;
     host.replaceChildren();
     const c = session.config, a = current;
     const top = el("div", "", "session-top");
     top.append(el("h1", c.exercise === "m1" ? "M1 Audiation" : "M2 Recognition"), button("Stop", finish));
     host.append(top);
     host.append(el("p", `Question ${session.attempts.length}${c.count ? " / " + c.count : " / Unlimited"} - ${c.exercise === "m1" ? c.method + " / self-assessed" : "automatically scored"} - context ${c.context ? "on" : "off"}`));
-    const question = el("section", "", "question");
-    question.append(el("h2", a.target.chord.symbol));
+    const questionElement = el("section", "", "question");
+    questionElement.append(el("h2", a.target.chord.symbol));
     if (c.exercise === "m1")
-        question.append(el("p", "Hear the " + a.target.degree));
+        questionElement.append(el("p", "Hear the " + a.target.degree));
     else
-        question.append(el("p", resolved ? "Answer: " + a.target.degree : "Which chord degree?"));
-    host.append(question);
+        questionElement.append(el("p", resolved ? "Answer: " + a.target.degree : "Which chord degree?"));
+    host.append(questionElement);
     const status = el("p", busy ? "Playing..." : feedback || (ready ? "Your turn" : "Audio not ready"));
     status.id = "feedback";
     status.setAttribute("role", "status");
     host.append(status);
     if (!(c.exercise === "m1" && !c.context && !done))
-        host.append(actions(button(ready ? "Replay" : "Retry audio", () => {
-            const reference = done || resolved || referencePending;
-            return c.exercise === "m2" && referencePending && !resolved
-                ? revealReference(a)
-                : play(started > 0 && (!reference || a.revealedReference), reference);
-        }, true, busy)));
+        host.append(actions(button(ready ? "Replay" : "Retry audio", () => lifecycle.act({ type: "listen" }), true, busy)));
     if (c.exercise === "m2") {
         if (!resolved) {
             const answers = el("div", "", "answers");
             for (const choice of a.target.options)
-                answers.append(button(choice, () => {
-                    if (!ready || busy || resolved)
-                        return;
-                    const correct = answer(a, choice, elapsed());
-                    if (correct)
-                        a.revealedReference = true;
-                    resolved = correct;
-                    feedback = correct ? "Correct" : "Incorrect";
-                    afterResponse(correct);
-                }, true, !ready || busy));
+                answers.append(button(choice, () => lifecycle.act({ type: "answer", degree: choice }), true, !ready || busy));
             host.append(answers);
         }
         if (a.firstAnswer !== null && !resolved)
-            host.append(button("Reveal Answer", async () => {
-                if (current !== a || busy || resolved)
-                    return;
-                await revealReference(a);
-            }, true, busy));
+            host.append(button("Reveal Answer", () => lifecycle.act({ type: "reveal" }), true, busy));
     }
     else if (!done) {
-        host.append(button("Done - " + c.method, async () => {
-            if (current !== a || done || !ready || busy)
-                return;
-            a.firstResponseMs = elapsed();
-            done = true;
-            persist();
-            await play(false, true);
-        }, false, !ready || busy));
+        host.append(button("Done - " + c.method, () => lifecycle.act({ type: "done" }), false, !ready || busy));
     }
     else if (a.revealedReference && a.firstCorrect === null) {
-        const grade = (correct, wrong) => {
-            if (current !== a ||
-                !ready ||
-                busy ||
-                resolved ||
-                a.firstCorrect !== null)
-                return;
-            if (correct ? choosingWrong : !choosingWrong)
-                return;
-            rate(a, correct, wrong);
-            resolved = true;
-            feedback = correct ? "Self-rated Correct" : "Self-rated Incorrect";
-            afterResponse();
-        };
         if (choosingWrong) {
             const wrongLabel = el("label", "Which degree did you imagine?"), wrong = el("select");
             wrong.id = "wrong-degree";
@@ -672,28 +464,21 @@ function renderPractice() {
                 if (wrong.value &&
                     wrong.value !== a.target.degree &&
                     (wrong.value === "unknown" || a.target.options.includes(wrong.value)))
-                    grade(false, wrong.value);
+                    void lifecycle
+                        .act({ type: "rate", correct: false, wrong: wrong.value })
+                        .catch(report);
             };
             wrongLabel.append(wrong);
             host.append(wrongLabel);
         }
         else {
-            host.append(actions(button("Correct", () => grade(true), false, busy), button("Incorrect", () => {
-                if (current !== a || !ready || busy || resolved || choosingWrong)
-                    return;
-                choosingWrong = true;
-                feedback = "Incorrect";
-                renderPractice();
-            }, true, busy)));
+            host.append(actions(button("Correct", () => lifecycle.act({ type: "rate", correct: true }), false, busy), button("Incorrect", () => lifecycle.act({ type: "incorrect" }), true, busy)));
         }
     }
     if (resolved)
         host.append(button(c.count && session.attempts.length >= c.count
             ? "Finish session"
-            : "Next", () => {
-            if (current === a && resolved && ready && !busy)
-                next();
-        }, false, busy || !ready));
+            : "Next", () => lifecycle.act({ type: "next" }), false, busy || !ready));
     if (c.exercise === "m1")
         host.append(el("p", "Self-assessment only; singing and playing are not pitch-verified. Completion time includes your response and interaction."));
     if (!busy && document.activeElement === document.body) {
@@ -746,11 +531,11 @@ function results(id) {
         const item = el("section");
         item.append(el("h3", `${a.target.chord.symbol} / ${a.target.degree}`), el("p", `${a.gradingSource === "self" ? "Self-rated" : "First answer"}: ${a.firstAnswer ?? "Unassessed"}. Recorded response: ${a.firstResponseMs === null ? "Unavailable" : (a.firstResponseMs / 1000).toFixed(2) + "s"} (${a.timingValidity}, descriptive only). Retries: ${a.retryCount}.`));
         const replay = button("Replay reference", async () => {
-            const token = ++operation;
+            const token = ++reviewOperation;
             replay.disabled = true;
             try {
                 await audio.ready();
-                if (token !== operation || location.hash !== "#results/" + s.id)
+                if (token !== reviewOperation || location.hash !== "#results/" + s.id)
                     return;
                 audio.playReference(a.target.chord, a.target.midi, s.config.volume);
                 a.replaysAfterFirst++;
@@ -761,7 +546,7 @@ function results(id) {
                     ?.replaceWith(summary(s.attempts, s.config));
             }
             catch (e) {
-                if (token === operation)
+                if (token === reviewOperation)
                     throw e;
             }
             finally {
@@ -893,8 +678,7 @@ function render() {
         return;
     }
     if (!session) {
-        cancelAdvance();
-        operation++;
+        reviewOperation++;
         audio.stop();
     }
     host.replaceChildren();
@@ -911,29 +695,15 @@ function render() {
 }
 window.addEventListener("hashchange", render);
 document.addEventListener("visibilitychange", () => {
-    if (document.hidden && current) {
-        cancelAdvance();
-        operation++;
-        busy = false;
-        ready = false;
-        if (current.firstAnswer === null && !done)
-            current.timingValidity = "interrupted";
-        audio.stop();
-        feedback =
-            "Practice interrupted; unsubmitted timing excluded. Retry audio to continue.";
-        persist();
-        renderPractice();
-    }
+    if (document.hidden)
+        question?.interrupt("hidden");
 });
 window.addEventListener("pagehide", () => {
-    cancelAdvance();
-    operation++;
-    if (current) {
-        if (current.firstAnswer === null && !done)
-            current.timingValidity = "interrupted";
-        persist();
-    }
-    audio.stop();
+    reviewOperation++;
+    if (question)
+        question.interrupt("pagehide");
+    else
+        audio.stop();
 });
 window.addEventListener("beforeunload", (e) => {
     if (dirty) {
