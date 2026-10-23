@@ -21,6 +21,12 @@ confirmed intent based on assumptions or incidental feature requests.
 Do not infer authorization for UI redesign or new exercises from this reference
 alone; scope implementation to the user's actual request.
 
+For V2 Release 1, use [V2_RELEASE_1_SPEC.md](V2_RELEASE_1_SPEC.md) as the
+implementation contract under the project intent. V2 lives at
+`jazz-ear-lab-v2/` with `jazzEarLab:v2:*` data; preserve Legacy M1-M7 and its
+records. See [V2_RELEASE_1_IMPLEMENTATION.md](V2_RELEASE_1_IMPLEMENTATION.md)
+for timing/default choices, verification and release limits.
+
 ## Delivery
 
 Preserve existing local records and unrelated working-tree changes. The user

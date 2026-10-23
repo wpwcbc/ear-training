@@ -63,6 +63,27 @@ export class AudioEngine {
   async pause(): Promise<void> {
     if (this.context?.state === "running") await this.context.suspend();
   }
+  playSingle(
+    chord: ReturnType<typeof parseChord>,
+    midi: number | null,
+    volume: number,
+    context: boolean,
+  ): { readyMs: number; durationMs: number } {
+    if (!this.context || this.context.state !== "running")
+      throw new Error("Audio unavailable. Press Retry audio.");
+    this.stop();
+    const start = this.context.currentTime + 0.04;
+    if (context)
+      chordNotes(chord).forEach((note) =>
+        this.tone(note, start, 0.8, volume * 0.09, false),
+      );
+    if (midi !== null)
+      this.tone(midi, start + 0.08, 0.75, volume * 0.24, false);
+    return {
+      readyMs: midi === null ? (context ? 900 : 0) : 120,
+      durationMs: 900,
+    };
+  }
   stop(): void {
     for (const voice of this.voices) {
       try {
