@@ -2,27 +2,38 @@
   "tool": "build-phase",
   "version": 2,
   "startedAt": "2026-10-23T17:37:11.915Z",
-  "comp": null,
+  "comp": ".impeccable/mocks/signal-route-03-split-desk.png",
   "direction": "6d59acfa",
-  "breakpoint": null,
+  "breakpoint": "1536x1024",
   "artifact": null,
-  "phase": "comps",
+  "phase": "spec",
   "phases": {
     "comps": {
-      "status": "open",
+      "status": "closed",
       "openedAt": "2026-10-23T17:37:11.915Z",
-      "closedAt": null,
-      "attempts": 0,
+      "closedAt": "2026-10-23T17:51:00.814Z",
+      "attempts": 3,
       "notes": [],
-      "gate": null,
+      "gate": {
+        "ok": true,
+        "reasons": [],
+        "summary": "3 comps, 1 approved",
+        "approved": ".impeccable/mocks/signal-route-03-split-desk.png",
+        "at": "2026-10-23T17:51:00.814Z"
+      },
       "forced": null
     },
     "spec": {
-      "status": "pending",
-      "openedAt": null,
+      "status": "open",
+      "openedAt": "2026-10-23T17:51:00.872Z",
       "closedAt": null,
       "attempts": 0,
-      "notes": [],
+      "notes": [
+        {
+          "at": "2026-10-23T17:52:45.406Z",
+          "text": "C - Split Desk explicitly approved by the user. The approved composition gate passed. Remaining V2 flow mockups are being extended for confirmation; stop before measurement/application implementation in this design step. Flat mirrors and .png.json sidecars exist for the engine scanner; nested original comp paths remain stable."
+        }
+      ],
       "gate": null,
       "forced": null
     },

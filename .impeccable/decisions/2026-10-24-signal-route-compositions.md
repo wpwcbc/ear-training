@@ -1,6 +1,6 @@
 # Signal Route Composition Comparison
 
-Status: Awaiting user composition approval, 2026-10-24. The visual identity is selected; no application implementation has started. The comp-led workflow is in its comps phase, not its code phase. The user requested continuation of visual exploration, not application edits.
+Status: The user approved C - Split Desk on 2026-10-24. A and B remain unselected. No application implementation has started; the next step extends C to remaining V2 mockups for flow confirmation.
 
 ## Fixed Constraints
 
@@ -16,7 +16,7 @@ Each board compares the same ready-state M2 question and illustrative Insights e
 | B. Listening Stage - recommended | Centered listening anchor and constrained response grid; same stacked organization on desktop and phone. | Single reading column, dominant accuracy and smaller supporting metrics, then pattern/action rows. | Strongest listening focus and cross-device consistency; intentionally leaves more open desktop space. |
 | C. Split Desk | Desktop chord/prompt left, answers right; phone collapses into the approved vertical order. | Desktop overview left and patterns/actions right; phone retains sequential reading order. | Efficient side-by-side desktop use, but more eye movement and a larger responsive topology change. |
 
-This recommendation is an engineering/design judgment, not a measured user-study result. The user can approve, combine, request revisions or reject the options. No option is approved by this document.
+The earlier recommendation of B was a design judgment, not a measured user-study result. The user's explicit choice of C overrides that recommendation. C's prompt sidecar records the approval; A and B remain unapproved alternatives.
 
 ## A. Sign Band
 
@@ -40,6 +40,6 @@ All three boards were inspected for visible product identity, the 12 canonical a
 
 These are not pixel-level accessibility certificates: generated bar lengths, font metrics, compact mobile labels and touch-target dimensions need exact implementation and verification. The unchanged A board gives timing too much relative prominence; the approved accuracy-first hierarchy remains binding. Any selected composition must retain keyboard focus, independent pools, data separation, grading/latency rules, recovery and the two previously approved navigation/focus-preset changes. No new functionality is implied by the mockups.
 
-After the user chooses, record the approved comp and the components that must not be literalized, then extend the chosen composition to remaining V2 screens. No application code or replacement DESIGN.md before explicit composition approval. If the user asks for revisions, keep this identity and revise only the named uncertainty.
+The approved comp is C - Split Desk. Extend its desktop left/right organization and mobile vertical order to the remaining V2 mockups without changing the identity or approved UX. Generated glyphs, text errors, imprecise bars and unverified control dimensions must not override the behavioral or accessibility contracts. No application code is part of this flow-extension step.
 
 References: [UX principles](../../UX_PRINCIPLES.md), [selected identity](2026-10-24-visual-identity-selection.json), [earlier identity comparison](2026-10-24-visual-comparison.md).

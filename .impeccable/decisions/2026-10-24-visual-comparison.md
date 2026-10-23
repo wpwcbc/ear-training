@@ -1,6 +1,6 @@
 # Ear Train Visual Identity Comparison
 
-User-selected direction: **Signal Route**, 2026-10-24. Scope: the complete V2 flow, keeping Legacy unchanged and Ear Train / Jazz Ear Lab naming. Comp-led workflow retained. No application implementation or final composition approval is included in this selection.
+User-selected direction: **Signal Route**, 2026-10-24. Scope: the complete V2 flow, keeping Legacy unchanged and Ear Train / Jazz Ear Lab naming. Comp-led workflow retained. Subsequent composition approval: [C - Split Desk](2026-10-24-signal-route-compositions.md). No application implementation has started.
 
 All boards use illustrative data, not the user's history. They compare the same M2 Recognition question and Insights evidence across desktop and mobile. Generated text and pixel geometry are not a replacement for the approved UX and analytics contracts. The detailed review notes identify remaining render deviations.
 
@@ -31,8 +31,8 @@ All boards use illustrative data, not the user's history. They compare the same 
 
 ## Next Approval Boundary
 
-Use the selected decision board as composition option one. Develop two variations within Signal Route and compare before implementation; do not silently redesign it from scratch. Then extend the approved composition to the other V2 screens. Keep the task anchor, explicit labels, canonical answer order, independent pools, first-evidence semantics, accuracy-first Insights hierarchy and all recovery/transition rules.
+The subsequent three-option composition round is complete: the user selected C - Split Desk, not the original direction board. Extend that approved composition to other V2 mockups. Keep the task anchor, explicit labels, canonical answer order, independent pools, first-evidence semantics, accuracy-first Insights hierarchy and all recovery/transition rules.
 
 For this direction, yellow signals location/action, not correctness; no invented airport/travel feature, new mode, swipe progression or hidden-label interaction is approved. Exact control sizes, focus, responsive layout, evidence labels and numerical chart lengths require semantic implementation and verification later. The generated board does not certify accessibility or actual app behavior.
 
-Supporting records: [Exploration and review](2026-10-24-visual-identity.md), [decision payload](2026-10-24-visual-identity.json), [user selection](2026-10-24-visual-identity-selection.json). Prompt sidecars beside every board record the built-in image-generation/editing prompts and unapproved composition status. Original approval-server runtime files are local-only.
+Supporting records: [Exploration and review](2026-10-24-visual-identity.md), [decision payload](2026-10-24-visual-identity.json), [user selection](2026-10-24-visual-identity-selection.json). Prompt sidecars preserve generation/editing prompts; the Split Desk sidecar records composition approval. Original approval-server runtime files are local-only.

@@ -1,6 +1,6 @@
 # Ear Train Visual Identity Exploration
 
-Status: Signal Route selected by the user through the comparison page, 2026-10-24. Final composition remains unapproved. No application implementation.
+Status: Signal Route selected by the user through the comparison page, 2026-10-24; subsequently C - Split Desk approved in the composition round. No application implementation.
 
 The user authorized a replacement visual identity for the whole V2 flow, keeping Legacy unchanged and retaining Ear Train / Jazz Ear Lab naming. The approved UX and analytics semantics remain binding. Compare identical M2 and Insights desktop/mobile content before expanding the selected identity to the remaining flow. All mock data is illustrative, not the user's history.
 
@@ -34,7 +34,7 @@ Insights: Example data. M2, context on, previously seen, C/G roots, 7 chord qual
 
 ## Approval Boundary
 
-Signal Route is the user-selected identity. Other directions remain unselected; no final compositional specification is approved yet. Comp-led implementation later requires its own approved composition. Generated images are concept tests, not interaction or accessibility verification; exact type rendering and data labels need semantic implementation. The previously approved plans and UX_PRINCIPLES.md remain authoritative for behavior; permission to replace the visual identity supersedes their preserve-old-style limitation for V2 only.
+Signal Route is the user-selected identity; the subsequent approved composition is C - Split Desk. Other directions and compositions remain unselected. The next step extends C to remaining V2 mockups. Generated images are concept tests, not interaction or accessibility verification; exact type rendering and data labels need semantic implementation. The previously approved plans and UX_PRINCIPLES.md remain authoritative for behavior; permission to replace the visual identity supersedes their preserve-old-style limitation for V2 only.
 
 ## Generated Board Review
 
@@ -42,4 +42,4 @@ Four direction boards were generated with the built-in image tool, each with des
 
 These are identity comparisons, not final compositional specifications. Remaining illustrative-render deviations must NOT become implementation requirements: Ensemble Score omits the Root/Quality controls and Example data label in its rendered Insights and places Stop beside Replay rather than in the session header. Its board is labeled as example data by the decision page. Familiar Workspace substitutes generic practice encouragement for the required statistical caveat and adds a redundant mobile menu; those are not approved copy or navigation changes. Some boards give time/replay metrics too much visual weight or render bar lengths imprecisely; accuracy-first hierarchy and numerical correctness remain required. Phone label sizing, native focus and exact glyphs must be resolved in the selected direction's composition round, not inferred as verified from generated pixels.
 
-The user's Signal Route direction choice is recorded in 2026-10-24-visual-identity-selection.json. The chosen board is compositional option one, not an approval of every generated pixel. A later comp round adds two variations within this identity and obtains composition approval before application code. No application, PRODUCT.md, UX_PRINCIPLES.md or DESIGN.md has been changed by this exploration. The decision payload preserves all candidate verdicts plus revision/re-roll and the subordinate category-standard exit.
+The user's identity and subsequent C - Split Desk composition choices are recorded in 2026-10-24-visual-identity-selection.json. The original direction board remains historical; the later Split Desk board is the approved composition. No application, PRODUCT.md, UX_PRINCIPLES.md or DESIGN.md has been changed by this exploration. The decision payload preserves all candidate verdicts plus revision/re-roll and the subordinate category-standard exit.
