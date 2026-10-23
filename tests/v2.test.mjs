@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   builtins,
+  primaryPresets,
   validate,
   stream,
   optionsFor,
@@ -15,6 +16,48 @@ import {
 } from "../js/v2/model.js";
 import { parseChord, targetPc, qualities, degrees } from "../js/jazz/theory.js";
 const config = structuredClone(builtins[0].config);
+test("V2 primary exercises support general degrees and independent altered/exact pools", () => {
+  assert.deepEqual(
+    primaryPresets.map((p) => p.name),
+    ["M1 Audiation", "M2 Recognition"],
+  );
+  for (const p of primaryPresets) {
+    const c = validate(p.config);
+    assert.equal(c.roots.length, 12);
+    assert.deepEqual(c.targets, ["Root", "Third", "Fifth", "Seventh"]);
+    assert.deepEqual(c.qualities, ["maj7", "m7", "7"]);
+    const root = validate({ ...c, roots: ["F#", "Bb"] });
+    assert.deepEqual(root.qualities, c.qualities);
+    assert.deepEqual(root.targets, c.targets);
+    const quality = validate({ ...root, qualities: ["7alt", "m7b5"] });
+    assert.deepEqual(quality.roots, root.roots);
+    assert.deepEqual(quality.targets, c.targets);
+    const exact = validate({
+      ...quality,
+      targetMode: "exact",
+      targets: ["b9", "#9", "#11", "b13", "#5", "bb7"],
+    });
+    assert.deepEqual(exact.roots, root.roots);
+    assert.deepEqual(exact.qualities, quality.qualities);
+    const next = stream(exact, p.id);
+    const offsets = { b9: 1, "#9": 3, "#11": 6, b13: 8, "#5": 8, bb7: 9 };
+    const rootPcs = { "F#": 6, Bb: 10 };
+    for (let i = 0; i < 24; i++) {
+      const q = next();
+      assert.equal(
+        q.midi % 12,
+        (rootPcs[q.chord.root] + offsets[q.degree]) % 12,
+      );
+      assert.equal(q.options.filter((d) => d === q.degree).length, 1);
+      assert.equal(
+        new Set(q.options.map((d) => targetPc(q.chord, d))).size,
+        12,
+      );
+    }
+  }
+  assert.equal(resolve(parseChord("Bdim7"), "Fifth", "functional"), "b5");
+  assert.equal(resolve(parseChord("Bdim7"), "Seventh", "functional"), "bb7");
+});
 test("V2 functional and exact targets agree with sound; all answer policies cover 12 unique pitches", () => {
   for (const [q, third, seventh] of [
     ["maj7", "3", "maj7"],

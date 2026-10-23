@@ -47,8 +47,8 @@ async function seed(config) {
 }
 async function start(exercise = "M2") {
   await page
-    .getByRole("button", { name: "Start " + exercise, exact: true })
-    .first()
+    .locator('[data-preset-id="recognition-guides"]')
+    .getByRole("button", { name: "Start", exact: true })
     .click();
   await page.waitForURL(/#practice$/);
 }
@@ -323,8 +323,8 @@ try {
   assert.equal((await latest()).attempts[0].timingValidity, "interrupted");
   await page.goto(url);
   await page
+    .locator('[data-preset-id="recognition-guides"]')
     .getByRole("button", { name: "Customize", exact: true })
-    .first()
     .click();
   for (const name of ["Practice", "Targets", "Harmony"]) {
     await page.getByRole("button", { name, exact: true }).click();
@@ -419,8 +419,8 @@ try {
   for (const name of ["Harmony", "Targets", "Practice"]) {
     await page.goto(url);
     await page
+      .locator('[data-preset-id="recognition-guides"]')
       .getByRole("button", { name: "Customize", exact: true })
-      .first()
       .click();
     await page.getByRole("button", { name, exact: true }).click();
     await page

@@ -22,7 +22,10 @@ try {
   }
   await page.goto(base);
   await page.locator('a.tool-card[href="jazz-ear-lab-v2/"]').click();
-  await page.getByRole("button", { name: "Start M2", exact: true }).waitFor();
+  await page
+    .getByRole("article", { name: "M2 Recognition", exact: true })
+    .getByRole("button", { name: "Start", exact: true })
+    .waitFor();
   await page.getByRole("link", { name: "Legacy", exact: true }).click();
   await page.locator("#mode-library article").first().waitFor();
   assert.equal(await page.locator("#mode-library article").count(), 7);
@@ -33,7 +36,10 @@ try {
   await page.locator("#app-nav-toggle").click();
   await page.locator('.app-navigation [data-route="home"]').click();
   await page.waitForURL(/jazz-ear-lab-v2\/#home$/);
-  await page.getByRole("button", { name: "Start M1", exact: true }).waitFor();
+  await page
+    .getByRole("article", { name: "M1 Audiation", exact: true })
+    .getByRole("button", { name: "Start", exact: true })
+    .waitFor();
   console.log(
     "Entry passed: home card, desktop/mobile Practice and brand open V2; V1 remains reachable with seven modes and history.",
   );

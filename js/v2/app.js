@@ -1,5 +1,5 @@
 import { AudioEngine } from "../jazz/audio.js";
-import { builtins, roots, qualities, degrees, roles, validate, stream, attempt, answer, rate, read, write, keys, metrics, cohort, } from "./model.js";
+import { builtins, primaryPresets, roots, qualities, degrees, roles, validate, stream, attempt, answer, rate, read, write, keys, metrics, cohort, } from "./model.js";
 const host = document.getElementById("app"), error = document.getElementById("error");
 const audio = new AudioEngine();
 let seenMaterial = new Set();
@@ -108,7 +108,25 @@ function customize(p) {
 }
 function home() {
     heading("Practice");
-    host.append(actions(button("New preset", () => {
+    const grid = el("div", "", "exercises");
+    grid.setAttribute("aria-label", "Exercises");
+    for (const definition of primaryPresets) {
+        const p = presets.find((p) => p.id === definition.id);
+        const card = el("article", "", "exercise");
+        const title = el("h2", definition.name);
+        title.id = definition.id;
+        card.dataset.presetId = p.id;
+        card.setAttribute("aria-labelledby", title.id);
+        card.append(title, actions(button("Start", () => start(p), false), button("Customize", () => customize(p))));
+        grid.append(card);
+    }
+    host.append(grid);
+    const secondary = el("section", "", "saved-presets");
+    secondary.setAttribute("aria-labelledby", "saved-presets-title");
+    const title = el("h2", "Saved presets");
+    title.id = "saved-presets-title";
+    const savedHeading = el("div", "", "saved-heading");
+    savedHeading.append(title, button("New preset", () => {
         const name = prompt("Preset name", "My practice");
         if (!name?.trim())
             return;
@@ -120,14 +138,17 @@ function home() {
         presets.push(p);
         persist();
         customize(p);
-    }), button("Continue last preset", () => start(preset()), false)));
-    const grid = el("div", "", "presets");
+    }));
+    secondary.append(savedHeading);
     for (const p of presets) {
-        const card = el("article", "", "preset");
-        card.append(el("h2", p.name), el("p", describe(p.config)), actions(button("Start " + p.config.exercise.toUpperCase(), () => start(p), false), button("Customize", () => customize(p))));
-        grid.append(card);
+        if (primaryPresets.some((d) => d.id === p.id))
+            continue;
+        const card = el("article", "", "preset-row");
+        card.dataset.presetId = p.id;
+        card.append(el("h3", p.name), actions(button("Start", () => start(p)), button("Customize", () => customize(p))));
+        secondary.append(card);
     }
-    host.append(grid, el("p", "Practice records stay in this browser. V2 does not import or modify Legacy history."));
+    host.append(secondary);
 }
 function select(label, value, options, update) {
     const l = el("label", label), s = el("select");
@@ -150,8 +171,10 @@ function autoSave() {
         status.textContent = dirty
             ? "Not saved. Keep this page open and Retry saving."
             : "Changes saved to this preset.";
+        status.dataset.state = dirty ? "unsaved" : "saved";
     }
     catch (e) {
+        status.dataset.state = "invalid";
         status.textContent = `${e.message} Last valid saved preset unchanged.`;
     }
     const summary = document.getElementById("config-summary");
@@ -203,11 +226,12 @@ function config() {
             configRender();
         }), pool("Target degrees", draft.targetMode === "functional" ? roles : degrees, draft.targets, (v) => (draft.targets = v)));
     if (step === "Practice") {
-        host.append(select("Exercise", draft.exercise, ["m1", "m2"], (v) => {
-            draft.exercise = v;
-            autoSave();
-            configRender();
-        }));
+        if (!primaryPresets.some((p) => p.id === activeId))
+            host.append(select("Exercise", draft.exercise, ["m1", "m2"], (v) => {
+                draft.exercise = v;
+                autoSave();
+                configRender();
+            }));
         if (draft.exercise === "m1")
             host.append(select("Response method (self-assessed)", draft.method, ["imagined", "sung", "played"], (v) => {
                 draft.method = v;
@@ -251,14 +275,18 @@ function config() {
     status.setAttribute("role", "status");
     const summary = el("p", describe(draft));
     summary.id = "config-summary";
-    host.append(status, summary, actions(button("Start practice", () => start({ ...preset(), config: validate(draft) }), false), button("Back to presets", () => (location.hash = "home")), button("Rename", () => {
-        const name = prompt("Preset name", preset().name);
-        if (name?.trim()) {
-            preset().name = name.trim().slice(0, 100);
-            persist();
-            configRender();
-        }
-    })));
+    host.append(status, summary, actions(button("Start practice", () => start({ ...preset(), config: validate(draft) }), false), button("Back to presets", () => (location.hash = "home")), ...(!primaryPresets.some((p) => p.id === activeId)
+        ? [
+            button("Rename", () => {
+                const name = prompt("Preset name", preset().name);
+                if (name?.trim()) {
+                    preset().name = name.trim().slice(0, 100);
+                    persist();
+                    configRender();
+                }
+            }),
+        ]
+        : [])));
     const original = builtins.find((p) => p.id === activeId);
     host.append(button(original ? "Restore Default" : "Delete preset", () => {
         if (!confirm(original
@@ -283,6 +311,7 @@ function config() {
         validate(draft);
     }
     catch (e) {
+        status.dataset.state = "invalid";
         status.textContent =
             e.message + " Last valid saved preset unchanged.";
     }
@@ -382,6 +411,8 @@ async function play(replay, reference = false) {
         persist();
     }
     catch (e) {
+        if (token !== operation)
+            return;
         if (!done && a.firstAnswer === null)
             a.timingValidity = "interrupted";
         persist();
@@ -562,9 +593,12 @@ function results(id) {
         const item = el("section");
         item.append(el("h3", `${a.target.chord.symbol} / ${a.target.degree}`), el("p", `${a.gradingSource === "self" ? "Self-rated" : "First answer"}: ${a.firstAnswer ?? "Unassessed"}. Recorded response: ${a.firstResponseMs === null ? "Unavailable" : (a.firstResponseMs / 1000).toFixed(2) + "s"} (${a.timingValidity}, descriptive only). Retries: ${a.retryCount}.`));
         const replay = button("Replay reference", async () => {
+            const token = ++operation;
             replay.disabled = true;
             try {
                 await audio.ready();
+                if (token !== operation || location.hash !== "#results/" + s.id)
+                    return;
                 audio.playSingle(a.target.chord, a.target.midi, s.config.volume, false);
                 a.replaysAfterFirst++;
                 a.revealedReference = true;
@@ -572,6 +606,10 @@ function results(id) {
                 host
                     .querySelector("section")
                     ?.replaceWith(summary(s.attempts, s.config));
+            }
+            catch (e) {
+                if (token === operation)
+                    throw e;
             }
             finally {
                 replay.disabled = false;
@@ -638,14 +676,24 @@ function insights() {
         tr.append(el("td", cell.key), el("td", `${m.correct}/${m.n}`), el("td", `${m.replayed}/${m.n}`), el("td", `${m.median === null ? "—" : (m.median / 1000).toFixed(2) + "s"} (${m.timed})`));
         const td = el("td");
         td.append(button("Customize focus", () => {
-            activeId = presets[0].id;
-            draft = {
+            const config = {
                 ...structuredClone(cell.items[0].configurationSnapshot),
                 qualities: [cell.items[0].target.chord.quality],
                 targetMode: "exact",
                 targets: [cell.items[0].target.degree],
             };
-            location.hash = "configure";
+            let focus = presets.find((p) => !builtins.some((b) => b.id === p.id) &&
+                JSON.stringify(p.config) === JSON.stringify(config));
+            if (!focus) {
+                focus = {
+                    id: crypto.randomUUID(),
+                    name: `Focus: ${config.exercise.toUpperCase()} ${cell.key}`,
+                    config,
+                };
+                presets.push(focus);
+            }
+            persist();
+            customize(focus);
         }));
         tr.append(td);
         table.append(tr);
@@ -675,9 +723,25 @@ function render() {
     if (fatal)
         return;
     const route = location.hash.slice(1) || "home";
+    document
+        .querySelectorAll("nav[aria-label='Primary'] a")
+        .forEach((link) => {
+        const active = link.hash ===
+            (route === "insights" || route.startsWith("results/")
+                ? "#insights"
+                : "#home");
+        if (active)
+            link.setAttribute("aria-current", "page");
+        else
+            link.removeAttribute("aria-current");
+    });
     if (session && route !== "practice") {
         finish();
         return;
+    }
+    if (!session) {
+        operation++;
+        audio.stop();
     }
     host.replaceChildren();
     if (route === "practice" && session)

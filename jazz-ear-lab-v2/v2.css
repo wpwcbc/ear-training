@@ -39,6 +39,11 @@ nav a {
   align-items: center;
   min-height: 44px;
 }
+nav a[aria-current="page"] {
+  font-weight: 700;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 6px;
+}
 main {
   max-width: 1040px;
   margin: auto;
@@ -46,6 +51,9 @@ main {
 }
 h1 {
   font-size: 28px;
+}
+h1[tabindex="-1"]:focus {
+  outline: none;
 }
 h2 {
   font-size: 22px;
@@ -62,17 +70,59 @@ button {
   gap: 12px;
   margin: 20px 0;
 }
-.presets {
+.exercises {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 20px;
 }
-.preset {
+.exercise {
   border: 1px solid var(--ds-border);
   background: var(--ds-surface);
   border-radius: 8px;
-  padding: 20px;
+  padding: 28px;
   min-width: 0;
+}
+.exercise h2 {
+  margin: 0;
+  font-size: 24px;
+}
+.exercise .actions {
+  margin: 28px 0 0;
+}
+.saved-presets {
+  margin-top: 48px;
+  padding-top: 24px;
+  border-top: 1px solid var(--ds-border);
+}
+.saved-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.saved-heading h2 {
+  font-size: 18px;
+  margin: 0;
+}
+.preset-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--ds-border);
+}
+.preset-row h3 {
+  font-size: 16px;
+  margin: 0;
+  min-width: 0;
+}
+.preset-row .actions {
+  margin: 0;
+  flex-wrap: nowrap;
+}
+.notice[data-state="saved"] {
+  color: var(--ds-secondary);
 }
 h2,
 h3,
@@ -200,8 +250,16 @@ caption {
   gap: 16px;
 }
 @media (max-width: 600px) {
-  .presets {
+  .exercises {
     grid-template-columns: 1fr;
+  }
+  .saved-presets {
+    margin-top: 32px;
+  }
+  .preset-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
   }
   main {
     padding: 20px 16px 60px;

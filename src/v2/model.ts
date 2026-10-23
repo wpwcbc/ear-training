@@ -39,6 +39,23 @@ const base: Config = {
   count: 10,
   volume: 0.6,
 };
+export const primaryPresets: Preset[] = [
+  {
+    id: "m1-general",
+    name: "M1 Audiation",
+    config: {
+      ...base,
+      exercise: "m1",
+      qualities: ["maj7", "m7", "7"],
+      targets: [...roles],
+    },
+  },
+  {
+    id: "m2-general",
+    name: "M2 Recognition",
+    config: { ...base, qualities: ["maj7", "m7", "7"], targets: [...roles] },
+  },
+];
 export const builtins: Preset[] = [
   {
     id: "recognition-guides",
@@ -56,6 +73,7 @@ export const builtins: Preset[] = [
       targets: ["Third"],
     },
   },
+  ...primaryPresets,
 ];
 export function resolve(
   chord: Chord,

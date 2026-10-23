@@ -29,8 +29,14 @@ Contract: [V2_RELEASE_1_SPEC.md](V2_RELEASE_1_SPEC.md), subordinate to
 - Functional Root/Third/Fifth/Seventh use actual chord tones. An absent role
   (e.g. Third over sus4 or Seventh over a triad) blocks Start with a message;
   the app does not silently discard or remap that selection.
-- Two editable defaults: Dominant Guide Tones in all keys (M2), and Major/Minor
-  Third Audiation (M1). Count defaults to 10; 0 means Unlimited, finite counts
+- Primary entries: M1 Audiation and M2 Recognition, each with Start and Customize.
+  Both default to all 12 roots, maj7/m7/7 and Functional Root/Third/Fifth/Seventh.
+  Their exercise identity stays fixed while all practice pools remain editable.
+  Original Dominant Guide Tones and Major/Minor Third Audiation presets retain
+  their IDs and user overrides in the secondary Saved presets section, alongside
+  user presets and accepted Insights focus presets. This homepage priority follows
+  the user's refinement request; it does not add a new exercise or alter the spec.
+  Count defaults to 10; 0 means Unlimited, finite counts
   are integers 1-200. Fixed sessions show results immediately after the final
   resolved question; references remain replayable in Question review.
 - Target register uses existing `inRange(pc, 60, 83)`; fixed triangle synth,
@@ -99,11 +105,13 @@ live improvisation. No Release 2 features were added.
 ## Verification commands
 
 - `npm test`: TypeScript build and Legacy plus V2 unit checks.
-- `npm run test:v2`: M1/M2 browser acceptance and storage-error cases.
+- `npm run test:v2`: M1/M2 browser acceptance, storage-error cases and homepage/
+  general-pool regression checks.
 - `node tests/browser.mjs` and `node tests/browser-release3.mjs`: Legacy smoke.
 - Existing external Edge/Playwright harness uses `PLAYWRIGHT_MODULE`.
 - `QUALITY_AXE_PATH` enables WCAG A/AA axe checks on captured V2 states.
-- `V2_SCREENSHOTS=1` writes the desktop/mobile batch to temporary `eartrain-v2/`.
+- `V2_SCREENSHOTS=1` writes desktop/mobile batches to temporary `eartrain-v2/`
+  and `eartrain-v2-homepage/`.
 
 Acceptance coverage is executable in `tests/v2.test.mjs` and
 `tests/browser-v2.mjs`: exact/functional targets, balanced reproducibility,
@@ -111,16 +119,43 @@ Acceptance coverage is executable in `tests/v2.test.mjs` and
 withholding and Unknown, retries/reveals, audio/interruption timing, results
 review, fixed/unlimited, non-linear settings, auto-save/invalid draft handling,
 restore and preset CRUD, local persistence, mobile reflow and source isolation.
+`tests/browser-v2-homepage.mjs` verifies minimal primary entries, independent
+pool edits in both exercises, altered/extended Exact targets, persistence and
+Restore Default, saved focus isolation/reuse and stale audio cancellation.
+
+## Homepage refinement and Release 1 audit (2026-10-23)
+
+| Contract area | Coverage / outcome |
+| --- | --- |
+| General targets and theory | Both primary exercises use all four Functional roles, not Thirds/Guides only. Exact preserves all 18 spellings across 19 qualities, with 12 pitch-class-distinct answers. Explicit F#/Bb altered/extended interval checks supplement the full theory matrix. Missing Functional chord roles remain explicit validation errors. |
+| Independent pools | Root edits retain quality/degree pools; quality edits retain root/degree pools; Exact edits retain roots/qualities. Browser checks configure both primary exercises independently, reload and restore defaults. |
+| Playback | M1 initial/next chord context never exposes target before Done; M2 context-on/off retains target playback. Reference/replay accounting and interruption timing are tested. Stale session and results-review audio completions/errors are cancelled after leaving. |
+| Scoring and retries | Locked first M2 answer/time, no early correct-answer leak, separate retries/reveals; binary self-rated M1, all response methods and Unknown. Correct-first valid timing only earns speed credit. |
+| Sessions and persistence | Fixed/unlimited completion, untouched question omission, incremental local records, non-linear settings, autosave, invalid-draft protection, restore/CRUD and storage retry. No data migration. |
+| Insights | Source/method/context/version/pool/exposure cohorts, filtered quality-degree evidence, first confusions and cautious low-sample summaries. Accepted focus is saved independently and matching focus configurations are reused; existing presets are never overwritten. |
+| Accessibility and hierarchy | Two primary entries with only Start/Customize; secondary rows use restrained actions. Active navigation, keyboard focus and status/error cues. 320/390/768/1440px overflow checks, axe WCAG A/AA checks and bounded desktop/mobile screenshot inspection. |
+| Legacy and scope | Legacy routes and storage remain separate; core and Release 3 browser smoke plus V1 record preservation checks. No Release 2 modes, dependencies, framework or account services. |
+
+No unresolved Release 1 implementation gap was identified in this audit. Browser
+audio checks verify scheduling/contracts, not human perception or physical-device
+latency. The physical-device, Safari/iOS and human accessibility limits below
+still apply.
 
 ## Verified result (2026-10-23)
 
-- TypeScript build and 109 unit tests passed, including all 19 qualities across
+- TypeScript build and 110 unit tests passed, including all 19 qualities across
   the full exact-degree vocabulary and reproducible balanced sampling.
 - V2 browser acceptance passed, including starting from all three wizard steps,
   preset create/rename/delete, interrupted timing, first-reference audio failure,
   post-result replay, reload and preservation of a real-format Legacy session.
-- Seven desktop/mobile states passed axe WCAG A/AA tag checks; two bounded
-  screenshot inspection rounds checked desktop and 390px mobile presentation.
+  The homepage regression suite passed both general exercises, independently
+  edited pools, extended/altered targets, saved focus isolation, Restore Default
+  and late audio rejection after stopping/leaving results.
+- Eleven captured exercise/homepage states passed axe WCAG A/AA tag checks;
+  bounded screenshot inspection plus one confirmation round checked the refined
+  desktop and 390px mobile homepage. Overflow checks also cover 320px and 768px.
+- Entry tests passed: desktop/mobile links open V2, Legacy retains seven modes
+  and its history route.
 - Legacy core and Release 3 browser suites passed (M1/M2, other existing modes,
   replay/pause, history, persistence and Insights). The full 14-suite Legacy
   browser battery was not rerun for this additive release.
