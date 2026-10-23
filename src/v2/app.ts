@@ -66,8 +66,10 @@ function scheduleAdvance({
     try {
       if (after && (await after) !== "completed") return;
       if (!active()) return;
-      if (fade && playback && (await playback.fadeOut()) === "cancelled")
-        return;
+      if (fade && playback) {
+        const end = await playback.fadeOut();
+        if (end !== "completed" && end !== "faded") return;
+      }
       if (active()) next();
     } catch (e) {
       if (active()) {
@@ -96,6 +98,7 @@ let step = "Harmony",
   done = false,
   choosingWrong = false,
   resolved = false,
+  referencePending = false,
   feedback = "",
   started = 0,
   operation = 0,
@@ -573,6 +576,7 @@ function next() {
   done = false;
   choosingWrong = false;
   resolved = false;
+  referencePending = false;
   ready = false;
   started = 0;
   feedback = "";
@@ -590,7 +594,9 @@ async function play(replay: boolean, reference = false): Promise<boolean> {
   const a = current,
     c = session.config,
     token = ++operation;
+  if (reference) referencePending = true;
   busy = true;
+  if (!ready) feedback = "";
   ready = false;
   renderPractice();
   try {
@@ -619,17 +625,18 @@ async function play(replay: boolean, reference = false): Promise<boolean> {
           c.exercise === "m1" ? { excludeTarget: a.target.midi } : {},
         );
     playback = plan;
+    void plan.completed.then((end) => {
+      if (end === "interrupted" && token === operation && current === a)
+        audioUnavailable(
+          a,
+          new Error("Audio playback interrupted. Press Retry audio."),
+        );
+    });
     if (replay) {
       if (done || a.firstAnswer !== null) a.replaysAfterFirst++;
       else a.replaysBeforeFirst++;
     }
     if (!(await plan.ready)) return false;
-    if (
-      reference &&
-      c.exercise === "m2" &&
-      (await plan.completed) !== "completed"
-    )
-      return false;
     if (token !== operation) return false;
     if (!started && !reference) {
       started = performance.now();
@@ -642,18 +649,40 @@ async function play(replay: boolean, reference = false): Promise<boolean> {
     return true;
   } catch (e) {
     if (token !== operation) return false;
-    audio.stop();
-    playback = null;
-    if (!done && a.firstAnswer === null) a.timingValidity = "interrupted";
-    persist();
-    feedback = "Audio unavailable. Retry audio before responding.";
-    report(e);
+    audioUnavailable(a, e);
     return false;
   } finally {
     if (token === operation) {
       busy = false;
       renderPractice();
     }
+  }
+}
+function audioUnavailable(a: Attempt, e: unknown) {
+  cancelAdvance();
+  operation++;
+  audio.stop();
+  playback = null;
+  ready = false;
+  busy = false;
+  if (!done && a.firstAnswer === null) a.timingValidity = "interrupted";
+  persist();
+  feedback = "Audio unavailable. Retry audio before responding.";
+  report(e);
+  renderPractice();
+}
+async function revealReference(a: Attempt) {
+  const s = session;
+  if (
+    (await play(started > 0 && a.revealedReference, true)) &&
+    current === a &&
+    session === s
+  ) {
+    resolved = true;
+    feedback = "Reference revealed. First answer unchanged.";
+    persist();
+    renderPractice();
+    if (playback) scheduleAdvance({ after: playback.completed });
   }
 }
 function finish() {
@@ -739,11 +768,15 @@ function renderPractice() {
       actions(
         button(
           ready ? "Replay" : "Retry audio",
-          () =>
-            play(
-              started > 0 && (!done || a.revealedReference),
-              done || resolved,
-            ),
+          () => {
+            const reference = done || resolved || referencePending;
+            return c.exercise === "m2" && referencePending && !resolved
+              ? revealReference(a)
+              : play(
+                  started > 0 && (!reference || a.revealedReference),
+                  reference,
+                );
+          },
           true,
           busy,
         ),
@@ -776,13 +809,7 @@ function renderPractice() {
           "Reveal Answer",
           async () => {
             if (current !== a || busy || resolved) return;
-            if (await play(false, true)) {
-              resolved = true;
-              feedback = "Reference revealed. First answer unchanged.";
-              persist();
-              renderPractice();
-              if (playback) scheduleAdvance({ after: playback.completed });
-            }
+            await revealReference(a);
           },
           true,
           busy,
@@ -872,10 +899,10 @@ function renderPractice() {
           ? "Finish session"
           : "Next",
         () => {
-          if (current === a && resolved && !busy) next();
+          if (current === a && resolved && ready && !busy) next();
         },
         false,
-        busy,
+        busy || !ready,
       ),
     );
   if (c.exercise === "m1")

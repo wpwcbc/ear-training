@@ -92,14 +92,25 @@ try {
     true,
     "Reveal has harmony even with question context off",
   );
-  await page.evaluate(() => window.testAudio.suspend());
-  await page.waitForTimeout(2800);
+  await page
+    .locator(".question p")
+    .filter({ hasText: /^Answer: b3$/ })
+    .waitFor();
+  assert.equal(
+    (await page.evaluate(() => window.trace))[1].end,
+    undefined,
+    "Reveal displays the answer while its reference is still sounding",
+  );
+  const revealing = (await latest()).attempts[0];
+  for (const key of ["firstAnswer", "firstCorrect", "firstResponseMs"])
+    assert.deepEqual(revealing[key], first[key]);
+  await page.waitForTimeout(300);
   assert.equal(
     (await latest()).attempts.length,
     1,
-    "wall-clock delay cannot replace audio completion",
+    "the answer is visible but advancement waits for natural audio completion",
   );
-  await page.evaluate(() => window.testAudio.resume());
+  assert.equal((await page.evaluate(() => window.trace))[1].end, undefined);
   await page.waitForFunction(
     () =>
       JSON.parse(localStorage.getItem("jazzEarLab:v2:sessions")).at(-1).attempts
@@ -122,6 +133,68 @@ try {
     assert.deepEqual(after[key], first[key]);
   assert.equal((await page.evaluate(() => window.trace))[1].end, "completed");
   await page.getByRole("button", { name: "Stop", exact: true }).click();
+
+  for (const phase of ["before-ready", "after-ready"]) {
+    await start(true, 2);
+    const locked = (await latest()).attempts[0];
+    if (phase === "before-ready")
+      await page.evaluate(async () => {
+        const { AudioEngine } = await import("/js/jazz/audio.js");
+        const original = AudioEngine.prototype.playReference;
+        AudioEngine.prototype.playReference = function (...args) {
+          const plan = Reflect.apply(original, this, args);
+          void window.testAudio.suspend();
+          AudioEngine.prototype.playReference = original;
+          return plan;
+        };
+      });
+    await page
+      .getByRole("button", { name: "Reveal Answer", exact: true })
+      .click();
+    if (phase === "after-ready") {
+      await page
+        .locator(".question p")
+        .filter({ hasText: /^Answer: b3$/ })
+        .waitFor();
+      await page.evaluate(() => window.testAudio.close());
+    }
+    await page
+      .getByRole("status")
+      .filter({ hasText: /Audio unavailable/ })
+      .waitFor();
+    await page.waitForTimeout(2800);
+    assert.equal(
+      (await latest()).attempts.length,
+      1,
+      "interrupted Reveal never advances",
+    );
+    await page.getByRole("button", { name: "Retry audio", exact: true }).click();
+    await page
+      .locator(".question p")
+      .filter({ hasText: /^Answer: b3$/ })
+      .waitFor();
+    assert.equal((await page.evaluate(() => window.trace)).at(-1).end, undefined);
+    await page.waitForFunction(
+      () =>
+        JSON.parse(localStorage.getItem("jazzEarLab:v2:sessions")).at(-1)
+          .attempts.length === 2,
+    );
+    const recovered = (await latest()).attempts[0];
+    for (const key of [
+      "firstAnswer",
+      "firstCorrect",
+      "firstResponseMs",
+      "timingValidity",
+      "replaysBeforeFirst",
+    ])
+      assert.deepEqual(recovered[key], locked[key]);
+    assert.equal(
+      recovered.replaysAfterFirst,
+      phase === "before-ready" ? 0 : 1,
+      "only a previously available reference makes recovery a review replay",
+    );
+    await page.getByRole("button", { name: "Stop", exact: true }).click();
+  }
 
   await start(false, 1);
   await page

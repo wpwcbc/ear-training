@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { seedM1Preset } from "./m1-preset.mjs";
 import { readFile } from "node:fs/promises";
 const { chromium } = await import(
   process.env.PLAYWRIGHT_MODULE || "playwright"
@@ -24,28 +25,7 @@ const latest = () =>
   );
 async function start(overrides = {}) {
   await page.goto(url);
-  await page.evaluate(async (overrides) => {
-    const { builtins, keys } = await import("/js/v2/model.js");
-    localStorage.setItem(
-      keys.presets,
-      JSON.stringify([
-        {
-          ...builtins[0],
-          config: {
-            ...builtins[0].config,
-            exercise: "m1",
-            roots: ["G"],
-            qualities: ["7"],
-            targetMode: "exact",
-            targets: ["3"],
-            count: 2,
-            ...overrides,
-          },
-        },
-      ]),
-    );
-  }, overrides);
-  await page.reload();
+  await seedM1Preset(page, { count: 2, ...overrides });
   await page.evaluate(async () => {
     const { AudioEngine } = await import("/js/jazz/audio.js");
     const original = AudioEngine.prototype.playReference;
@@ -126,7 +106,8 @@ try {
     1,
     "grade alone cannot skip the natural reference tail",
   );
-  await page.evaluate(() => window.testAudio.resume());
+  assert.equal(await page.evaluate(() => window.references[0].end), "interrupted");
+  await page.getByRole("button", { name: "Retry audio", exact: true }).click();
   await page.waitForFunction(
     () =>
       JSON.parse(localStorage.getItem("jazzEarLab:v2:sessions")).at(-1).attempts
@@ -135,7 +116,8 @@ try {
   await page.waitForFunction(() =>
     document.activeElement.textContent.startsWith("Done -"),
   );
-  assert.deepEqual((await latest()).attempts[0], graded);
+  const recoveredGrade = { ...graded, replaysAfterFirst: 1 };
+  assert.deepEqual((await latest()).attempts[0], recoveredGrade);
   assert.equal(
     await page.evaluate(() =>
       document.activeElement.textContent.startsWith("Done -"),
@@ -159,7 +141,7 @@ try {
   assert.equal((await latest()).attempts[1].firstCorrect, true);
   await page.waitForURL(/#results\//);
   assert.equal((await latest()).attempts.length, 2);
-  assert.deepEqual((await latest()).attempts[0], graded);
+  assert.deepEqual((await latest()).attempts[0], recoveredGrade);
 
   // Tail first: audio alone cannot grade, and Unknown is an explicit choice.
   await page.setViewportSize({ width: 390, height: 844 });

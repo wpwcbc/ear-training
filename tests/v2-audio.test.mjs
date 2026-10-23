@@ -8,7 +8,10 @@ async function audioClock(t) {
   t.mock.timers.enable({ apis: ["setTimeout"] });
   const sources = [],
     gains = [];
+  const events = new EventTarget();
   const context = {
+    addEventListener: events.addEventListener.bind(events),
+    removeEventListener: events.removeEventListener.bind(events),
     currentTime: 0,
     state: "running",
     destination: {},

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { seedM1Preset } from "./m1-preset.mjs";
 const { chromium } = await import(
   process.env.PLAYWRIGHT_MODULE || "playwright"
 );
@@ -23,28 +24,7 @@ const latest = () =>
   );
 async function start(overrides = {}, failure = null) {
   await page.goto(url);
-  await page.evaluate(async (overrides) => {
-    const { builtins, keys } = await import("/js/v2/model.js");
-    localStorage.setItem(
-      keys.presets,
-      JSON.stringify([
-        {
-          ...builtins[0],
-          config: {
-            ...builtins[0].config,
-            exercise: "m1",
-            roots: ["G"],
-            qualities: ["7"],
-            targetMode: "exact",
-            targets: ["3"],
-            count: 1,
-            ...overrides,
-          },
-        },
-      ]),
-    );
-  }, overrides);
-  await page.reload();
+  await seedM1Preset(page, { count: 1, ...overrides });
   await page.evaluate(async (failure) => {
     const { AudioEngine } = await import("/js/jazz/audio.js");
     window.trace = [];
@@ -137,10 +117,12 @@ try {
     (await latest()).attempts[0].firstResponseMs,
     locked.firstResponseMs,
   );
-  await page.evaluate(() => window.testAudio.resume());
+  assert.equal((await page.evaluate(() => window.trace))[1].end, "interrupted");
+  await page.getByRole("button", { name: "Retry audio", exact: true }).click();
   await page.waitForURL(/#results\//);
   assert.equal((await latest()).attempts.length, 1);
   assert.equal((await latest()).attempts[0].firstCorrect, true);
+  assert.equal((await latest()).attempts[0].replaysAfterFirst, 1);
 
   // The same stored M1 evidence must stay intact and outside new-onset cohorts.
   const oldSession = await latest();

@@ -16,7 +16,7 @@ export interface PlaybackEvent {
   start: number;
   duration: number;
 }
-export type SinglePlaybackEnd = "completed" | "cancelled" | "faded";
+export type SinglePlaybackEnd = "completed" | "cancelled" | "faded" | "interrupted";
 export interface SinglePlaybackOptions {
   excludeTarget?: number;
   fullReference?: boolean;
@@ -72,7 +72,8 @@ export class AudioEngine {
     return this.context ? this.context.currentTime - this.playbackStart : 0;
   }
   async ready(): Promise<void> {
-    this.context ??= new AudioContext();
+    if (!this.context || this.context.state === "closed")
+      this.context = new AudioContext();
     await this.context.resume();
     if (this.context.state !== "running")
       throw new Error("Audio is suspended. Press Start or Replay to retry.");
@@ -123,9 +124,25 @@ export class AudioEngine {
       settled = true;
       clearTimeout(timer);
       clearTimeout(referenceTimer);
+      ctx.removeEventListener("statechange", onStateChange);
       signalReferenceReady?.(false);
       signalReady(false);
       signalEnd(end);
+    };
+    const stop = (end: SinglePlaybackEnd) => {
+      if (settled) return;
+      for (const voice of pending) {
+        voice.gain.gain.cancelScheduledValues(ctx.currentTime);
+        voice.gain.gain.setValueAtTime(0, ctx.currentTime);
+        voice.source.stop();
+        this.voices.delete(voice.source);
+      }
+      pending.clear();
+      endTime = ctx.currentTime;
+      settle(end);
+    };
+    const onStateChange = () => {
+      if (ctx.state !== "running") stop("interrupted");
     };
     const playback: SinglePlayback = {
       readyMs,
@@ -137,18 +154,7 @@ export class AudioEngine {
       },
       ready,
       completed,
-      cancel: () => {
-        if (settled) return;
-        for (const voice of pending) {
-          voice.gain.gain.cancelScheduledValues(ctx.currentTime);
-          voice.gain.gain.setValueAtTime(0, ctx.currentTime);
-          voice.source.stop();
-          this.voices.delete(voice.source);
-        }
-        pending.clear();
-        endTime = ctx.currentTime;
-        settle("cancelled");
-      },
+      cancel: () => stop("cancelled"),
       fadeOut: (durationMs = 80) => {
         if (settled || fading) return completed;
         if (!Number.isFinite(durationMs) || durationMs < 0)
@@ -175,6 +181,7 @@ export class AudioEngine {
         return completed;
       },
     };
+    ctx.addEventListener("statechange", onStateChange);
     this.single = playback;
     const schedule = (note: number, at: number, level: number) => {
       const voice = this.tone(note, at, 2.5, level, false, true, () => {
