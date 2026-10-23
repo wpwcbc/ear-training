@@ -450,7 +450,9 @@ async function play(replay, reference = false) {
         await audio.ready();
         if (token !== operation)
             return false;
-        const plan = audio.playSingle(a.target.chord, c.exercise === "m2" || reference ? a.target.midi : null, c.volume, reference ? c.exercise === "m2" : c.context);
+        const plan = reference
+            ? audio.playReference(a.target.chord, a.target.midi, c.volume, c.exercise === "m1" && !replay ? playback : null)
+            : audio.playSingle(a.target.chord, c.exercise === "m2" ? a.target.midi : null, c.volume, c.context, c.exercise === "m1" ? { excludeTarget: a.target.midi } : {});
         playback = plan;
         if (replay) {
             if (done || a.firstAnswer !== null)
@@ -460,7 +462,7 @@ async function play(replay, reference = false) {
         }
         if (!(await plan.ready))
             return false;
-        if (reference && (await plan.completed) !== "completed")
+        if (reference && c.exercise === "m2" && (await plan.completed) !== "completed")
             return false;
         if (token !== operation)
             return false;
@@ -473,11 +475,15 @@ async function play(replay, reference = false) {
             a.revealedReference = true;
         ready = true;
         persist();
+        if (reference && c.exercise === "m1" && resolved)
+            scheduleAdvance({ after: plan.completed });
         return true;
     }
     catch (e) {
         if (token !== operation)
             return false;
+        audio.stop();
+        playback = null;
         if (!done && a.firstAnswer === null)
             a.timingValidity = "interrupted";
         persist();
@@ -517,6 +523,11 @@ function finish() {
 }
 function afterResponse(fastAdvance = false) {
     persist();
+    if (session?.config.exercise === "m1" && playback) {
+        renderPractice();
+        scheduleAdvance({ after: playback.completed });
+        return;
+    }
     if (fastAdvance) {
         renderPractice();
         scheduleAdvance({ delayMs: 1000, fade: true });
@@ -551,7 +562,7 @@ function renderPractice() {
     status.setAttribute("role", "status");
     host.append(status);
     if (!(c.exercise === "m1" && !c.context && !done))
-        host.append(actions(button(ready ? "Replay" : "Retry audio", () => play(started > 0, done || resolved), true, busy)));
+        host.append(actions(button(ready ? "Replay" : "Retry audio", () => play(started > 0 && (!done || a.revealedReference), done || resolved), true, busy)));
     if (c.exercise === "m2") {
         if (!resolved) {
             const answers = el("div", "", "answers");
@@ -584,7 +595,7 @@ function renderPractice() {
     }
     else if (!done) {
         host.append(button("Done - " + c.method, async () => {
-            if (!ready || busy)
+            if (current !== a || done || !ready || busy)
                 return;
             a.firstResponseMs = elapsed();
             done = true;
@@ -680,7 +691,7 @@ function results(id) {
                 await audio.ready();
                 if (token !== operation || location.hash !== "#results/" + s.id)
                     return;
-                audio.playSingle(a.target.chord, a.target.midi, s.config.volume, false);
+                audio.playReference(a.target.chord, a.target.midi, s.config.volume);
                 a.replaysAfterFirst++;
                 a.revealedReference = true;
                 persist();
