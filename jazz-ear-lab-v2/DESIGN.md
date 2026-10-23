@@ -29,3 +29,9 @@ Use the approved performance-to-decision hierarchy, progressive disclosure and
 evidence limits. Focused presets will follow the active Root filter and remain
 editable in Customize. This is a planning record, not an implemented change;
 preserve metric definitions, cohort boundaries, history and the visual identity.
+
+Project-wide consolidation of the approved V2 UX decisions:
+[UX_PRINCIPLES.md](../UX_PRINCIPLES.md). This user-requested custom project
+document summarizes global principles, Practice state flow, Insights information
+architecture and acceptance criteria. It is not an automatically required
+Impeccable artifact or a claim that the planned changes have been implemented.
