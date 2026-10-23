@@ -59,7 +59,8 @@ export class AudioEngine {
   private context: AudioContext | null = null;
   private voices = new Set<AudioScheduledSourceNode>();
   private single: SinglePlayback | null = null;
-  private layerTarget: ((midi: number, volume: number) => SinglePlayback | null) | null = null;
+  private layerTarget:
+    ((midi: number, volume: number) => SinglePlayback | null) | null = null;
   private playbackStart = 0;
   plan: ReturnType<typeof playbackPlan> = {
     events: [],
@@ -92,18 +93,31 @@ export class AudioEngine {
     const ctx = this.context,
       dispatch = ctx.currentTime,
       start = dispatch + 0.04,
-      readyMs = midi === null
-        ? (context ? (options.excludeTarget !== undefined ? 40 : 900) : 0)
-        : (options.fullReference ? 40 : 120);
+      readyMs =
+        midi === null
+          ? context
+            ? options.excludeTarget !== undefined
+              ? 40
+              : 900
+            : 0
+          : options.fullReference
+            ? 40
+            : 120;
     const pending = new Set<ReturnType<AudioEngine["tone"]>>();
-    let endTime = dispatch, settled = false, fading = false;
+    let endTime = dispatch,
+      settled = false,
+      fading = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
     let referenceTimer: ReturnType<typeof setTimeout> | undefined;
     let signalReferenceReady: ((ready: boolean) => void) | undefined;
     let signalReady!: (ready: boolean) => void;
     let signalEnd!: (end: SinglePlaybackEnd) => void;
-    const ready = new Promise<boolean>((resolve) => { signalReady = resolve; });
-    const completed = new Promise<SinglePlaybackEnd>((resolve) => { signalEnd = resolve; });
+    const ready = new Promise<boolean>((resolve) => {
+      signalReady = resolve;
+    });
+    const completed = new Promise<SinglePlaybackEnd>((resolve) => {
+      signalEnd = resolve;
+    });
     const settle = (end: SinglePlaybackEnd) => {
       if (settled) return;
       settled = true;
@@ -115,8 +129,12 @@ export class AudioEngine {
     };
     const playback: SinglePlayback = {
       readyMs,
-      get durationMs() { return (endTime - dispatch) * 1000; },
-      get activeVoices() { return pending.size; },
+      get durationMs() {
+        return (endTime - dispatch) * 1000;
+      },
+      get activeVoices() {
+        return pending.size;
+      },
       ready,
       completed,
       cancel: () => {
@@ -138,10 +156,12 @@ export class AudioEngine {
         fading = true;
         clearTimeout(timer);
         signalReady(false);
-        const now = ctx.currentTime, fadeEnd = now + durationMs / 1000;
+        const now = ctx.currentTime,
+          fadeEnd = now + durationMs / 1000;
         endTime = now;
         for (const voice of pending) {
-          const end = voice.startTime > now ? now : Math.min(voice.endTime, fadeEnd);
+          const end =
+            voice.startTime > now ? now : Math.min(voice.endTime, fadeEnd);
           if (voice.startTime > now) {
             voice.gain.gain.cancelScheduledValues(now);
             voice.gain.gain.setValueAtTime(0, now);
@@ -166,23 +186,45 @@ export class AudioEngine {
     };
     this.layerTarget = (target, level) => {
       // onended may be queued after the audio clock has passed the chord tail.
-      if (settled || fading || options.excludeTarget === undefined ||
-          ![...pending].some((voice) => voice.startTime <= ctx.currentTime && voice.endTime > ctx.currentTime))
+      if (
+        settled ||
+        fading ||
+        options.excludeTarget === undefined ||
+        ![...pending].some(
+          (voice) =>
+            voice.startTime <= ctx.currentTime &&
+            voice.endTime > ctx.currentTime,
+        )
+      )
         return null;
       const onset = ctx.currentTime + 0.04;
-      const referenceReady = new Promise<boolean>((resolve) => { signalReferenceReady = resolve; });
+      const referenceReady = new Promise<boolean>((resolve) => {
+        signalReferenceReady = resolve;
+      });
       schedule(target, onset, level * 0.24);
       const checkReferenceReady = () => {
-        if (settled || fading) { signalReferenceReady?.(false); return; }
+        if (settled || fading) {
+          signalReferenceReady?.(false);
+          return;
+        }
         const remaining = onset - ctx.currentTime;
-        if (ctx.state === "running" && remaining <= 0.000001) signalReferenceReady?.(true);
-        else referenceTimer = setTimeout(checkReferenceReady, Math.max(10, Math.ceil(remaining * 1000)));
+        if (ctx.state === "running" && remaining <= 0.000001)
+          signalReferenceReady?.(true);
+        else
+          referenceTimer = setTimeout(
+            checkReferenceReady,
+            Math.max(10, Math.ceil(remaining * 1000)),
+          );
       };
       checkReferenceReady();
       return {
         readyMs: 40,
-        get durationMs() { return (endTime - onset + 0.04) * 1000; },
-        get activeVoices() { return playback.activeVoices; },
+        get durationMs() {
+          return (endTime - onset + 0.04) * 1000;
+        },
+        get activeVoices() {
+          return playback.activeVoices;
+        },
         ready: referenceReady,
         completed,
         cancel: playback.cancel,
@@ -193,11 +235,22 @@ export class AudioEngine {
       if (context)
         chordNotes(chord)
           .filter((note) => {
-            const excluded = options.fullReference ? midi : options.excludeTarget;
-            return excluded === undefined || excluded === null || note % 12 !== excluded % 12;
+            const excluded = options.fullReference
+              ? midi
+              : options.excludeTarget;
+            return (
+              excluded === undefined ||
+              excluded === null ||
+              note % 12 !== excluded % 12
+            );
           })
           .forEach((note) => schedule(note, start, volume * 0.09));
-      if (midi !== null) schedule(midi, start + (options.fullReference ? 0 : 0.08), volume * 0.24);
+      if (midi !== null)
+        schedule(
+          midi,
+          start + (options.fullReference ? 0 : 0.08),
+          volume * 0.24,
+        );
     } catch (e) {
       this.stop();
       throw e;
@@ -208,7 +261,11 @@ export class AudioEngine {
       if (settled) return;
       const remaining = dispatch + readyMs / 1000 - ctx.currentTime;
       if (ctx.state === "running" && remaining <= 0.000001) signalReady(true);
-      else timer = setTimeout(checkReady, Math.max(10, Math.ceil(remaining * 1000)));
+      else
+        timer = setTimeout(
+          checkReady,
+          Math.max(10, Math.ceil(remaining * 1000)),
+        );
     };
     checkReady();
     if (!pending.size) settle("completed");
@@ -247,7 +304,12 @@ export class AudioEngine {
     pad: boolean,
     natural = false,
     onEnd?: () => void,
-  ): { source: OscillatorNode; gain: GainNode; startTime: number; endTime: number } {
+  ): {
+    source: OscillatorNode;
+    gain: GainNode;
+    startTime: number;
+    endTime: number;
+  } {
     const ctx = this.context!;
     const oscillator = ctx.createOscillator(),
       gain = ctx.createGain();
@@ -271,7 +333,12 @@ export class AudioEngine {
     };
     oscillator.start(start);
     oscillator.stop(start + duration + 0.02);
-    return { source: oscillator, gain, startTime: start, endTime: start + duration + 0.02 };
+    return {
+      source: oscillator,
+      gain,
+      startTime: start,
+      endTime: start + duration + 0.02,
+    };
   }
   private click(start: number, volume: number): void {
     const ctx = this.context!;

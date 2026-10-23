@@ -34,29 +34,51 @@ async function seed(config) {
   await page.evaluate(async () => {
     const { AudioEngine } = await import("/js/jazz/audio.js");
     const play = AudioEngine.prototype.playSingle;
+    const reference = AudioEngine.prototype.playReference;
     window.calls = [];
     window.playbacks = [];
-    AudioEngine.prototype.playSingle = function (chord, midi, volume, context) {
+    AudioEngine.prototype.playSingle = function (...args) {
+      const [, midi, , context] = args;
       window.calls.push({ midi, context });
       if (window.failAudio) {
         window.failAudio = false;
         throw new Error("Simulated audio failure");
       }
-      const playback = play.call(this, chord, midi, volume, context);
+      const playback = Reflect.apply(play, this, args);
       window.playbacks.push(playback);
       window.lastPlan = {
         readyMs: playback.readyMs,
         durationMs: playback.durationMs,
       };
       if (window.holdReady) {
-        const gate = new Promise((resolve) => { window.releaseReady = resolve; });
-        return { ...playback, ready: Promise.all([playback.ready, gate]).then(([ready]) => ready) };
+        const gate = new Promise((resolve) => {
+          window.releaseReady = resolve;
+        });
+        return {
+          ...playback,
+          ready: Promise.all([playback.ready, gate]).then(([ready]) => ready),
+        };
       }
       if (window.holdCompletion) {
-        const gate = new Promise((resolve) => { window.releaseCompletion = resolve; });
-        return { ...playback, completed: Promise.all([playback.completed, gate]).then(([end]) => end) };
+        const gate = new Promise((resolve) => {
+          window.releaseCompletion = resolve;
+        });
+        return {
+          ...playback,
+          completed: Promise.all([playback.completed, gate]).then(
+            ([end]) => end,
+          ),
+        };
       }
       return playback;
+    };
+    AudioEngine.prototype.playReference = function (...args) {
+      window.calls.push({ midi: args[1], context: true });
+      if (window.failAudio) {
+        window.failAudio = false;
+        throw new Error("Simulated reference failure");
+      }
+      return Reflect.apply(reference, this, args);
     };
   });
 }
@@ -137,22 +159,33 @@ try {
   await capture("home-desktop");
   await seed({
     count: 2,
+    autoAdvance: false,
     roots: ["G"],
     qualities: ["7"],
     targetMode: "exact",
     targets: ["b3"],
   });
-  await page.evaluate(() => { window.holdReady = true; });
+  await page.evaluate(() => {
+    window.holdReady = true;
+  });
   await start();
   await page.waitForTimeout(250);
-  assert.equal(await page.locator(".answers button:enabled").count(), 0,
-    "answers wait for playback readiness, not a UI timeout");
-  await page.evaluate(() => { window.holdReady = false; window.releaseReady(); });
+  assert.equal(
+    await page.locator(".answers button:enabled").count(),
+    0,
+    "answers wait for playback readiness, not a UI timeout",
+  );
+  await page.evaluate(() => {
+    window.holdReady = false;
+    window.releaseReady();
+  });
   await ready();
   const plan = await page.evaluate(() => window.lastPlan);
   assert.equal(plan.readyMs, 120, "M2 keeps its first-target timing boundary");
-  assert.ok(plan.durationMs >= 2000 && plan.durationMs <= 3000,
-    "V2 piano-like playback includes a natural 2-3 second tail");
+  assert.ok(
+    plan.durationMs >= 2000 && plan.durationMs <= 3000,
+    "V2 piano-like playback includes a natural 2-3 second tail",
+  );
   assert.equal(await page.locator(".answers button").count(), 12);
   const q = (await latest()).attempts[0].target;
   assert.equal(q.degree, "b3");
@@ -160,10 +193,13 @@ try {
   await page.waitForTimeout(60);
   await page.getByRole("button", { name: "Replay", exact: true }).click();
   await ready();
-  assert.deepEqual(await page.evaluate(async () => ({
-    end: await window.playbacks[0].completed,
-    voices: window.playbacks[0].activeVoices,
-  })), { end: "cancelled", voices: 0 });
+  assert.deepEqual(
+    await page.evaluate(async () => ({
+      end: await window.playbacks[0].completed,
+      voices: window.playbacks[0].activeVoices,
+    })),
+    { end: "cancelled", voices: 0 },
+  );
   await page.getByRole("button", { name: "5", exact: true }).click();
   assert.equal(await page.locator("#feedback").textContent(), "Incorrect");
   assert.doesNotMatch(
@@ -185,6 +221,9 @@ try {
   await page.getByRole("button", { name: "Next", exact: true }).click();
   await ready();
   await page.getByRole("button", { name: "b3", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Finish session", exact: true })
+    .click();
   await page.waitForURL(/#results\//);
   assert.match(
     await page.locator("main").textContent(),
@@ -204,27 +243,48 @@ try {
   assert.equal(reviewed.replaysAfterFirst, recorded.replaysAfterFirst + 1);
   assert.equal(reviewed.firstResponseMs, recorded.firstResponseMs);
   assert.equal(reviewed.firstCorrect, false);
-  await seed({ exercise: "m2", count: 0, context: true,
-    roots: ["G"], qualities: ["7"], targetMode: "exact", targets: ["b3"] });
+  await seed({
+    exercise: "m2",
+    count: 0,
+    context: true,
+    roots: ["G"],
+    qualities: ["7"],
+    targetMode: "exact",
+    targets: ["b3"],
+  });
   await start();
   await ready();
   await page.getByRole("button", { name: "5", exact: true }).click();
-  await page.evaluate(() => { window.holdCompletion = true; });
-  await page.getByRole("button", { name: "Reveal Answer", exact: true }).click();
+  await page.evaluate(() => {
+    window.holdCompletion = true;
+  });
+  await page
+    .getByRole("button", { name: "Reveal Answer", exact: true })
+    .click();
   await page.waitForFunction(() => !!window.releaseCompletion);
   await page.waitForTimeout(200);
   await page.getByRole("button", { name: "Stop", exact: true }).click();
   await page.waitForURL(/#results\//);
-  assert.equal(await page.evaluate(() => window.playbacks.every((p) => p.activeVoices === 0)), true);
+  assert.equal(
+    await page.evaluate(() =>
+      window.playbacks.every((p) => p.activeVoices === 0),
+    ),
+    true,
+  );
   await page.getByRole("link", { name: "Practice", exact: true }).click();
-  await page.evaluate(() => { window.holdCompletion = false; });
+  await page.evaluate(() => {
+    window.holdCompletion = false;
+  });
   await start();
   await ready();
   const newerQuestion = await latest();
   await page.evaluate(() => window.releaseCompletion());
   await page.waitForTimeout(100);
-  assert.equal(await page.locator(".answers button:enabled").count(), 12,
-    "stopped Reveal completion cannot resolve a newer question");
+  assert.equal(
+    await page.locator(".answers button:enabled").count(),
+    12,
+    "stopped Reveal completion cannot resolve a newer question",
+  );
   assert.deepEqual(await latest(), newerQuestion);
   await page.getByRole("button", { name: "Stop", exact: true }).click();
   await page.waitForURL(/#results\//);
@@ -247,16 +307,12 @@ try {
     else assert.equal(calls[0].context, true);
     if (method === "sung") await page.evaluate(() => (window.failAudio = true));
     if (method === "imagined")
-      await page.evaluate(() => { window.holdCompletion = true; });
+      await page.evaluate(() => {
+        window.holdCompletion = true;
+      });
     await page
       .getByRole("button", { name: "Done - " + method, exact: true })
       .click();
-    if (method === "imagined") {
-      await page.waitForTimeout(2800);
-      assert.equal(await page.getByRole("button", { name: "Correct", exact: true }).count(), 0,
-        "reference grading waits for audio completion, not its planned duration");
-      await page.evaluate(() => { window.holdCompletion = false; window.releaseCompletion(); });
-    }
     if (method === "sung") {
       await page.waitForFunction(() =>
         document
@@ -295,20 +351,26 @@ try {
     );
     if (method === "played") await capture("m1-reference-desktop");
     if (method !== "played") {
+      assert.equal(await page.locator("#wrong-degree").count(), 0);
       await page
         .getByRole("button", { name: "Incorrect", exact: true })
         .click();
-      await page.locator("#error").waitFor({ state: "visible" });
-      assert.match(
-        await page.locator("#error").textContent(),
-        /different degree or Unknown/,
-      );
+      assert.equal((await latest()).attempts[0].firstCorrect, null);
       await page.locator("#wrong-degree").selectOption("unknown");
-      await page
-        .getByRole("button", { name: "Incorrect", exact: true })
-        .click();
     } else
       await page.getByRole("button", { name: "Correct", exact: true }).click();
+    if (method === "imagined") {
+      await page.waitForTimeout(2800);
+      assert.match(
+        page.url(),
+        /#practice$/,
+        "grading cannot bypass reference completion",
+      );
+      await page.evaluate(() => {
+        window.holdCompletion = false;
+        window.releaseCompletion();
+      });
+    }
     await page.waitForURL(/#results\//);
     const a = (await latest()).attempts[0];
     assert.equal(a.responseMethod, method);
@@ -323,7 +385,7 @@ try {
       /Self-rated Accuracy/,
     );
   }
-  await seed({ exercise: "m2", count: 0 });
+  await seed({ exercise: "m2", count: 0, autoAdvance: false });
   await start();
   await ready();
   await page.getByRole("button", { name: "5", exact: true }).click();

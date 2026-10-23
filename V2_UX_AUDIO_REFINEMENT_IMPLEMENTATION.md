@@ -25,7 +25,85 @@ those musical details reliably. Do not test private UI timers or exact envelope
 coefficients. Use red/green increments within each ticket.
 
 Baseline before application edits: TypeScript build and 110 unit tests passed.
-Final commands and results will be recorded after integration and code review.
+
+## Runtime decisions
+
+- V2 voices use the existing triangle-based synthesis with a natural 2.5-second
+  envelope. Legacy callers keep their original envelope and beat scheduling.
+  M2 question readiness remains the original 120ms target-onset boundary.
+- A single-chord playback handle separates answer readiness from audible
+  completion, owns cancellation/fade, and resolves completion from source-ended
+  events. Suspending the audio clock cannot satisfy a reference completion gate.
+- M1 question voicings omit every target pitch class. Done is usable from
+  chord onset (40ms scheduling lead), or visual readiness with context off.
+  Live reference adds the target without reattacking the existing chord; after
+  its tail/context-off, a full harmonic reference is started. Fresh references
+  avoid doubling the target class in chord and melody voices.
+- New M1 attempts use `v2-m1-chord-onset-2`; older stored versions/times are
+  unchanged. Existing cohort keys separate these measurements. M2 retains
+  `v2-answer-ready-1`. Singing/playing remain self-reported, not pitch-verified.
+- `autoAdvance` is an optional boolean in persisted configurations. Missing
+  values mean on; explicit off remains off after reload. Validation clones
+  input rather than rewriting historical snapshots. Preset overrides/Restore
+  Default and all independent pools remain intact.
+- M2 Correct/correct retry shows about one second of confirmation, fades active
+  outgoing voices, then advances without another reference. Wrong stays for
+  retry. Explicit Reveal always includes harmony, even with question context
+  off, and finishes its natural tail before advancing.
+- M1 Correct is one click. Incorrect only opens the non-target/Unknown chooser;
+  selection completes the self-rating. Auto-next requires both completed grading
+  and reference completion, whichever happens last. Manual off keeps review and
+  Next/Finish available. Final fixed questions use the same completion gate.
+- Initial question/mandatory first reference are not replays. Explicit review
+  listens are post-first replays. Retries and references cannot replace first
+  answers, first latencies or pre-first replay evidence; historical counters
+  are not retroactively rewritten.
+- The question/session-scoped transition is cancelled by replay, manual Next,
+  Stop, navigation, visibility loss, playback failure and session completion.
+  A resolved Replay gets a new full-reference completion gate, not the old fast
+  confirmation deadline. Removed/disabled buttons cannot execute queued actions.
+
+## Acceptance coverage
+
+`npm run test:v2` runs the existing browser family plus the focused acceptance
+files, all using the existing Edge/Playwright boundary and real browser audio:
+
+| Spec cases | Checks |
+| --- | --- |
+| 1-6: withholding, onset and continuation | M1 browser and small audio scheduling contracts; cross-octave pitch omission, tension preservation, queued end-event edge case, live/fresh/context-off references |
+| 7-9: self-rating and natural completion | M1 grading browser; early/late wrong selection, Unknown, one-click Correct, suspended audio, fixed/Unlimited and manual mode |
+| 10-15: recognition and Reveal | Auto Advance and Reveal browser files; first-answer lock, retries, no early answer leak, fade ordering, full harmonic reference and mandatory-reference attribution |
+| 16-19: cancellation, races and sessions | Lifecycle plus Auto Advance/M1 grading browser checks; stale actions, Stop/navigation/visibility, failed restart, actual completion and finite/Unlimited boundaries |
+| 20-21: persistence and timing cohorts | Configuration/model tests, M1 browser, existing V2 acceptance/homepage; old snapshots preserved, optional setting reload/restore and separated timing policies |
+| 22-23: accessibility and Legacy | Keyboard grading/choice/Next focus, narrow layout and optional axe, byte-preserved V1 records and existing Legacy M1/M2/history/audio smoke |
+
+The original V2 browser fixtures were updated to exercise the new contracts,
+not disabled: audio spies forward all policy arguments, Correct becomes usable
+before reference completion, and Incorrect opens a chooser instead of producing
+a validation error. Dedicated default-on and manual cases remain separate.
+
+## Verified delivery
+
+- `npm test`: TypeScript build and 118 unit tests passed.
+- `npm run test:v2`: all seven browser acceptance files passed, including
+  persistence/errors, pools, source isolation, real completion gates, keyboard
+  focus, races and all M1 response methods.
+- Legacy core and Release 3 browser smoke passed, including M1/M2, history,
+  replay/cancellation and persistence. The full 14-file Legacy battery was not
+  rerun for this focused change.
+- Captured V2 desktop/mobile states and the conditional mobile chooser passed
+  the enabled axe WCAG A/AA tag checks. Desktop settings/reference and mobile
+  chooser were inspected in one batch and a confirmation round. The final
+  batch removed duplicate chooser copy and gave Practice checkbox labels 44px
+  hit areas; focused grading and Auto Advance tests passed again.
+- RED/GREEN regression checks reproduced queued stale answers being counted as
+  retries and resolved Replay losing auto-next. Removed controls are now ignored,
+  and successful reference replay/Retry gets its own real completion gate.
+
+Final code review compares the integration branch with baseline `b261b9d` on
+the Standards and Spec axes before the draft PR is marked ready. Tickets are
+linked for automatic closure when that PR is merged; this delivery does not
+silently merge the integration branch into `main`.
 
 ## Manual listening limits
 

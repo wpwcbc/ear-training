@@ -72,7 +72,12 @@ function button(label, fn, secondary = true, disabled = false) {
     b.type = "button";
     b.disabled = disabled;
     b.onclick = () => {
-        Promise.resolve().then(fn).catch(report);
+        Promise.resolve()
+            .then(() => {
+            if (b.isConnected && !b.disabled)
+                return fn();
+        })
+            .catch(report);
     };
     return b;
 }
@@ -463,7 +468,9 @@ async function play(replay, reference = false) {
         }
         if (!(await plan.ready))
             return false;
-        if (reference && c.exercise === "m2" && (await plan.completed) !== "completed")
+        if (reference &&
+            c.exercise === "m2" &&
+            (await plan.completed) !== "completed")
             return false;
         if (token !== operation)
             return false;
@@ -476,7 +483,7 @@ async function play(replay, reference = false) {
             a.revealedReference = true;
         ready = true;
         persist();
-        if (reference && c.exercise === "m1" && resolved)
+        if (reference && resolved)
             scheduleAdvance({ after: plan.completed });
         return true;
     }
@@ -606,7 +613,11 @@ function renderPractice() {
     }
     else if (a.revealedReference && a.firstCorrect === null) {
         const grade = (correct, wrong) => {
-            if (current !== a || !ready || busy || resolved || a.firstCorrect !== null)
+            if (current !== a ||
+                !ready ||
+                busy ||
+                resolved ||
+                a.firstCorrect !== null)
                 return;
             if (correct ? choosingWrong : !choosingWrong)
                 return;
@@ -631,7 +642,8 @@ function renderPractice() {
                 wrong.append(o);
             }
             wrong.onchange = () => {
-                if (wrong.value && wrong.value !== a.target.degree &&
+                if (wrong.value &&
+                    wrong.value !== a.target.degree &&
                     (wrong.value === "unknown" || a.target.options.includes(wrong.value)))
                     grade(false, wrong.value);
             };
@@ -643,7 +655,7 @@ function renderPractice() {
                 if (current !== a || !ready || busy || resolved || choosingWrong)
                     return;
                 choosingWrong = true;
-                feedback = "Which degree did you imagine?";
+                feedback = "Incorrect";
                 renderPractice();
             }, true, busy)));
         }
@@ -662,8 +674,8 @@ function renderPractice() {
         const focus = resolved
             ? buttons.find((b) => b.textContent === "Next" || b.textContent === "Finish session")
             : done
-                ? host.querySelector("#wrong-degree") ??
-                    buttons.find((b) => b.textContent === "Correct")
+                ? (host.querySelector("#wrong-degree") ??
+                    buttons.find((b) => b.textContent === "Correct"))
                 : c.exercise === "m2"
                     ? host.querySelector(".answers button:not(:disabled)")
                     : buttons.find((b) => b.textContent?.startsWith("Done"));

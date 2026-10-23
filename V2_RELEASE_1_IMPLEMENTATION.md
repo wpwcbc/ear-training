@@ -4,6 +4,12 @@ Contract: [V2_RELEASE_1_SPEC.md](V2_RELEASE_1_SPEC.md), subordinate to
 [jazz-ear-lab.md](jazz-ear-lab.md). The pre-implementation checkpoint is
 `v2-release-1-checkpoint` at `a0997a4` (the specification commit).
 
+The audio/practice defaults below describe the original Release 1 delivery.
+[V2_UX_AUDIO_REFINEMENT.md](V2_UX_AUDIO_REFINEMENT.md) deliberately supersedes
+its short audio, M1 post-chord readiness and mandatory-reference replay defaults.
+See [refinement delivery](V2_UX_AUDIO_REFINEMENT_IMPLEMENTATION.md) for the
+current timing versions, completion gates, setting compatibility and checks.
+
 ## Entry and reuse
 
 - Entry: `jazz-ear-lab-v2/index.html`, served at `/jazz-ear-lab-v2/`.

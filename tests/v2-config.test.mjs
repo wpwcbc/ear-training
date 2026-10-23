@@ -11,5 +11,8 @@ test("Auto Advance accepts old presets without mutating them and validates expli
   assert.equal(validate({ ...old, autoAdvance: false }).autoAdvance, false);
   assert.equal(validate({ ...old, autoAdvance: true }).autoAdvance, true);
   for (const autoAdvance of [null, "false", 0, 1])
-    assert.throws(() => validate({ ...old, autoAdvance }), /Unsupported exercise settings/);
+    assert.throws(
+      () => validate({ ...old, autoAdvance }),
+      /Unsupported exercise settings/,
+    );
 });

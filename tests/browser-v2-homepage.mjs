@@ -81,10 +81,16 @@ async function spyAudio() {
   await page.evaluate(async () => {
     const { AudioEngine } = await import("/js/jazz/audio.js");
     const play = AudioEngine.prototype.playSingle;
+    const reference = AudioEngine.prototype.playReference;
     window.calls = [];
-    AudioEngine.prototype.playSingle = function (chord, midi, volume, context) {
+    AudioEngine.prototype.playSingle = function (...args) {
+      const [, midi, , context] = args;
       window.calls.push({ midi, context });
-      return play.call(this, chord, midi, volume, context);
+      return Reflect.apply(play, this, args);
+    };
+    AudioEngine.prototype.playReference = function (...args) {
+      window.calls.push({ midi: args[1], context: true });
+      return Reflect.apply(reference, this, args);
     };
   });
 }
