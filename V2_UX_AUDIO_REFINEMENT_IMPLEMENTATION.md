@@ -33,7 +33,10 @@ Baseline before application edits: TypeScript build and 110 unit tests passed.
   M2 question readiness remains the original 120ms target-onset boundary.
 - A single-chord playback handle separates answer readiness from audible
   completion, owns cancellation/fade, and resolves completion from source-ended
-  events. Suspending the audio clock cannot satisfy a reference completion gate.
+  events. Suspending/closing an active audio context reports interruption,
+  cancels advancement and exposes user-driven Retry; it never satisfies the
+  natural-completion gate. Retry preserves pending reference intent and can
+  recreate a closed context without changing locked answers or Done times.
 - M1 question voicings omit every target pitch class. Done is usable from
   chord onset (40ms scheduling lead), or visual readiness with context off.
   Live reference adds the target without reattacking the existing chord; after
@@ -50,6 +53,8 @@ Baseline before application edits: TypeScript build and 110 unit tests passed.
   outgoing voices, then advances without another reference. Wrong stays for
   retry. Explicit Reveal always includes harmony, even with question context
   off, and finishes its natural tail before advancing.
+  The correct degree is visible from reference readiness throughout that tail,
+  rather than being inserted and removed in the same final microtask.
 - M1 Correct is one click. Incorrect only opens the non-target/Unknown chooser;
   selection completes the self-rating. Auto-next requires both completed grading
   and reference completion, whichever happens last. Manual off keeps review and
@@ -58,6 +63,8 @@ Baseline before application edits: TypeScript build and 110 unit tests passed.
   listens are post-first replays. Retries and references cannot replace first
   answers, first latencies or pre-first replay evidence; historical counters
   are not retroactively rewritten.
+  Interrupted playback retried after it was already heard counts as additional
+  listening; retrying an unavailable first mandatory reference does not.
 - The question/session-scoped transition is cancelled by replay, manual Next,
   Stop, navigation, visibility loss, playback failure and session completion.
   A resolved Replay gets a new full-reference completion gate, not the old fast
@@ -100,10 +107,36 @@ a validation error. Dedicated default-on and manual cases remain separate.
   retries and resolved Replay losing auto-next. Removed controls are now ignored,
   and successful reference replay/Retry gets its own real completion gate.
 
-Final code review compares the integration branch with baseline `b261b9d` on
-the Standards and Spec axes before the draft PR is marked ready. Tickets are
-linked for automatic closure when that PR is merged; this delivery does not
-silently merge the integration branch into `main`.
+All seven V2 browser suites, 118 unit tests and both Legacy smoke suites passed
+again after the final review fixes. Entry navigation passed on the integration
+checkout. Tickets are linked for automatic closure when the PR is merged; this
+delivery does not silently merge the integration branch into `main`.
+
+## Standards
+
+Review baseline: `b261b9d...dac7ddd`, identical tree to integration `492c3b7`.
+No hard documented-standard breach was found. One P3 judgment-call smell was
+reported: the two M1 browser suites duplicated their concrete preset seeding.
+`bc4d343` extracts only that existing setup into a small helper; instrumentation
+and assertions stay local. Both suites passed before/after the refactor.
+
+## Spec
+
+Two P2 issues were reported and fixed in one review implementer worktree:
+
+- Reveal must "show answer only as part of this resolution." It previously
+  set the answer after audio completion, then replaced it before browser paint.
+  `03cfa8f` exposes the degree at reference readiness and gates only advancement
+  on completion; browser checks assert visible correction while it sustains.
+- An audio error must "pause the flow and explain how to retry." Visible-tab
+  suspension could leave readiness polling or reference completion waiting with
+  Retry disabled. `0a88025` observes interruption and enables real user Retry,
+  including pre-ready references and closed contexts, preserving first evidence.
+
+Follow-up numeric QA fixed the checkbox selector/hit area in `f4906d6`; recovery
+replay attribution was tightened and tested in `33c10ec`. These fixes were
+merged as `3132d2d`. No unresolved review finding remains. Physical listening
+and device limits below remain explicit, not asserted as automated successes.
 
 ## Manual listening limits
 
