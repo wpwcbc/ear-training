@@ -1,0 +1,408 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-23T19:16:00Z",
+  "title": "Design System: Jazz Ear Lab V2 - Signal Route",
+  "extensions": {
+    "colorMeta": {
+      "signal": {
+        "role": "primary",
+        "displayName": "Signal Yellow",
+        "tonalRamp": [
+          "oklch(15.00% 0.18156 98.25)",
+          "oklch(26.43% 0.18156 98.25)",
+          "oklch(37.86% 0.18156 98.25)",
+          "oklch(49.29% 0.18156 98.25)",
+          "oklch(60.71% 0.18156 98.25)",
+          "oklch(72.14% 0.18156 98.25)",
+          "oklch(83.57% 0.18156 98.25)",
+          "oklch(95.00% 0.18156 98.25)"
+        ]
+      },
+      "signal-hover": {
+        "role": "primary",
+        "displayName": "Pressed Sun Yellow",
+        "tonalRamp": [
+          "oklch(15.00% 0.16712 90.17)",
+          "oklch(26.43% 0.16712 90.17)",
+          "oklch(37.86% 0.16712 90.17)",
+          "oklch(49.29% 0.16712 90.17)",
+          "oklch(60.71% 0.16712 90.17)",
+          "oklch(72.14% 0.16712 90.17)",
+          "oklch(83.57% 0.16712 90.17)",
+          "oklch(95.00% 0.16712 90.17)"
+        ]
+      },
+      "danger": {
+        "role": "secondary",
+        "displayName": "Recovery Red",
+        "tonalRamp": [
+          "oklch(15.00% 0.15697 18.12)",
+          "oklch(26.43% 0.15697 18.12)",
+          "oklch(37.86% 0.15697 18.12)",
+          "oklch(49.29% 0.15697 18.12)",
+          "oklch(60.71% 0.15697 18.12)",
+          "oklch(72.14% 0.15697 18.12)",
+          "oklch(83.57% 0.15697 18.12)",
+          "oklch(95.00% 0.15697 18.12)"
+        ]
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "Paper White",
+        "tonalRamp": [
+          "oklch(15.00% 0 0)",
+          "oklch(26.43% 0 0)",
+          "oklch(37.86% 0 0)",
+          "oklch(49.29% 0 0)",
+          "oklch(60.71% 0 0)",
+          "oklch(72.14% 0 0)",
+          "oklch(83.57% 0 0)",
+          "oklch(95.00% 0 0)"
+        ]
+      },
+      "ground": {
+        "role": "neutral",
+        "displayName": "Cool Listening Ground",
+        "tonalRamp": [
+          "oklch(15.00% 0.00753 228.85)",
+          "oklch(26.43% 0.00753 228.85)",
+          "oklch(37.86% 0.00753 228.85)",
+          "oklch(49.29% 0.00753 228.85)",
+          "oklch(60.71% 0.00753 228.85)",
+          "oklch(72.14% 0.00753 228.85)",
+          "oklch(83.57% 0.00753 228.85)",
+          "oklch(95.00% 0.00753 228.85)"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Reading Ink",
+        "tonalRamp": [
+          "oklch(15.00% 0 0)",
+          "oklch(26.43% 0 0)",
+          "oklch(37.86% 0 0)",
+          "oklch(49.29% 0 0)",
+          "oklch(60.71% 0 0)",
+          "oklch(72.14% 0 0)",
+          "oklch(83.57% 0 0)",
+          "oklch(95.00% 0 0)"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Quiet Graphite",
+        "tonalRamp": [
+          "oklch(15.00% 0.02153 261.28)",
+          "oklch(26.43% 0.02153 261.28)",
+          "oklch(37.86% 0.02153 261.28)",
+          "oklch(49.29% 0.02153 261.28)",
+          "oklch(60.71% 0.02153 261.28)",
+          "oklch(72.14% 0.02153 261.28)",
+          "oklch(83.57% 0.02153 261.28)",
+          "oklch(95.00% 0.02153 261.28)"
+        ]
+      },
+      "rule": {
+        "role": "neutral",
+        "displayName": "Structural Gray",
+        "tonalRamp": [
+          "oklch(15.00% 0.00987 252.82)",
+          "oklch(26.43% 0.00987 252.82)",
+          "oklch(37.86% 0.00987 252.82)",
+          "oklch(49.29% 0.00987 252.82)",
+          "oklch(60.71% 0.00987 252.82)",
+          "oklch(72.14% 0.00987 252.82)",
+          "oklch(83.57% 0.00987 252.82)",
+          "oklch(95.00% 0.00987 252.82)"
+        ]
+      },
+      "control": {
+        "role": "neutral",
+        "displayName": "Control Gray",
+        "tonalRamp": [
+          "oklch(15.00% 0.01903 253.39)",
+          "oklch(26.43% 0.01903 253.39)",
+          "oklch(37.86% 0.01903 253.39)",
+          "oklch(49.29% 0.01903 253.39)",
+          "oklch(60.71% 0.01903 253.39)",
+          "oklch(72.14% 0.01903 253.39)",
+          "oklch(83.57% 0.01903 253.39)",
+          "oklch(95.00% 0.01903 253.39)"
+        ]
+      },
+      "quiet": {
+        "role": "neutral",
+        "displayName": "Quiet Surface",
+        "tonalRamp": [
+          "oklch(15.00% 0.00342 247.86)",
+          "oklch(26.43% 0.00342 247.86)",
+          "oklch(37.86% 0.00342 247.86)",
+          "oklch(49.29% 0.00342 247.86)",
+          "oklch(60.71% 0.00342 247.86)",
+          "oklch(72.14% 0.00342 247.86)",
+          "oklch(83.57% 0.00342 247.86)",
+          "oklch(95.00% 0.00342 247.86)"
+        ]
+      },
+      "navigation": {
+        "role": "neutral",
+        "displayName": "Navigation Black",
+        "tonalRamp": [
+          "oklch(15.00% 0 0)",
+          "oklch(26.43% 0 0)",
+          "oklch(37.86% 0 0)",
+          "oklch(49.29% 0 0)",
+          "oklch(60.71% 0 0)",
+          "oklch(72.14% 0 0)",
+          "oklch(83.57% 0 0)",
+          "oklch(95.00% 0 0)"
+        ]
+      },
+      "navigation-hover": {
+        "role": "neutral",
+        "displayName": "Navigation Hover",
+        "tonalRamp": [
+          "oklch(15.00% 0 0)",
+          "oklch(26.43% 0 0)",
+          "oklch(37.86% 0 0)",
+          "oklch(49.29% 0 0)",
+          "oklch(60.71% 0 0)",
+          "oklch(72.14% 0 0)",
+          "oklch(83.57% 0 0)",
+          "oklch(95.00% 0 0)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "chord": {
+        "displayName": "Known Chord",
+        "purpose": "Large practice anchor; 48px compact override."
+      },
+      "target": {
+        "displayName": "Requested M1 Degree",
+        "purpose": "Separate semibold target, stable before/after Done; 40px compact override."
+      },
+      "outcome": {
+        "displayName": "Accuracy",
+        "purpose": "Primary evidence figure with tabular numerals; 56px compact override."
+      },
+      "headline": {
+        "displayName": "Page Heading",
+        "purpose": "Ordinary page hierarchy, not marketing display."
+      },
+      "title": {
+        "displayName": "Section Heading",
+        "purpose": "Section and exercise headings."
+      },
+      "subheading": {
+        "displayName": "Item Heading",
+        "purpose": "Pattern and review headings."
+      },
+      "body": {
+        "displayName": "Body and Native Fields",
+        "purpose": "Readable copy and native field text."
+      },
+      "label": {
+        "displayName": "Command Label",
+        "purpose": "Semibold native button text."
+      },
+      "support": {
+        "displayName": "Playback and Caveats",
+        "purpose": "Secondary contextual and playback text."
+      }
+    },
+    "shadows": [],
+    "motion": [],
+    "breakpoints": [
+      {
+        "name": "compact-max",
+        "value": "700px"
+      },
+      {
+        "name": "wide-min",
+        "value": "701px"
+      }
+    ],
+    "focus": {
+      "outline": "3px solid var(--ink)",
+      "offset": "3px",
+      "inverseOutline": "3px solid var(--signal)",
+      "targetFloor": "44px",
+      "summaryMinimum": "48px",
+      "comparisonSummaryMinimum": "44px"
+    },
+    "responsiveTypography": {
+      "compact": {
+        "chord": "48px",
+        "target": "40px",
+        "outcome": "56px",
+        "supportingMetric": "22px",
+        "sessionTitle": "18px"
+      }
+    },
+    "layout": {
+      "desktopTracks": "minmax(230px,1fr) minmax(0,3fr)",
+      "mainMaxWidth": "1344px",
+      "desktopMainPadding": "28px 24px 48px",
+      "compactMainPadding": "24px 16px 40px",
+      "desktopChoiceColumns": 6,
+      "compactChoiceColumns": 4,
+      "compactChoiceHeight": "56px",
+      "desktopChoiceGap": "10px",
+      "compactChoiceGap": "8px",
+      "compactConfigurationReserve": "calc(220px + env(safe-area-inset-bottom))",
+      "detailTableMinWidth": "620px"
+    },
+    "statePresentation": {
+      "disabledOpacity": 0.48,
+      "reducedMotion": "scroll-behavior:auto; transition:none; animation:none",
+      "m1RatingFallback": "Rate your response",
+      "playbackIndependent": true
+    },
+    "previewNotes": {
+      "tonalRamps": "Synthesized OKLCH lightness previews at fixed source hue/chroma; not shipped CSS tokens, approved state palettes or contrast certification. Browser gamut mapping may clip saturated endpoints.",
+      "components": "Static self-contained native HTML/CSS samples, not a replacement runtime or lifecycle. Component numbers are illustrative.",
+      "fonts": "Uses the project's Source Sans 3 when available, with the shipped Segoe UI/sans-serif fallbacks; font licensing and local files are documented in ../fonts/README.md and ../ASSETS.md.",
+      "icons": "Inline paths copied from the local Lucide ISC assets for shadow-DOM previews; runtime references remain unchanged."
+    },
+    "sources": {
+      "design": "../DESIGN.md",
+      "css": "../v2.css",
+      "html": "../index.html",
+      "adapter": "../../src/v2/app.ts",
+      "ux": "../../UX_PRINCIPLES.md",
+      "surface": "surfaces/jazz-ear-lab-v2-index-html.md"
+    }
+  },
+  "components": [
+    {
+      "name": "Primary Command",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Yellow Start command; Done uses the same material with its larger response-area dimensions.",
+      "html": "<button class=\"ds-primary\" type=\"button\">Start practice</button>",
+      "css": ".ds-primary{font-family:\"Source Sans 3\", \"Segoe UI\", sans-serif;font-size:16px;line-height:1.4;letter-spacing:0;color:var(--ink,#111);background:var(--signal,#f8d808);min-width:44px;min-height:44px;padding:9px 18px;border:1px solid transparent;border-radius:2px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;}.ds-primary:hover{background:#edbd00;}.ds-primary:focus-visible{outline:3px solid var(--ink,#111);outline-offset:3px;}.ds-primary:disabled{opacity:.48;cursor:not-allowed;}"
+    },
+    {
+      "name": "Secondary Command",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "White outlined command for Customize and other secondary actions.",
+      "html": "<button class=\"ds-secondary\" type=\"button\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\"><path d=\"M10 5H3\"/><path d=\"M12 19H3\"/><path d=\"M14 3v4\"/><path d=\"M16 17v4\"/><path d=\"M21 12h-9\"/><path d=\"M21 19h-5\"/><path d=\"M21 5h-7\"/><path d=\"M8 10v4\"/><path d=\"M8 12H3\"/></svg>Customize</button>",
+      "css": ".ds-secondary{font-family:\"Source Sans 3\", \"Segoe UI\", sans-serif;font-size:16px;line-height:1.4;letter-spacing:0;color:var(--ink,#111);background:var(--signal,#f8d808);min-width:44px;min-height:44px;padding:9px 18px;border:1px solid transparent;border-radius:2px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;}.ds-secondary:hover{background:#edbd00;}.ds-secondary:focus-visible{outline:3px solid var(--ink,#111);outline-offset:3px;}.ds-secondary:disabled{opacity:.48;cursor:not-allowed;}.ds-secondary svg{flex:none;}"
+    },
+    {
+      "name": "Native Practice Fields",
+      "kind": "input",
+      "refersTo": "field",
+      "description": "Labelled native number/select controls; no framework or custom dropdown.",
+      "html": "<div class=\"ds-fields\"><label class=\"ds-field\">Questions (0 = Unlimited)<input type=\"number\" min=\"0\" max=\"200\" value=\"20\"/></label><label class=\"ds-field\">Response method (self-assessed)<select><option>imagined</option><option>sung</option><option>played</option></select></label></div>",
+      "css": ".ds-fields{display:grid;gap:16px;max-width:560px;font-family:\"Source Sans 3\", \"Segoe UI\", sans-serif;font-size:16px;line-height:1.4;letter-spacing:0;color:var(--ink,#111);}.ds-field{display:grid;gap:8px;min-width:0;}.ds-field input,.ds-field select{font-family:\"Source Sans 3\", \"Segoe UI\", sans-serif;font-size:16px;line-height:1.4;letter-spacing:0;color:inherit;background:var(--paper,#fff);border:1px solid var(--control,#9aa3ae);border-radius:2px;padding:9px 12px;min-height:44px;min-width:0;max-width:100%;}.ds-field input:focus-visible{outline:3px solid var(--ink,#111);outline-offset:3px;}.ds-field select:focus-visible{outline:3px solid var(--ink,#111);outline-offset:3px;}"
+    },
+    {
+      "name": "Primary Navigation",
+      "kind": "nav",
+      "refersTo": "navigation-link",
+      "description": "Black navigation, icon-plus-text links and square yellow current-location rule; two-link sample.",
+      "html": "<header class=\"ds-header\"><a class=\"ds-brand\" href=\"#home\">Jazz Ear Lab</a><nav class=\"ds-nav\" aria-label=\"Primary\"><a href=\"#home\" aria-current=\"page\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\"><path d=\"M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3\"/></svg>Practice</a><a href=\"#insights\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\"><path d=\"M12 16v5\"/><path d=\"M16 14.639V21\"/><path d=\"M20 10.656V21\"/><path d=\"m22 3-8.646 8.646a.5.5 0 0 1-.708 0L9.354 8.354a.5.5 0 0 0-.707 0L2 15\"/><path d=\"M4 18.463V21\"/><path d=\"M8 14.656V21\"/></svg>Insights</a></nav></header>",
+      "css": ".ds-header{font-family:\"Source Sans 3\", \"Segoe UI\", sans-serif;font-size:16px;line-height:1.4;letter-spacing:0;display:flex;align-items:center;gap:40px;min-height:50px;background:#161616;color:var(--paper,#fff);padding:0 24px;}.ds-brand{display:inline-flex;align-items:center;min-height:44px;color:inherit;font-size:24px;font-weight:700;text-decoration:none;white-space:nowrap;}.ds-nav{display:flex;align-self:stretch;gap:20px;}.ds-nav a{display:flex;align-items:center;gap:10px;min-height:50px;padding:0 12px;color:inherit;text-decoration:none;border-bottom:4px solid transparent;}.ds-nav a:hover{background:#292929;}.ds-nav a[aria-current=page]{border-bottom-color:var(--signal,#f8d808);font-weight:600;}.ds-nav a:focus-visible,.ds-brand:focus-visible{outline:3px solid var(--signal,#f8d808);outline-offset:3px;}@media(max-width:700px){.ds-header{padding:8px 16px 0;gap:0;flex-wrap:wrap;}.ds-brand{width:100%;font-size:22px;}.ds-nav{width:100%;gap:8px;}.ds-nav a{min-height:44px;padding:0 8px;gap:8px;}.ds-nav svg{width:18px;height:18px;}}"
+    },
+    {
+      "name": "Pool Choice",
+      "kind": "chip",
+      "refersTo": "pool-choice",
+      "description": "A labelled native checkbox in an outlined pool row, not a custom toggle chip.",
+      "html": "<label class=\"ds-pool\"><input type=\"checkbox\" checked/><span>C</span></label>",
+      "css": ".ds-pool{font-family:\"Source Sans 3\", \"Segoe UI\", sans-serif;font-size:16px;line-height:1.4;letter-spacing:0;color:var(--ink,#111);display:flex;align-items:center;gap:8px;min-height:44px;padding:8px;border:1px solid var(--rule,#d4d9df);border-radius:2px;}.ds-pool:hover{border-color:var(--control,#9aa3ae);background:var(--quiet,#f4f6f8);}.ds-pool input{width:20px;height:20px;min-height:20px;padding:0;accent-color:var(--ink,#111);flex:none;}.ds-pool input:focus-visible{outline:3px solid var(--ink,#111);outline-offset:3px;}@media(max-width:700px){.ds-pool{padding:8px 6px;gap:6px;}}"
+    },
+    {
+      "name": "Exercise Item",
+      "kind": "card",
+      "refersTo": "exercise-item",
+      "description": "An individual repeated entry, transparent on the open ground; not a page-section card.",
+      "html": "<article class=\"ds-exercise\"><h2>M1 Audiation</h2><div class=\"ds-exercise-actions\"><button class=\"ds-start\" type=\"button\">Start</button><button class=\"ds-customize\" type=\"button\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\"><path d=\"M10 5H3\"/><path d=\"M12 19H3\"/><path d=\"M14 3v4\"/><path d=\"M16 17v4\"/><path d=\"M21 12h-9\"/><path d=\"M21 19h-5\"/><path d=\"M21 5h-7\"/><path d=\"M8 10v4\"/><path d=\"M8 12H3\"/></svg>Customize</button></div></article>",
+      "css": ".ds-exercise{font-family:\"Source Sans 3\", \"Segoe UI\", sans-serif;font-size:16px;line-height:1.4;letter-spacing:0;color:var(--ink,#111);display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:20px;border:1px solid var(--rule,#d4d9df);border-radius:2px;padding:18px 20px;}.ds-exercise h2{font-size:22px;line-height:1.25;font-weight:700;margin:0;overflow-wrap:anywhere;}.ds-exercise-actions{display:flex;gap:10px;}.ds-start{font-family:\"Source Sans 3\", \"Segoe UI\", sans-serif;font-size:16px;line-height:1.4;letter-spacing:0;color:var(--ink,#111);background:var(--signal,#f8d808);min-width:44px;min-height:44px;padding:9px 18px;border:1px solid transparent;border-radius:2px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;}.ds-start:hover{background:#edbd00;}.ds-start:focus-visible{outline:3px solid var(--ink,#111);outline-offset:3px;}.ds-start:disabled{opacity:.48;cursor:not-allowed;}.ds-customize{font-family:\"Source Sans 3\", \"Segoe UI\", sans-serif;font-size:16px;line-height:1.4;letter-spacing:0;color:var(--ink,#111);background:var(--paper,#fff);min-width:44px;min-height:44px;padding:9px 18px;border:1px solid var(--control,#9aa3ae);border-radius:2px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;}.ds-customize:hover{background:var(--quiet,#f4f6f8);border-color:var(--ink,#111);}.ds-customize:focus-visible{outline:3px solid var(--ink,#111);outline-offset:3px;}.ds-customize:disabled{opacity:.48;cursor:not-allowed;}.ds-exercise button{min-width:108px;}@media(max-width:700px){.ds-exercise{gap:12px;padding:14px 12px;}.ds-exercise h2{font-size:18px;}.ds-exercise-actions{gap:8px;}.ds-exercise button{min-width:0;padding-inline:12px;}}"
+    },
+    {
+      "name": "Recognition Grid",
+      "kind": "custom",
+      "refersTo": "degree-choice",
+      "description": "Stable twelve-choice grid; sample uses the shipped C7 spelling #9, not generated b3 lettering.",
+      "html": "<div class=\"ds-degrees\" role=\"group\" aria-label=\"Chord degree response\"><button type=\"button\" class=\"ds-degree\">1</button><button type=\"button\" class=\"ds-degree\">b9</button><button type=\"button\" class=\"ds-degree\">9</button><button type=\"button\" class=\"ds-degree\">#9</button><button type=\"button\" class=\"ds-degree\">3</button><button type=\"button\" class=\"ds-degree\">11</button><button type=\"button\" class=\"ds-degree\">#11</button><button type=\"button\" class=\"ds-degree\">5</button><button type=\"button\" class=\"ds-degree\">b13</button><button type=\"button\" class=\"ds-degree\">13</button><button type=\"button\" class=\"ds-degree\">b7</button><button type=\"button\" class=\"ds-degree\">maj7</button></div>",
+      "css": ".ds-degrees{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin:28px 0 0;}.ds-degree{font-family:\"Source Sans 3\", \"Segoe UI\", sans-serif;font-size:16px;line-height:1.4;letter-spacing:0;color:var(--ink,#111);background:var(--paper,#fff);min-width:44px;min-height:44px;padding:9px 18px;border:1px solid var(--control,#9aa3ae);border-radius:2px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;}.ds-degree:hover{background:var(--quiet,#f4f6f8);border-color:var(--ink,#111);}.ds-degree:focus-visible{outline:3px solid var(--ink,#111);outline-offset:3px;}.ds-degree:disabled{opacity:.48;cursor:not-allowed;}.ds-degree{height:85px;font-size:24px;padding:8px 4px;border-color:var(--rule,#d4d9df);}.ds-degree:hover{border-color:var(--ink,#111);}@media(max-width:700px){.ds-degrees{grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:0;}.ds-degree{height:56px;font-size:20px;}}"
+    },
+    {
+      "name": "Equal Self-Rating",
+      "kind": "custom",
+      "refersTo": "self-rating",
+      "description": "Reference-ready M1 ratings have equal weight and independent playback text.",
+      "html": "<section class=\"ds-response\" aria-label=\"Response\"><p class=\"ds-feedback\">Rate your response</p><p class=\"ds-playback\">Reference playing</p><div class=\"ds-rating-actions\"><button type=\"button\" class=\"ds-rating\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\"><path d=\"M20 6 9 17l-5-5\"/></svg>Correct</button><button type=\"button\" class=\"ds-rating\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\"><path d=\"M18 6 6 18\"/><path d=\"m6 6 12 12\"/></svg>Incorrect</button></div></section>",
+      "css": ".ds-response{font-family:\"Source Sans 3\", \"Segoe UI\", sans-serif;font-size:16px;line-height:1.4;letter-spacing:0;color:var(--ink,#111);}.ds-feedback{min-height:24px;margin:4px 0 0;color:var(--muted,#505763);}.ds-playback{font-size:14px;color:var(--muted,#505763);margin-top:4px;}.ds-rating-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:20px 0;}.ds-rating{font-family:\"Source Sans 3\", \"Segoe UI\", sans-serif;font-size:16px;line-height:1.4;letter-spacing:0;color:var(--ink,#111);background:var(--paper,#fff);min-width:44px;min-height:44px;padding:9px 18px;border:1px solid var(--control,#9aa3ae);border-radius:2px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;}.ds-rating:hover{background:var(--quiet,#f4f6f8);border-color:var(--ink,#111);}.ds-rating:focus-visible{outline:3px solid var(--ink,#111);outline-offset:3px;}.ds-rating:disabled{opacity:.48;cursor:not-allowed;}.ds-rating{min-height:56px;}"
+    },
+    {
+      "name": "Native Disclosure",
+      "kind": "custom",
+      "refersTo": "disclosure",
+      "description": "Full comparison conditions uses a 44px target minimum; other ordinary summaries use 48px.",
+      "html": "<details class=\"ds-details\"><summary>Full comparison conditions</summary><p>M2 / Context on / Previously seen</p></details>",
+      "css": ".ds-details{font-family:\"Source Sans 3\", \"Segoe UI\", sans-serif;font-size:16px;line-height:1.4;letter-spacing:0;color:var(--ink,#111);}.ds-details summary{cursor:pointer;min-height:44px;padding:10px 0;font-weight:500;}.ds-details p{max-width:72ch;color:var(--muted,#505763);margin:0 0 12px;}.ds-details summary:focus-visible{outline:3px solid var(--ink,#111);outline-offset:3px;}@media(max-width:700px){.ds-details summary{font-size:14px;}}"
+    },
+    {
+      "name": "Evidence Pattern",
+      "kind": "custom",
+      "refersTo": "evidence-pattern",
+      "description": "Directly labelled proportional bar, denominator, replay context and adjacent focus action; illustrative sample only.",
+      "html": "<article class=\"ds-pattern\"><h3>7 / b7</h3><div class=\"ds-bar\" aria-hidden=\"true\"><span style=\"width:60%\"></span></div><strong>60%</strong><span>12 / 20 assessed</span><small>Replay-assisted 5 / 20</small><button class=\"ds-focus\" type=\"button\">Customize focus</button></article>",
+      "css": ".ds-pattern{font-family:\"Source Sans 3\", \"Segoe UI\", sans-serif;font-size:16px;line-height:1.4;letter-spacing:0;color:var(--ink,#111);display:grid;grid-template-columns:70px minmax(60px,1fr) auto auto;gap:12px;align-items:center;padding:18px 0;border-bottom:1px solid var(--rule,#d4d9df);}.ds-pattern h3{font-size:18px;line-height:1.3;font-weight:700;margin:0;}.ds-bar{height:10px;background:#e1e4e8;min-width:0;}.ds-bar span{display:block;height:100%;background:var(--signal,#f8d808);}.ds-pattern small{grid-column:2/4;color:var(--muted,#505763);}.ds-focus{grid-column:4;grid-row:2;}.ds-focus{font-family:\"Source Sans 3\", \"Segoe UI\", sans-serif;font-size:16px;line-height:1.4;letter-spacing:0;color:var(--ink,#111);background:var(--signal,#f8d808);min-width:44px;min-height:44px;padding:9px 18px;border:1px solid transparent;border-radius:2px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;}.ds-focus:hover{background:#edbd00;}.ds-focus:focus-visible{outline:3px solid var(--ink,#111);outline-offset:3px;}.ds-focus:disabled{opacity:.48;cursor:not-allowed;}@media(max-width:700px){.ds-pattern{grid-template-columns:minmax(0,1fr) auto;gap:8px 12px;padding:12px 0;}.ds-pattern h3{grid-column:1;grid-row:1;}.ds-pattern strong{grid-column:2;grid-row:1;}.ds-pattern .ds-bar{grid-column:1/-1;grid-row:2;}.ds-pattern>span{grid-column:1;grid-row:3;font-size:14px;}.ds-pattern small{grid-column:2;grid-row:3;font-size:13px;text-align:right;}.ds-pattern .ds-focus{grid-column:1/-1;grid-row:4;}}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Signal Route / Split Desk",
+    "overview": "Signal Route makes the listening task legible through black navigation, yellow task/action emphasis and humanist text. A cool open ground separates white paper controls without enclosing whole screens in cards. The repeated visual signature is a task or outcome anchor beside the working response or evidence area.\n\nSplit Desk carries that relationship through entry, customization, practice, Results and Insights. Desktop separates anchor and work; mobile stacks the same semantic order. Large musical symbols and accuracy figures lead, while timing, playback status and disclosed detail stay subordinate. Materials are flat and changes of state are immediate; no decorative raster plates or animation are owed.",
+    "keyCharacteristics": [
+      "Black navigation and restrained yellow wayfinding.",
+      "Cool open ground, white controls and gray structural rules.",
+      "Humanist Source Sans 3 with zero tracking.",
+      "Desktop anchor/work split and mobile semantic stack.",
+      "Accuracy-led evidence and equal-weight M1 self-rating."
+    ],
+    "rules": [
+      {
+        "name": "The Signal Has a Job Rule",
+        "body": "Yellow marks the current task, command or measured bar; open content remains on the cool ground, while fields and secondary controls remain white.",
+        "section": "colors"
+      },
+      {
+        "name": "The Musical Anchor Rule",
+        "body": "Chord and requested degree stay prominent; accuracy is the primary evidence figure, with response timing visually secondary.",
+        "section": "typography"
+      },
+      {
+        "name": "The Same Order Rule",
+        "body": "Mobile stacks anchor before work without dropping task controls, evidence counts or material caveats.",
+        "section": "layout"
+      },
+      {
+        "name": "The Flat Desk Rule",
+        "body": "Use rules and tonal contrast for structure; do not turn open task regions into elevated cards.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** keep black navigation, yellow task/action emphasis and white controls distinct from the cool open ground.",
+      "**Do** preserve the anchor/work relationship and stack its semantic order on mobile.",
+      "**Do** keep musical anchors and accuracy prominent, with timing and playback status subordinate.",
+      "**Do** give M1 Correct and Incorrect equal visual weight and retain explicit self-rating labels.",
+      "**Do** retain native semantics, visible focus, labelled evidence and the interaction target floor.",
+      "**Do** keep long settings reachable and confine horizontal scrolling to detailed evidence."
+    ],
+    "donts": [
+      "**Don't** reintroduce forest/mint identity into V2 or apply this replacement to Legacy.",
+      "**Don't** turn full task sections into nested/elevated cards or cover open content with yellow.",
+      "**Don't** remove counts or material caveats to fit a mobile screenshot.",
+      "**Don't** treat generated comp text, glyphs or example numbers as domain truth.",
+      "**Don't** use these visual tokens to redefine metrics, lifecycle behavior or Release 1 scope.",
+      "**Don't** treat captures, component previews or a limited fix verdict as whole-surface accessibility certification."
+    ]
+  }
+}

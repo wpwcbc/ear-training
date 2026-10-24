@@ -1,0 +1,61 @@
+{
+  "regions": [
+    {"id":"comparison-gutter","kind":"chrome","grid":"H0:H9","box":{"x":0.7330729167,"y":0,"w":0.0338541667,"h":1},"snap":false,"container":true,"note":"Empty gutter between desktop and phone reference panels; comparison-board structure only, not application UI."},
+    {
+      "id": "desktop-practice",
+      "kind": "chrome",
+      "grid": "A0:H4",
+      "box": {
+        "x": 0.031901041666666664,
+        "y": 0.005859375,
+        "w": 0.701171875,
+        "h": 0.412109375
+      },
+      "snap": false,
+      "container": true,
+      "note": "One semantic UI viewport of the approved multi-state comparison board; reference crop only, never a shipping image."
+    },
+    {
+      "id": "mobile-practice",
+      "kind": "chrome",
+      "grid": "H0:J4",
+      "box": {
+        "x": 0.7669270833333334,
+        "y": 0.005859375,
+        "w": 0.20247395833333334,
+        "h": 0.412109375
+      },
+      "snap": false,
+      "container": true,
+      "note": "One semantic UI viewport of the approved multi-state comparison board; reference crop only, never a shipping image."
+    },
+    {
+      "id": "desktop-insights",
+      "kind": "chrome",
+      "grid": "A4:H9",
+      "box": {
+        "x": 0.031901041666666664,
+        "y": 0.4384765625,
+        "w": 0.701171875,
+        "h": 0.5595703125
+      },
+      "snap": false,
+      "container": true,
+      "note": "One semantic UI viewport of the approved multi-state comparison board; reference crop only, never a shipping image."
+    },
+    {
+      "id": "mobile-insights",
+      "kind": "chrome",
+      "grid": "H4:J9",
+      "box": {
+        "x": 0.7669270833333334,
+        "y": 0.4384765625,
+        "w": 0.20247395833333334,
+        "h": 0.5595703125
+      },
+      "snap": false,
+      "container": true,
+      "note": "One semantic UI viewport of the approved multi-state comparison board; reference crop only, never a shipping image."
+    }
+  ]
+}

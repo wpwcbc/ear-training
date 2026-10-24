@@ -1,0 +1,985 @@
+{
+  "tool": "comp-diff",
+  "version": 1,
+  "createdAt": "2026-10-23T18:56:51.801Z",
+  "label": "desktop",
+  "comp": ".impeccable/build/approved-desktop-practice.png",
+  "build": ".impeccable/review/desktop.png",
+  "spec": ".impeccable/build/spec.json",
+  "compSize": "1077x422",
+  "buildSize": "1440x1000",
+  "align": "top",
+  "overall": 0.6533,
+  "verdict": "drift",
+  "scores": {
+    "overall": 0.6533,
+    "structure": 0.6489,
+    "color": 0.9404,
+    "colorIntersection": 0.8908,
+    "paletteMatch": 0.9671,
+    "detail": 0.4089,
+    "detailRaw": 0.4558,
+    "detailAdded": 0.0938,
+    "bands": 0.5927
+  },
+  "palette": {
+    "comp": [
+      {
+        "hex": "#f8f8f8",
+        "coverage": 0.7368
+      },
+      {
+        "hex": "#161616",
+        "coverage": 0.1192
+      },
+      {
+        "hex": "#f8d908",
+        "coverage": 0.1078
+      },
+      {
+        "hex": "#d3d6e3",
+        "coverage": 0.0247
+      },
+      {
+        "hex": "#9b9c9e",
+        "coverage": 0.0095
+      },
+      {
+        "hex": "#383838",
+        "coverage": 0.002
+      }
+    ],
+    "build": [
+      {
+        "hex": "#f8f8f8",
+        "coverage": 0.8285
+      },
+      {
+        "hex": "#181818",
+        "coverage": 0.0943
+      },
+      {
+        "hex": "#f8d808",
+        "coverage": 0.0772
+      }
+    ]
+  },
+  "regions": [
+    {
+      "id": "nav",
+      "x": 0,
+      "y": 0,
+      "w": 1,
+      "h": 0.1185,
+      "kind": "chrome",
+      "score": {
+        "overall": 0.5454,
+        "structure": 0.8185,
+        "color": 0.8977,
+        "colorIntersection": 0.7567,
+        "paletteMatch": 0.9736,
+        "detail": 0.138,
+        "detailRaw": 0.2734,
+        "detailAdded": 0.2708,
+        "bands": 0
+      },
+      "verdict": "drift",
+      "inkBox": {
+        "comp": {
+          "x": 0,
+          "y": 0,
+          "w": 1077,
+          "h": 50
+        },
+        "build": {
+          "x": 0,
+          "y": 11,
+          "w": 1077,
+          "h": 39
+        }
+      }
+    },
+    {
+      "id": "brand",
+      "x": 0.0204,
+      "y": 0.0284,
+      "w": 0.1393,
+      "h": 0.0592,
+      "kind": "text",
+      "score": {
+        "overall": 0.4647,
+        "structure": 0.4137,
+        "color": 0.8241,
+        "colorIntersection": 0.7683,
+        "paletteMatch": 0.8541,
+        "detail": 0.0667,
+        "detailRaw": 0.2021,
+        "detailAdded": 0.2708,
+        "bands": 0.4182
+      },
+      "verdict": "contradicted",
+      "inkBox": {
+        "comp": {
+          "x": 0,
+          "y": 0,
+          "w": 150,
+          "h": 34
+        },
+        "build": {
+          "x": 0,
+          "y": 11,
+          "w": 150,
+          "h": 37
+        }
+      }
+    },
+    {
+      "id": "practice-link",
+      "x": 0.1801,
+      "y": 0.0166,
+      "w": 0.1077,
+      "h": 0.0995,
+      "kind": "control",
+      "score": {
+        "overall": 0.4784,
+        "structure": 0.408,
+        "color": 0.8424,
+        "colorIntersection": 0.6739,
+        "paletteMatch": 0.9332,
+        "detail": 0,
+        "detailRaw": 0.0584,
+        "detailAdded": 0.3021,
+        "bands": 0.3314
+      },
+      "verdict": "missing",
+      "inkBox": {
+        "comp": {
+          "x": 0,
+          "y": 12,
+          "w": 116,
+          "h": 36
+        },
+        "build": {
+          "x": 0,
+          "y": 7,
+          "w": 116,
+          "h": 41
+        }
+      }
+    },
+    {
+      "id": "insights-link",
+      "x": 0.311,
+      "y": 0.0166,
+      "w": 0.1003,
+      "h": 0.09,
+      "kind": "control",
+      "score": {
+        "overall": 0.5163,
+        "structure": 0.4697,
+        "color": 0.8645,
+        "colorIntersection": 0.6952,
+        "paletteMatch": 0.9556,
+        "detail": 0.0117,
+        "detailRaw": 0.1835,
+        "detailAdded": 0.3438,
+        "bands": 0.44
+      },
+      "verdict": "missing",
+      "inkBox": {
+        "comp": {
+          "x": 9,
+          "y": 14,
+          "w": 84,
+          "h": 19
+        },
+        "build": {
+          "x": 0,
+          "y": 10,
+          "w": 108,
+          "h": 38
+        }
+      }
+    },
+    {
+      "id": "legacy-link",
+      "x": 0.442,
+      "y": 0.0166,
+      "w": 0.0836,
+      "h": 0.09,
+      "kind": "control",
+      "score": {
+        "overall": 0.5264,
+        "structure": 0.5403,
+        "color": 0.8092,
+        "colorIntersection": 0.75,
+        "paletteMatch": 0.8411,
+        "detail": 0,
+        "detailRaw": 0.0618,
+        "detailAdded": 0.1563,
+        "bands": 0
+      },
+      "verdict": "missing",
+      "inkBox": {
+        "comp": {
+          "x": 6,
+          "y": 13,
+          "w": 76,
+          "h": 21
+        },
+        "build": {
+          "x": 0,
+          "y": 36,
+          "w": 90,
+          "h": 12
+        }
+      }
+    },
+    {
+      "id": "task-band",
+      "x": 0,
+      "y": 0.1185,
+      "w": 1,
+      "h": 0.1161,
+      "kind": "chrome",
+      "score": {
+        "overall": 0.5037,
+        "structure": 0.9248,
+        "color": 0.72,
+        "colorIntersection": 0.4228,
+        "paletteMatch": 0.88,
+        "detail": 0,
+        "detailRaw": 0.1381,
+        "detailAdded": 0.2813,
+        "bands": 0
+      },
+      "verdict": "missing",
+      "inkBox": {
+        "comp": {
+          "x": 26,
+          "y": 0,
+          "w": 1023,
+          "h": 38
+        },
+        "build": {
+          "x": 55,
+          "y": 0,
+          "w": 959,
+          "h": 48
+        }
+      }
+    },
+    {
+      "id": "task-title",
+      "x": 0.0223,
+      "y": 0.1493,
+      "w": 0.2136,
+      "h": 0.0592,
+      "kind": "text",
+      "score": {
+        "overall": 0.485,
+        "structure": 0.4918,
+        "color": 0.7324,
+        "colorIntersection": 0.4029,
+        "paletteMatch": 0.9098,
+        "detail": 0,
+        "detailRaw": 0.044,
+        "detailAdded": 0.2917,
+        "bands": 0.56
+      },
+      "verdict": "missing",
+      "inkBox": {
+        "comp": {
+          "x": 2,
+          "y": 15,
+          "w": 161,
+          "h": 22
+        },
+        "build": {
+          "x": 32,
+          "y": 0,
+          "w": 119,
+          "h": 47
+        }
+      }
+    },
+    {
+      "id": "question-count",
+      "x": 0.7539,
+      "y": 0.1588,
+      "w": 0.1161,
+      "h": 0.0498,
+      "kind": "text",
+      "score": {
+        "overall": 0.4905,
+        "structure": 0.544,
+        "color": 0.75,
+        "colorIntersection": 0.3935,
+        "paletteMatch": 0.942,
+        "detail": 0,
+        "detailRaw": 0.0438,
+        "detailAdded": 0.1979,
+        "bands": 0.31
+      },
+      "verdict": "missing",
+      "inkBox": {
+        "comp": {
+          "x": 2,
+          "y": 14,
+          "w": 114,
+          "h": 17
+        },
+        "build": {
+          "x": 30,
+          "y": 0,
+          "w": 93,
+          "h": 10
+        }
+      }
+    },
+    {
+      "id": "stop",
+      "x": 0.8932,
+      "y": 0.128,
+      "w": 0.0929,
+      "h": 0.1043,
+      "kind": "control",
+      "score": {
+        "overall": 0.5407,
+        "structure": 0.6283,
+        "color": 0.7371,
+        "colorIntersection": 0.3417,
+        "paletteMatch": 0.9501,
+        "detail": 0,
+        "detailRaw": 0.0355,
+        "detailAdded": 0.1771,
+        "bands": 0.2533
+      },
+      "verdict": "missing",
+      "inkBox": {
+        "comp": {
+          "x": 19,
+          "y": 13,
+          "w": 68,
+          "h": 21
+        },
+        "build": {
+          "x": 5,
+          "y": 0,
+          "w": 47,
+          "h": 11
+        }
+      }
+    },
+    {
+      "id": "known-chord",
+      "x": 0.0223,
+      "y": 0.2773,
+      "w": 0.1114,
+      "h": 0.0474,
+      "kind": "text",
+      "score": {
+        "overall": 0.5577,
+        "structure": 0.5052,
+        "color": 0.8873,
+        "colorIntersection": 0.8236,
+        "paletteMatch": 0.9216,
+        "detail": 0.122,
+        "detailRaw": 0.2575,
+        "detailAdded": 0.2708,
+        "bands": 0.65
+      },
+      "verdict": "drift",
+      "inkBox": {
+        "comp": {
+          "x": 2,
+          "y": 16,
+          "w": 91,
+          "h": 32
+        },
+        "build": {
+          "x": 32,
+          "y": 6,
+          "w": 59,
+          "h": 37
+        }
+      }
+    },
+    {
+      "id": "chord",
+      "x": 0.0223,
+      "y": 0.3412,
+      "w": 0.0929,
+      "h": 0.1422,
+      "kind": "text",
+      "score": {
+        "overall": 0.4185,
+        "structure": 0.3374,
+        "color": 0.8068,
+        "colorIntersection": 0.6347,
+        "paletteMatch": 0.8995,
+        "detail": 0.0447,
+        "detailRaw": 0.1958,
+        "detailAdded": 0.3021,
+        "bands": 0.4143
+      },
+      "verdict": "missing",
+      "inkBox": {
+        "comp": {
+          "x": 2,
+          "y": 1,
+          "w": 85,
+          "h": 53
+        },
+        "build": {
+          "x": 30,
+          "y": 0,
+          "w": 70,
+          "h": 58
+        }
+      }
+    },
+    {
+      "id": "prompt",
+      "x": 0.0223,
+      "y": 0.5261,
+      "w": 0.2275,
+      "h": 0.0592,
+      "kind": "text",
+      "score": {
+        "overall": 0.5603,
+        "structure": 0.5724,
+        "color": 0.9067,
+        "colorIntersection": 0.8425,
+        "paletteMatch": 0.9412,
+        "detail": 0.1134,
+        "detailRaw": 0.2176,
+        "detailAdded": 0.2083,
+        "bands": 0.3048
+      },
+      "verdict": "drift",
+      "inkBox": {
+        "comp": {
+          "x": 1,
+          "y": 12,
+          "w": 194,
+          "h": 36
+        },
+        "build": {
+          "x": 30,
+          "y": 7,
+          "w": 101,
+          "h": 36
+        }
+      }
+    },
+    {
+      "id": "status",
+      "x": 0.0223,
+      "y": 0.5995,
+      "w": 0.1671,
+      "h": 0.0474,
+      "kind": "text",
+      "score": {
+        "overall": 0.6631,
+        "structure": 0.7661,
+        "color": 0.9603,
+        "colorIntersection": 0.9421,
+        "paletteMatch": 0.9701,
+        "detail": 0,
+        "detailRaw": 0.1114,
+        "detailAdded": 0.25,
+        "bands": 0.4
+      },
+      "verdict": "missing",
+      "inkBox": {
+        "comp": {
+          "x": 1,
+          "y": 0,
+          "w": 153,
+          "h": 26
+        },
+        "build": {
+          "x": 30,
+          "y": 0,
+          "w": 101,
+          "h": 15
+        }
+      }
+    },
+    {
+      "id": "replay",
+      "x": 0.0223,
+      "y": 0.6896,
+      "w": 0.1253,
+      "h": 0.1161,
+      "kind": "control",
+      "score": {
+        "overall": 0.59,
+        "structure": 0.6294,
+        "color": 0.8763,
+        "colorIntersection": 0.8024,
+        "paletteMatch": 0.9162,
+        "detail": 0,
+        "detailRaw": 0.0116,
+        "detailAdded": 0.1667,
+        "bands": 0.235
+      },
+      "verdict": "missing",
+      "inkBox": {
+        "comp": {
+          "x": 1,
+          "y": 1,
+          "w": 113,
+          "h": 36
+        },
+        "build": {
+          "x": 30,
+          "y": 0,
+          "w": 94,
+          "h": 10
+        }
+      }
+    },
+    {
+      "id": "answer-0",
+      "x": 0.2795,
+      "y": 0.3412,
+      "w": 0.1086,
+      "h": 0.2014,
+      "kind": "control",
+      "score": {
+        "overall": 0.7603,
+        "structure": 0.8811,
+        "color": 0.9565,
+        "colorIntersection": 0.9373,
+        "paletteMatch": 0.9668,
+        "detail": 0.1454,
+        "detailRaw": 0.1871,
+        "detailAdded": 0.0833,
+        "bands": 0.2667
+      },
+      "verdict": "drift",
+      "inkBox": {
+        "comp": {
+          "x": 1,
+          "y": 34,
+          "w": 116,
+          "h": 51
+        },
+        "build": {
+          "x": 52,
+          "y": 0,
+          "w": 27,
+          "h": 72
+        }
+      }
+    },
+    {
+      "id": "answer-1",
+      "x": 0.3983,
+      "y": 0.3412,
+      "w": 0.1086,
+      "h": 0.2014,
+      "kind": "control",
+      "score": {
+        "overall": 0.7285,
+        "structure": 0.8713,
+        "color": 0.9473,
+        "colorIntersection": 0.9389,
+        "paletteMatch": 0.9519,
+        "detail": 0.0241,
+        "detailRaw": 0.097,
+        "detailAdded": 0.1458,
+        "bands": 0.3
+      },
+      "verdict": "missing",
+      "inkBox": {
+        "comp": {
+          "x": 47,
+          "y": 1,
+          "w": 70,
+          "h": 51
+        },
+        "build": {
+          "x": 49,
+          "y": 0,
+          "w": 15,
+          "h": 72
+        }
+      }
+    },
+    {
+      "id": "answer-2",
+      "x": 0.5172,
+      "y": 0.3412,
+      "w": 0.1086,
+      "h": 0.2014,
+      "kind": "control",
+      "score": {
+        "overall": 0.7409,
+        "structure": 0.8647,
+        "color": 0.9679,
+        "colorIntersection": 0.9566,
+        "paletteMatch": 0.974,
+        "detail": 0.0653,
+        "detailRaw": 0.1486,
+        "detailAdded": 0.1667,
+        "bands": 0
+      },
+      "verdict": "missing",
+      "inkBox": {
+        "comp": {
+          "x": 52,
+          "y": 1,
+          "w": 65,
+          "h": 51
+        },
+        "build": {
+          "x": 36,
+          "y": 0,
+          "w": 28,
+          "h": 72
+        }
+      }
+    },
+    {
+      "id": "answer-3",
+      "x": 0.636,
+      "y": 0.3412,
+      "w": 0.1086,
+      "h": 0.2014,
+      "kind": "control",
+      "score": {
+        "overall": 0.7171,
+        "structure": 0.8492,
+        "color": 0.957,
+        "colorIntersection": 0.9436,
+        "paletteMatch": 0.9642,
+        "detail": 0,
+        "detailRaw": 0.053,
+        "detailAdded": 0.1771,
+        "bands": 0.28
+      },
+      "verdict": "missing",
+      "inkBox": {
+        "comp": {
+          "x": 46,
+          "y": 33,
+          "w": 71,
+          "h": 52
+        },
+        "build": {
+          "x": 34,
+          "y": 0,
+          "w": 17,
+          "h": 72
+        }
+      }
+    },
+    {
+      "id": "answer-4",
+      "x": 0.7549,
+      "y": 0.3412,
+      "w": 0.1086,
+      "h": 0.2014,
+      "kind": "control",
+      "score": {
+        "overall": 0.7335,
+        "structure": 0.8854,
+        "color": 0.9574,
+        "colorIntersection": 0.9499,
+        "paletteMatch": 0.9614,
+        "detail": 0,
+        "detailRaw": 0.0485,
+        "detailAdded": 0.1458,
+        "bands": 0
+      },
+      "verdict": "missing",
+      "inkBox": {
+        "comp": {
+          "x": 53,
+          "y": 34,
+          "w": 11,
+          "h": 18
+        },
+        "build": {
+          "x": 25,
+          "y": 0,
+          "w": 18,
+          "h": 72
+        }
+      }
+    },
+    {
+      "id": "answer-5",
+      "x": 0.8737,
+      "y": 0.3412,
+      "w": 0.1086,
+      "h": 0.2014,
+      "kind": "control",
+      "score": {
+        "overall": 0.7241,
+        "structure": 0.8564,
+        "color": 0.9523,
+        "colorIntersection": 0.9531,
+        "paletteMatch": 0.9518,
+        "detail": 0.0273,
+        "detailRaw": 0.0898,
+        "detailAdded": 0.125,
+        "bands": 0.3543
+      },
+      "verdict": "missing",
+      "inkBox": {
+        "comp": {
+          "x": 1,
+          "y": 0,
+          "w": 69,
+          "h": 51
+        },
+        "build": {
+          "x": 8,
+          "y": 0,
+          "w": 37,
+          "h": 76
+        }
+      }
+    },
+    {
+      "id": "answer-6",
+      "x": 0.2795,
+      "y": 0.5664,
+      "w": 0.1086,
+      "h": 0.2014,
+      "kind": "control",
+      "score": {
+        "overall": 0.7529,
+        "structure": 0.9072,
+        "color": 0.9368,
+        "colorIntersection": 0.92,
+        "paletteMatch": 0.9458,
+        "detail": 0.0842,
+        "detailRaw": 0.0842,
+        "detailAdded": 0,
+        "bands": 0.7
+      },
+      "verdict": "missing",
+      "inkBox": {
+        "comp": {
+          "x": 0,
+          "y": 3,
+          "w": 77,
+          "h": 49
+        },
+        "build": null
+      }
+    },
+    {
+      "id": "answer-7",
+      "x": 0.3983,
+      "y": 0.5664,
+      "w": 0.1086,
+      "h": 0.2014,
+      "kind": "control",
+      "score": {
+        "overall": 0.7933,
+        "structure": 0.9538,
+        "color": 0.9649,
+        "colorIntersection": 0.948,
+        "paletteMatch": 0.974,
+        "detail": 0.1321,
+        "detailRaw": 0.1425,
+        "detailAdded": 0.0208,
+        "bands": 0.8
+      },
+      "verdict": "missing",
+      "inkBox": {
+        "comp": {
+          "x": 53,
+          "y": 6,
+          "w": 64,
+          "h": 79
+        },
+        "build": null
+      }
+    },
+    {
+      "id": "answer-8",
+      "x": 0.5172,
+      "y": 0.5664,
+      "w": 0.1086,
+      "h": 0.2014,
+      "kind": "control",
+      "score": {
+        "overall": 0.7534,
+        "structure": 0.9056,
+        "color": 0.9481,
+        "colorIntersection": 0.9358,
+        "paletteMatch": 0.9548,
+        "detail": 0.0701,
+        "detailRaw": 0.0753,
+        "detailAdded": 0.0104,
+        "bands": 0.7
+      },
+      "verdict": "missing",
+      "inkBox": {
+        "comp": {
+          "x": 41,
+          "y": 34,
+          "w": 34,
+          "h": 18
+        },
+        "build": null
+      }
+    },
+    {
+      "id": "answer-9",
+      "x": 0.636,
+      "y": 0.5664,
+      "w": 0.1086,
+      "h": 0.2014,
+      "kind": "control",
+      "score": {
+        "overall": 0.7779,
+        "structure": 0.9331,
+        "color": 0.9591,
+        "colorIntersection": 0.9405,
+        "paletteMatch": 0.9691,
+        "detail": 0.1116,
+        "detailRaw": 0.1168,
+        "detailAdded": 0.0104,
+        "bands": 0.7
+      },
+      "verdict": "missing",
+      "inkBox": {
+        "comp": {
+          "x": 47,
+          "y": 35,
+          "w": 22,
+          "h": 17
+        },
+        "build": null
+      }
+    },
+    {
+      "id": "answer-10",
+      "x": 0.7549,
+      "y": 0.5664,
+      "w": 0.1086,
+      "h": 0.2014,
+      "kind": "control",
+      "score": {
+        "overall": 0.7723,
+        "structure": 0.9325,
+        "color": 0.9545,
+        "colorIntersection": 0.9417,
+        "paletteMatch": 0.9614,
+        "detail": 0.093,
+        "detailRaw": 0.1138,
+        "detailAdded": 0.0417,
+        "bands": 0.8
+      },
+      "verdict": "missing",
+      "inkBox": {
+        "comp": {
+          "x": 0,
+          "y": 1,
+          "w": 70,
+          "h": 51
+        },
+        "build": null
+      }
+    },
+    {
+      "id": "answer-11",
+      "x": 0.8737,
+      "y": 0.5664,
+      "w": 0.1086,
+      "h": 0.2014,
+      "kind": "control",
+      "score": {
+        "overall": 0.7374,
+        "structure": 0.8842,
+        "color": 0.9338,
+        "colorIntersection": 0.9302,
+        "paletteMatch": 0.9357,
+        "detail": 0.0633,
+        "detailRaw": 0.0633,
+        "detailAdded": 0,
+        "bands": 0.52
+      },
+      "verdict": "missing",
+      "inkBox": {
+        "comp": {
+          "x": 0,
+          "y": 34,
+          "w": 82,
+          "h": 51
+        },
+        "build": null
+      }
+    },
+    {
+      "id": "details",
+      "x": 0.0223,
+      "y": 0.8815,
+      "w": 0.2321,
+      "h": 0.1137,
+      "kind": "control",
+      "score": {
+        "overall": 0.7052,
+        "structure": 0.842,
+        "color": 0.9321,
+        "colorIntersection": 0.9253,
+        "paletteMatch": 0.9357,
+        "detail": 0,
+        "detailRaw": 0,
+        "detailAdded": 0,
+        "bands": 0.4
+      },
+      "verdict": "missing",
+      "inkBox": {
+        "comp": {
+          "x": 2,
+          "y": 16,
+          "w": 140,
+          "h": 17
+        },
+        "build": null
+      }
+    }
+  ],
+  "files": {
+    "sideBySide": "C:/Users/wpwcb/Documents/OFF_REAL_DOC/CODE/WEBD1010/EarTrain/.impeccable/review/diff/desktop/side-by-side.png",
+    "heatmap": "C:/Users/wpwcb/Documents/OFF_REAL_DOC/CODE/WEBD1010/EarTrain/.impeccable/review/diff/desktop/heatmap.png",
+    "regionFiles": [
+      "C:/Users/wpwcb/Documents/OFF_REAL_DOC/CODE/WEBD1010/EarTrain/.impeccable/review/diff/desktop/regions/nav.png",
+      "C:/Users/wpwcb/Documents/OFF_REAL_DOC/CODE/WEBD1010/EarTrain/.impeccable/review/diff/desktop/regions/brand.png",
+      "C:/Users/wpwcb/Documents/OFF_REAL_DOC/CODE/WEBD1010/EarTrain/.impeccable/review/diff/desktop/regions/practice-link.png",
+      "C:/Users/wpwcb/Documents/OFF_REAL_DOC/CODE/WEBD1010/EarTrain/.impeccable/review/diff/desktop/regions/insights-link.png",
+      "C:/Users/wpwcb/Documents/OFF_REAL_DOC/CODE/WEBD1010/EarTrain/.impeccable/review/diff/desktop/regions/legacy-link.png",
+      "C:/Users/wpwcb/Documents/OFF_REAL_DOC/CODE/WEBD1010/EarTrain/.impeccable/review/diff/desktop/regions/task-band.png",
+      "C:/Users/wpwcb/Documents/OFF_REAL_DOC/CODE/WEBD1010/EarTrain/.impeccable/review/diff/desktop/regions/task-title.png",
+      "C:/Users/wpwcb/Documents/OFF_REAL_DOC/CODE/WEBD1010/EarTrain/.impeccable/review/diff/desktop/regions/question-count.png",
+      "C:/Users/wpwcb/Documents/OFF_REAL_DOC/CODE/WEBD1010/EarTrain/.impeccable/review/diff/desktop/regions/stop.png",
+      "C:/Users/wpwcb/Documents/OFF_REAL_DOC/CODE/WEBD1010/EarTrain/.impeccable/review/diff/desktop/regions/known-chord.png",
+      "C:/Users/wpwcb/Documents/OFF_REAL_DOC/CODE/WEBD1010/EarTrain/.impeccable/review/diff/desktop/regions/chord.png",
+      "C:/Users/wpwcb/Documents/OFF_REAL_DOC/CODE/WEBD1010/EarTrain/.impeccable/review/diff/desktop/regions/prompt.png",
+      "C:/Users/wpwcb/Documents/OFF_REAL_DOC/CODE/WEBD1010/EarTrain/.impeccable/review/diff/desktop/regions/status.png",
+      "C:/Users/wpwcb/Documents/OFF_REAL_DOC/CODE/WEBD1010/EarTrain/.impeccable/review/diff/desktop/regions/replay.png",
+      "C:/Users/wpwcb/Documents/OFF_REAL_DOC/CODE/WEBD1010/EarTrain/.impeccable/review/diff/desktop/regions/answer-0.png",
+      "C:/Users/wpwcb/Documents/OFF_REAL_DOC/CODE/WEBD1010/EarTrain/.impeccable/review/diff/desktop/regions/answer-1.png",
+      "C:/Users/wpwcb/Documents/OFF_REAL_DOC/CODE/WEBD1010/EarTrain/.impeccable/review/diff/desktop/regions/answer-2.png",
+      "C:/Users/wpwcb/Documents/OFF_REAL_DOC/CODE/WEBD1010/EarTrain/.impeccable/review/diff/desktop/regions/answer-3.png",
+      "C:/Users/wpwcb/Documents/OFF_REAL_DOC/CODE/WEBD1010/EarTrain/.impeccable/review/diff/desktop/regions/answer-4.png",
+      "C:/Users/wpwcb/Documents/OFF_REAL_DOC/CODE/WEBD1010/EarTrain/.impeccable/review/diff/desktop/regions/answer-5.png",
+      "C:/Users/wpwcb/Documents/OFF_REAL_DOC/CODE/WEBD1010/EarTrain/.impeccable/review/diff/desktop/regions/answer-6.png",
+      "C:/Users/wpwcb/Documents/OFF_REAL_DOC/CODE/WEBD1010/EarTrain/.impeccable/review/diff/desktop/regions/answer-7.png",
+      "C:/Users/wpwcb/Documents/OFF_REAL_DOC/CODE/WEBD1010/EarTrain/.impeccable/review/diff/desktop/regions/answer-8.png",
+      "C:/Users/wpwcb/Documents/OFF_REAL_DOC/CODE/WEBD1010/EarTrain/.impeccable/review/diff/desktop/regions/answer-9.png",
+      "C:/Users/wpwcb/Documents/OFF_REAL_DOC/CODE/WEBD1010/EarTrain/.impeccable/review/diff/desktop/regions/answer-10.png",
+      "C:/Users/wpwcb/Documents/OFF_REAL_DOC/CODE/WEBD1010/EarTrain/.impeccable/review/diff/desktop/regions/answer-11.png",
+      "C:/Users/wpwcb/Documents/OFF_REAL_DOC/CODE/WEBD1010/EarTrain/.impeccable/review/diff/desktop/regions/details.png"
+    ]
+  }
+}

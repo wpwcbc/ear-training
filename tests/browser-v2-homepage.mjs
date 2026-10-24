@@ -8,7 +8,7 @@ const { chromium } = await import(
 const browser = await chromium.launch({ channel: "msedge", headless: true });
 const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
 page.setDefaultTimeout(15000);
-const url = "http://127.0.0.1:4173/jazz-ear-lab-v2/";
+const url = `${process.env.BASE_URL || "http://127.0.0.1:4173"}/jazz-ear-lab-v2/`;
 const errors = [];
 page.on("pageerror", (e) => errors.push(e.message));
 const folder = join(tmpdir(), "eartrain-v2-homepage");
@@ -81,10 +81,16 @@ async function spyAudio() {
   await page.evaluate(async () => {
     const { AudioEngine } = await import("/js/jazz/audio.js");
     const play = AudioEngine.prototype.playSingle;
+    const reference = AudioEngine.prototype.playReference;
     window.calls = [];
-    AudioEngine.prototype.playSingle = function (chord, midi, volume, context) {
+    AudioEngine.prototype.playSingle = function (...args) {
+      const [, midi, , context] = args;
       window.calls.push({ midi, context });
-      return play.call(this, chord, midi, volume, context);
+      return Reflect.apply(play, this, args);
+    };
+    AudioEngine.prototype.playReference = function (...args) {
+      window.calls.push({ midi: args[1], context: true });
+      return Reflect.apply(reference, this, args);
     };
   });
 }
@@ -175,12 +181,12 @@ try {
     assert.ok(saved.qualities.includes(target.chord.quality));
     if (id === "m1-general") {
       const done = page.getByRole("button", {
-        name: "Done - imagined",
+        name: "Done",
         exact: true,
       });
       await page.waitForFunction(() =>
         [...document.querySelectorAll("button")].some(
-          (b) => b.textContent === "Done - imagined" && !b.disabled,
+          (b) => b.textContent === "Done" && !b.disabled,
         ),
       );
       assert.deepEqual(await page.evaluate(() => window.calls), [
@@ -213,6 +219,7 @@ try {
     await page.evaluate(() => {
       location.hash = "insights";
     });
+    await page.locator(".insight-detail > summary").click();
     await page
       .getByRole("button", { name: "Customize focus", exact: true })
       .first()
@@ -234,6 +241,7 @@ try {
     await page.evaluate(() => {
       location.hash = "insights";
     });
+    await page.locator(".insight-detail > summary").click();
     await page
       .getByRole("button", { name: "Customize focus", exact: true })
       .first()

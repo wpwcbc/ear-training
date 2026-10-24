@@ -1,12 +1,32 @@
 import { AudioEngine } from "../jazz/audio.js";
-import { builtins, primaryPresets, roots, qualities, degrees, roles, validate, stream, attempt, answer, rate, read, write, keys, metrics, cohort, } from "./model.js";
+import { QuestionLifecycle } from "./question.js";
+import { builtins, primaryPresets, roots, qualities, degrees, roles, validate, stream, attempt, read, write, keys, metrics, cohort, } from "./model.js";
 const host = document.getElementById("app"), error = document.getElementById("error");
 const audio = new AudioEngine();
+let question = null;
+let reviewOperation = 0;
 let seenMaterial = new Set();
 let presets = [], sessions = [], activeId = builtins[0].id, draft;
 let session = null, current = null, generate = null;
-let step = "Harmony", busy = false, ready = false, done = false, resolved = false, feedback = "", started = 0, operation = 0, dirty = false, fatal = false;
+let step = "Harmony", dirty = false, fatal = false;
 let selectedCohort = "", rootFilter = "", qualityFilter = "";
+let headingFocus = true, lastRoute = "", savedPresetId = "";
+let practiceSignature = "";
+function restoreControl(key) {
+    if (!key)
+        return;
+    Array.from(host.querySelectorAll("[data-focus-key]")).find((node) => node.dataset.focusKey === key && !node.disabled)?.focus({ preventScroll: true });
+}
+function splitView(anchor, work, cls = "") {
+    const split = el("div", "", "split-view " + cls);
+    split.append(anchor, work);
+    return split;
+}
+function disclosure(label, ...content) {
+    const details = el("details");
+    details.append(el("summary", label), ...content);
+    return details;
+}
 function el(tag, text = "", cls = "") {
     const e = document.createElement(tag);
     e.textContent = text;
@@ -23,10 +43,24 @@ function clearError() {
 }
 function button(label, fn, secondary = true, disabled = false) {
     const b = el("button", label, secondary ? "secondary" : "");
+    b.dataset.focusKey = label;
+    const glyph = label.startsWith("Replay") ? "rotate-ccw" : label === "Customize" ? "sliders-horizontal" : label === "Correct" ? "check" : label === "Incorrect" ? "x" : label === "Stop" ? "square" : "";
+    if (glyph) {
+        const icon = el("img");
+        icon.src = glyph === "square" ? "square.svg" : "../jazz-ear-lab/icons/" + glyph + ".svg";
+        icon.alt = "";
+        icon.width = icon.height = 20;
+        b.prepend(icon);
+    }
     b.type = "button";
     b.disabled = disabled;
     b.onclick = () => {
-        Promise.resolve().then(fn).catch(report);
+        Promise.resolve()
+            .then(() => {
+            if (b.isConnected && !b.disabled)
+                return fn();
+        })
+            .catch(report);
     };
     return b;
 }
@@ -39,7 +73,9 @@ function heading(text) {
     const h = el("h1", text);
     h.tabIndex = -1;
     host.append(h);
-    h.focus({ preventScroll: true });
+    if (headingFocus)
+        h.focus({ preventScroll: true });
+    return h;
 }
 function preset() {
     return presets.find((p) => p.id === activeId) ?? presets[0];
@@ -51,6 +87,11 @@ function saveAll() {
     write(keys.exposures, [...seenMaterial]);
     dirty = false;
     clearError();
+    const status = document.getElementById("config-status");
+    if (status && status.dataset.state !== "invalid") {
+        status.textContent = "Changes saved to this preset.";
+        status.dataset.state = "saved";
+    }
 }
 function persist() {
     dirty = true;
@@ -149,15 +190,20 @@ function home() {
         secondary.append(card);
     }
     host.append(secondary);
+    const pageTitle = host.querySelector("h1"), work = el("div", "", "home-work");
+    work.append(el("h2", "Exercises"), grid, secondary);
+    host.replaceChildren(splitView(pageTitle, work, "home-layout"));
 }
 function select(label, value, options, update) {
     const l = el("label", label), s = el("select");
     options.forEach((v) => {
-        const o = el("option", v);
+        const o = el("option", v === "All selected roots" ? "All roots" : v === "All selected qualities" ? "All qualities" : v);
         o.value = v;
         s.append(o);
     });
     s.value = value;
+    s.setAttribute("aria-label", label);
+    s.dataset.focusKey = label;
     s.onchange = () => update(s.value);
     l.append(s);
     return l;
@@ -172,6 +218,8 @@ function autoSave() {
             ? "Not saved. Keep this page open and Retry saving."
             : "Changes saved to this preset.";
         status.dataset.state = dirty ? "unsaved" : "saved";
+        if (!dirty)
+            savedPresetId = activeId;
     }
     catch (e) {
         status.dataset.state = "invalid";
@@ -180,6 +228,16 @@ function autoSave() {
     const summary = document.getElementById("config-summary");
     if (summary)
         summary.textContent = describe(draft);
+    const overview = document.getElementById("config-overview");
+    if (overview)
+        overview.replaceChildren(...configurationSummary());
+}
+function configurationSummary() {
+    return [
+        `Roots: ${draft.roots.length} / 12 selected`,
+        `Qualities: ${draft.qualities.join(", ") || "None selected"}`,
+        `Targets: ${draft.targets.join(", ") || "None selected"} (${draft.targetMode})`,
+    ].map((text) => el("p", text));
 }
 function pool(label, options, values, update) {
     const f = el("fieldset"), group = el("div", "", "pool");
@@ -245,7 +303,15 @@ function config() {
             autoSave();
         };
         l.append(check, el("span", " Audible chord context"));
-        host.append(l);
+        const advanceLabel = el("label"), advance = el("input");
+        advance.type = "checkbox";
+        advance.checked = draft.autoAdvance !== false;
+        advance.onchange = () => {
+            draft.autoAdvance = advance.checked;
+            autoSave();
+        };
+        advanceLabel.append(advance, el("span", " Auto Advance"));
+        host.append(actions(l, advanceLabel));
         const countLabel = el("label", "Questions (0 = Unlimited)"), count = el("input");
         count.type = "number";
         count.min = "0";
@@ -257,20 +323,25 @@ function config() {
         };
         countLabel.append(count);
         host.append(countLabel);
-        const vl = el("label", "Volume"), v = el("input");
+        const vl = el("label", "Volume"), v = el("input"), value = el("output", Math.round(draft.volume * 100) + "%");
+        v.id = "practice-volume";
+        v.setAttribute("aria-label", "Volume");
+        value.htmlFor = v.id;
         v.type = "range";
         v.min = "0";
         v.max = "1";
         v.step = "0.05";
         v.value = String(draft.volume);
+        v.oninput = () => value.textContent = Math.round(Number(v.value) * 100) + "%";
         v.onchange = () => {
             draft.volume = Number(v.value);
             autoSave();
         };
-        vl.append(v);
+        vl.append(v, value);
         host.append(vl);
     }
-    const status = el("p", "", "notice");
+    const status = el("p", dirty ? "Not saved. Retry saving." : savedPresetId === activeId ? "Changes saved to this preset." : "Preset ready", "notice");
+    status.dataset.state = dirty ? "unsaved" : "saved";
     status.id = "config-status";
     status.setAttribute("role", "status");
     const summary = el("p", describe(draft));
@@ -315,13 +386,28 @@ function config() {
         status.textContent =
             e.message + " Last valid saved preset unchanged.";
     }
+    const title = host.querySelector("h1"), anchor = el("section", "", "config-anchor"), work = el("section", "", "config-work"), overview = el("div");
+    overview.id = "config-overview";
+    overview.append(...configurationSummary());
+    anchor.append(title, status, overview, disclosure("Full configuration", summary));
+    const footer = host.querySelector(".actions:has(button[data-focus-key='Start practice'])");
+    footer.classList.add("config-actions");
+    const restore = Array.from(host.querySelectorAll("button")).find((b) => b.textContent === "Restore Default" || b.textContent === "Delete preset");
+    footer.append(restore);
+    const controls = Array.from(host.children).filter((node) => node !== footer);
+    work.append(...controls, footer);
+    work.setAttribute("aria-label", "Preset settings");
+    host.replaceChildren(splitView(anchor, work, "configuration"));
 }
 function configRender() {
+    const key = document.activeElement?.dataset.focusKey;
+    headingFocus = false;
     host.replaceChildren();
     config();
+    restoreControl(key);
 }
 async function start(p) {
-    if (busy || session)
+    if (session)
         return;
     const c = validate(p.config);
     activeId = p.id;
@@ -345,6 +431,11 @@ function material(a) {
 function next() {
     if (!session || !generate)
         return;
+    if (question)
+        question.dispose();
+    else
+        audio.stop();
+    reviewOperation++;
     if (session.config.count && session.attempts.length >= session.config.count) {
         finish();
         return;
@@ -357,84 +448,23 @@ function next() {
     current = attempt(session.config, q, session.id, seen ? "previously-seen" : "fresh");
     session.attempts.push(current);
     persist();
-    done = false;
-    resolved = false;
-    ready = false;
-    started = 0;
-    feedback = "";
+    question = new QuestionLifecycle(current, audio, {
+        save: persist,
+        change: renderPractice,
+        advance: next,
+        error: report,
+        present: () => location.hash === "#practice" && !document.hidden,
+    });
     render();
-    void play(false);
+    void question.act({ type: "start" });
 }
-function elapsed() {
-    return current?.timingValidity === "valid" && started
-        ? Math.max(0, performance.now() - started)
-        : null;
-}
-async function play(replay, reference = false) {
-    if (!session || !current || busy)
-        return;
-    const a = current, c = session.config, token = ++operation;
-    busy = true;
-    ready = false;
-    renderPractice();
-    try {
-        if (c.exercise === "m1" && !c.context && !reference) {
-            if (!started) {
-                started = performance.now();
-                if (a.timingValidity !== "interrupted")
-                    a.timingValidity = "valid";
-            }
-            ready = true;
-            return;
-        }
-        await audio.ready();
-        if (token !== operation)
-            return;
-        const plan = audio.playSingle(a.target.chord, c.exercise === "m2" || reference ? a.target.midi : null, c.volume, reference ? false : c.context);
-        if (replay) {
-            if (done || a.firstAnswer !== null)
-                a.replaysAfterFirst++;
-            else
-                a.replaysBeforeFirst++;
-        }
-        await new Promise((resolve) => setTimeout(resolve, reference ? plan.durationMs : plan.readyMs));
-        if (token !== operation)
-            return;
-        if (!started && !reference) {
-            started = performance.now();
-            if (a.timingValidity !== "interrupted")
-                a.timingValidity = "valid";
-        }
-        if (reference)
-            a.revealedReference = true;
-        ready = true;
-        persist();
-    }
-    catch (e) {
-        if (token !== operation)
-            return;
-        if (!done && a.firstAnswer === null)
-            a.timingValidity = "interrupted";
-        persist();
-        feedback = "Audio unavailable. Retry audio before responding.";
-        report(e);
-    }
-    finally {
-        if (token === operation) {
-            busy = false;
-            renderPractice();
-        }
-    }
-}
-function finish() {
+function finish(destination) {
     if (!session)
         return;
-    operation++;
-    busy = false;
-    audio.stop();
+    question?.dispose();
     // A displayed but untouched question is not a submitted attempt.
     if (current &&
-        !done &&
+        !question?.view.done &&
         current.firstAnswer === null &&
         !current.replaysBeforeFirst)
         session.attempts = session.attempts.filter((a) => a !== current);
@@ -443,134 +473,202 @@ function finish() {
     persist();
     session = null;
     current = null;
+    question = null;
     generate = null;
-    location.hash = "results/" + id;
-    render();
-}
-function afterResponse() {
-    persist();
-    if (resolved &&
-        session?.config.count &&
-        session.attempts.length >= session.config.count)
-        finish();
-    else
-        renderPractice();
+    if (destination !== null) {
+        location.hash = destination ?? "results/" + id;
+        render();
+    }
 }
 function renderPractice() {
-    if (location.hash !== "#practice" || !session || !current)
+    if (location.hash !== "#practice" || !session || !current || !question)
         return;
+    const focusedKey = document.activeElement?.dataset.focusKey;
+    const lifecycle = question, { busy, ready, done, choosingWrong, resolved, feedback, sounding, reference } = lifecycle.view;
+    const soundText = sounding ? reference ? "Reference playing" : session.config.exercise === "m1" ? "Context playing" : session.config.context ? "Question playing" : "Target playing" : "";
+    const signature = JSON.stringify([current.id, busy, ready, done, choosingWrong, resolved, feedback, current.firstCorrect, current.retryCount]);
+    // A natural audio tail changes the indicator, not the user's live controls.
+    if (signature === practiceSignature && host.querySelector(".playback-status")) {
+        host.querySelector(".playback-status").textContent = soundText;
+        return;
+    }
+    practiceSignature = signature;
     host.replaceChildren();
     const c = session.config, a = current;
     const top = el("div", "", "session-top");
     top.append(el("h1", c.exercise === "m1" ? "M1 Audiation" : "M2 Recognition"), button("Stop", finish));
     host.append(top);
-    host.append(el("p", `Question ${session.attempts.length}${c.count ? " / " + c.count : " / Unlimited"} - ${c.exercise === "m1" ? c.method + " / self-assessed" : "automatically scored"} - context ${c.context ? "on" : "off"}`));
-    const question = el("section", "", "question");
-    question.append(el("h2", a.target.chord.symbol));
-    if (c.exercise === "m1")
-        question.append(el("p", "Hear the " + a.target.degree));
+    const count = el("p", `Question ${session.attempts.length}${c.count ? " / " + c.count : " / Unlimited"}`, "session-count");
+    top.insertBefore(count, top.lastElementChild);
+    const questionElement = el("section", "", "question");
+    questionElement.append(el("p", "Known chord", "chord-label"), el("h2", a.target.chord.symbol));
+    if (c.exercise === "m1") {
+        const target = el("p", "Target ", "question-prompt");
+        target.append(el("span", a.target.degree, "target-degree"));
+        questionElement.append(target, el("p", "Self-rated / " + c.method, "method"));
+    }
     else
-        question.append(el("p", resolved ? "Answer: " + a.target.degree : "Which chord degree?"));
-    host.append(question);
-    const status = el("p", busy ? "Playing..." : feedback || (ready ? "Your turn" : "Audio not ready"));
+        questionElement.append(el("p", resolved ? "Answer: " + a.target.degree : "Which chord degree?", "question-prompt"));
+    host.append(questionElement);
+    let statusText = feedback || (ready ? c.exercise === "m1" && done ? "Rate your response" : "Your turn" : "Audio not ready");
+    if (busy)
+        statusText = "Preparing audio...";
+    else if (feedback === "Correct" && a.firstCorrect === false)
+        statusText = "Correct on retry";
+    const status = el("p", statusText);
     status.id = "feedback";
-    status.setAttribute("role", "status");
     host.append(status);
     if (!(c.exercise === "m1" && !c.context && !done))
-        host.append(actions(button(ready ? "Replay" : "Retry audio", () => play(started > 0, done || resolved), true, busy)));
+        host.append(actions(button(ready ? c.exercise === "m1" ? done ? "Replay reference" : "Replay context" : resolved ? "Replay reference" : "Replay" : "Retry audio", () => lifecycle.act({ type: "listen" }), true, busy)));
     if (c.exercise === "m2") {
         if (!resolved) {
             const answers = el("div", "", "answers");
             for (const choice of a.target.options)
-                answers.append(button(choice, () => {
-                    if (!ready || busy || resolved)
-                        return;
-                    const correct = answer(a, choice, elapsed());
-                    if (correct)
-                        a.revealedReference = true;
-                    resolved = correct;
-                    feedback = correct ? "Correct" : "Incorrect";
-                    afterResponse();
-                }, true, !ready || busy));
+                answers.append(button(choice, () => lifecycle.act({ type: "answer", degree: choice }), true, !ready || busy));
             host.append(answers);
         }
         if (a.firstAnswer !== null && !resolved)
-            host.append(button("Reveal Answer", async () => {
-                await play(true, true);
-                if (ready) {
-                    resolved = true;
-                    feedback = "Reference revealed. First answer unchanged.";
-                    afterResponse();
-                }
-            }, true, busy));
+            host.append(button("Reveal Answer", () => lifecycle.act({ type: "reveal" }), true, busy));
     }
     else if (!done) {
-        host.append(button("Done - " + c.method, async () => {
-            if (!ready || busy)
-                return;
-            a.firstResponseMs = elapsed();
-            done = true;
-            persist();
-            await play(false, true);
-        }, false, !ready || busy));
+        host.append(button("Done", () => lifecycle.act({ type: "done" }), false, !ready || busy));
     }
     else if (a.revealedReference && a.firstCorrect === null) {
-        const wrongLabel = el("label", "If incorrect, which degree did you imagine?"), wrong = el("select");
-        wrong.id = "wrong-degree";
-        const placeholder = el("option", "Choose a degree or Unknown");
-        placeholder.value = "";
-        wrong.append(placeholder);
-        for (const d of [
-            ...a.target.options.filter((d) => d !== a.target.degree),
-            "unknown",
-        ]) {
-            const o = el("option", d === "unknown" ? "Unknown" : d);
-            o.value = d;
-            wrong.append(o);
+        if (choosingWrong) {
+            const wrongLabel = el("label", "Which degree did you imagine?"), wrong = el("select");
+            wrong.id = "wrong-degree";
+            wrong.dataset.focusKey = "wrong-degree";
+            wrong.disabled = busy || !ready;
+            const placeholder = el("option", "Choose a degree or Unknown");
+            placeholder.value = "";
+            wrong.append(placeholder);
+            for (const d of [
+                ...a.target.options.filter((d) => d !== a.target.degree),
+                "unknown",
+            ]) {
+                const o = el("option", d === "unknown" ? "Unknown" : d);
+                o.value = d;
+                wrong.append(o);
+            }
+            wrong.onchange = () => {
+                if (wrong.value &&
+                    wrong.value !== a.target.degree &&
+                    (wrong.value === "unknown" || a.target.options.includes(wrong.value)))
+                    void lifecycle
+                        .act({ type: "rate", correct: false, wrong: wrong.value })
+                        .catch(report);
+            };
+            wrongLabel.append(wrong);
+            host.append(wrongLabel);
         }
-        wrongLabel.append(wrong);
-        host.append(wrongLabel);
-        const grade = (correct) => {
-            rate(a, correct, wrong.value);
-            resolved = true;
-            feedback = correct ? "Self-rated Correct" : "Self-rated Incorrect";
-            afterResponse();
-        };
-        host.append(actions(button("Correct", () => grade(true), false, busy), button("Incorrect", () => grade(false), true, busy)));
+        else {
+            host.append(actions(button("Correct", () => lifecycle.act({ type: "rate", correct: true }), true, busy), button("Incorrect", () => lifecycle.act({ type: "incorrect" }), true, busy)));
+        }
     }
     if (resolved)
         host.append(button(c.count && session.attempts.length >= c.count
             ? "Finish session"
-            : "Next", next, false, busy));
+            : "Next", () => lifecycle.act({ type: "next" }), false, busy || !ready));
+    const workspace = el("div", "", "practice-workspace"), response = el("section", "", "response-area"), settings = el("details", "", "session-settings");
+    response.setAttribute("aria-label", "Response");
+    const controls = Array.from(host.children).filter((node) => node !== top && node !== questionElement);
+    const playbackStatus = el("p", soundText, "playback-status");
+    if (c.exercise === "m2") {
+        const line = el("div", "", "feedback-line");
+        line.append(status, playbackStatus);
+        questionElement.append(line);
+        const replay = controls.find((node) => node.classList.contains("actions"));
+        if (replay)
+            questionElement.append(replay);
+        response.append(...controls.filter((node) => node !== status && node !== replay));
+    }
+    else {
+        response.append(...controls);
+        status.after(playbackStatus);
+        const replay = response.querySelector(".actions");
+        if (replay)
+            response.append(replay);
+        response.querySelectorAll("button").forEach((b) => {
+            if (b.textContent?.startsWith("Done"))
+                b.classList.add("done-action");
+        });
+        if (done)
+            response.querySelector(".actions:has(button[data-focus-key='Correct'])")?.classList.add("rating-actions");
+    }
+    settings.append(el("summary", "Session settings"), el("p", describe(c)));
     if (c.exercise === "m1")
-        host.append(el("p", "Self-assessment only; singing and playing are not pitch-verified. Completion time includes your response and interaction."));
+        settings.append(el("p", "Self-assessment only; singing and playing are not pitch-verified. Completion time includes your response and interaction."));
+    workspace.append(questionElement, response);
+    host.replaceChildren(top, workspace, settings);
+    restoreControl(focusedKey);
+    const announcement = document.getElementById("practice-announcement");
+    const message = `${count.textContent}. ${a.target.chord.symbol}. ${status.textContent}`;
+    if (announcement.textContent !== message)
+        announcement.textContent = message;
     if (!busy && document.activeElement === document.body) {
         const buttons = Array.from(host.querySelectorAll("button:not(:disabled)"));
         const focus = resolved
-            ? buttons.find((b) => b.textContent === "Next")
+            ? buttons.find((b) => b.textContent === "Next" || b.textContent === "Finish session")
             : done
-                ? host.querySelector("#wrong-degree")
+                ? (host.querySelector("#wrong-degree") ??
+                    buttons.find((b) => b.textContent === "Correct"))
                 : c.exercise === "m2"
                     ? host.querySelector(".answers button:not(:disabled)")
                     : buttons.find((b) => b.textContent?.startsWith("Done"));
         focus?.focus({ preventScroll: true });
     }
 }
-function summary(rows, c) {
-    const m = metrics(rows), block = el("section"), overview = el("div", "", "metrics");
-    overview.append(el("p", `${c.exercise === "m1" ? "Self-rated Accuracy" : "First-answer Accuracy"}: ${m.correct}/${m.n}${m.n ? " (" + Math.round((m.correct / m.n) * 100) + "%)" : ""}; ${m.unassessed} unassessed`), el("p", `Replay-assisted first responses: ${m.replayed}/${m.n}. Replays before: ${m.before}; after: ${m.after}.`), el("p", `Correct-first response median: ${m.median === null ? "Not enough comparable data" : (m.median / 1000).toFixed(2) + "s"} (n=${m.timed}).`));
-    block.append(overview, el("p", `Exposure: ${rows.filter((a) => a.exposure === "fresh").length} fresh, ${rows.filter((a) => a.exposure === "previously-seen").length} previously seen. Repetition is not evidence of transfer.`), el("p", c.exercise === "m1"
-        ? `Self-rated ${c.method}; time is self-indicated and includes interaction${c.method === "played" ? " and instrument execution" : ""}.`
-        : "Submission time includes listening, reasoning and interaction; it is not pure mental recognition speed."));
-    const mistakes = new Map();
+function confusions(rows) {
+    const section = el("section", "", "confusions"), mistakes = new Map();
+    let unknown = 0;
     for (const a of rows.filter((a) => a.firstCorrect === false)) {
-        const label = `${a.target.degree} → ${a.exercise === "m1" ? a.imaginedWrongDegree : a.firstAnswer}`;
-        mistakes.set(label, (mistakes.get(label) ?? 0) + 1);
+        const chosen = a.exercise === "m1" ? a.imaginedWrongDegree : a.firstAnswer;
+        if (!chosen || chosen === "unknown") {
+            unknown++;
+            continue;
+        }
+        const key = `${a.target.degree} → ${chosen}`;
+        mistakes.set(key, (mistakes.get(key) ?? 0) + 1);
     }
+    section.append(el("h2", "Degree confusions"));
     const list = el("ul");
-    for (const [label, n] of mistakes)
-        list.append(el("li", `${label}: ${n}`));
-    block.append(el("h2", "Degree confusions"), mistakes.size ? list : el("p", "No recorded first-response confusions."));
+    for (const [label, count] of [...mistakes].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))) {
+        const item = el("li");
+        item.append(el("span", label), el("strong", String(count)));
+        list.append(item);
+    }
+    section.append(mistakes.size ? list : el("p", "No recorded first-response confusions."));
+    if (unknown)
+        section.append(el("p", `Unknown imagined degree: ${unknown}. No specific wrong degree was reported.`));
+    return section;
+}
+function summary(rows, c, showConfusions = true) {
+    const m = metrics(rows), block = el("section", "", "evidence-summary"), outcome = el("section", "", "outcome"), body = el("div", "", "evidence-body"), supporting = el("div", "", "supporting-metrics");
+    outcome.dataset.correct = String(m.correct);
+    outcome.dataset.assessed = String(m.n);
+    outcome.append(el("h2", c.exercise === "m1" ? "Self-rated Accuracy" : "First-answer Accuracy"), el("p", m.n ? Math.round(m.correct / m.n * 100) + "%" : "—", "metric-number"), el("p", `${m.correct} / ${m.n} assessed`, "assessment-count"), el("p", `${m.unassessed} unassessed`, "unassessed"));
+    if (c.exercise === "m1")
+        outcome.append(el("p", "Self-rated / " + c.method, "assessment-source"));
+    for (const [label, value, note] of [
+        ["Replay-assisted first responses", `${m.replayed} / ${m.n}`, ""],
+        [c.exercise === "m1" ? "Correct self-rated response median" : "Correct-response median",
+            m.median === null ? "Unavailable" : (m.median / 1000).toFixed(2) + " s", `n=${m.timed} valid correct responses`],
+    ]) {
+        const item = el("div", "", "supporting-metric");
+        item.append(el("p", label), el("strong", value));
+        if (note)
+            item.append(el("small", note));
+        supporting.append(item);
+    }
+    const notes = disclosure("Timing and replay detail", el("p", `Replay totals across all ${rows.length} records: ${m.before} before the first response; ${m.after} after. The assisted-response share above uses assessed questions only.`), el("p", `Exposure: ${rows.filter((a) => a.exposure === "fresh").length} fresh, ${rows.filter((a) => a.exposure === "previously-seen").length} previously seen. Repetition is not evidence of transfer.`), el("p", c.exercise === "m1"
+        ? `Self-rated ${c.method}; time is self-indicated and includes interaction${c.method === "played" ? " and instrument execution" : ""}. Singing and playing are not pitch-verified.`
+        : "Submission time includes listening, reasoning and interaction; it is not pure mental recognition speed. Correct-response times exclude invalid timing and first incorrect answers."));
+    notes.className = "evidence-notes";
+    body.append(supporting);
+    if (showConfusions)
+        body.append(confusions(rows));
+    body.append(notes);
+    block.append(outcome, body);
     return block;
 }
 function results(id) {
@@ -579,36 +677,37 @@ function results(id) {
         heading("Session not found");
         return;
     }
-    heading(s.endedAt ? "Session results" : "Interrupted session - saved attempts");
-    host.append(el("p", describe(s.config)), summary(s.attempts, s.config), actions(button("Practice again", () => start({ id: s.presetId, name: "Similar practice", config: s.config }), false), button("Customize", () => {
-        activeId = presets.some((p) => p.id === s.presetId)
-            ? s.presetId
-            : presets[0].id;
-        draft = structuredClone(s.config);
-        location.hash = "configure";
-    }), button("Presets", () => (location.hash = "home"))));
-    const review = el("details");
-    review.append(el("summary", "Question review"));
+    heading(s.endedAt ? "Session results" : "Interrupted session - saved attempts").className = "page-band";
+    const overview = () => {
+        const block = summary(s.attempts, s.config);
+        block.querySelector(".outcome").append(actions(button("Practice again", () => start({ id: s.presetId, name: "Similar practice", config: s.config }), false), button("Customize", () => {
+            activeId = presets.some((p) => p.id === s.presetId) ? s.presetId : presets[0].id;
+            draft = structuredClone(s.config);
+            location.hash = "configure";
+        }), button("Presets", () => location.hash = "home")));
+        return block;
+    };
+    host.append(el("p", `${s.config.exercise === "m1" ? "M1 Audiation / Self-rated " + s.config.method : "M2 Recognition / First answers"} · ${s.attempts.length} ${s.attempts.length === 1 ? "record" : "records"}`, "results-context"), disclosure("Session conditions", el("p", describe(s.config))), overview());
+    const review = disclosure("Question review");
+    review.className = "question-review";
     for (const a of s.attempts) {
         const item = el("section");
         item.append(el("h3", `${a.target.chord.symbol} / ${a.target.degree}`), el("p", `${a.gradingSource === "self" ? "Self-rated" : "First answer"}: ${a.firstAnswer ?? "Unassessed"}. Recorded response: ${a.firstResponseMs === null ? "Unavailable" : (a.firstResponseMs / 1000).toFixed(2) + "s"} (${a.timingValidity}, descriptive only). Retries: ${a.retryCount}.`));
         const replay = button("Replay reference", async () => {
-            const token = ++operation;
+            const token = ++reviewOperation;
             replay.disabled = true;
             try {
                 await audio.ready();
-                if (token !== operation || location.hash !== "#results/" + s.id)
+                if (token !== reviewOperation || location.hash !== "#results/" + s.id)
                     return;
-                audio.playSingle(a.target.chord, a.target.midi, s.config.volume, false);
+                audio.playReference(a.target.chord, a.target.midi, s.config.volume);
                 a.replaysAfterFirst++;
                 a.revealedReference = true;
                 persist();
-                host
-                    .querySelector("section")
-                    ?.replaceWith(summary(s.attempts, s.config));
+                host.querySelector(".evidence-summary")?.replaceWith(overview());
             }
             catch (e) {
-                if (token === operation)
+                if (token === reviewOperation)
                     throw e;
             }
             finally {
@@ -620,109 +719,152 @@ function results(id) {
     }
     host.append(review);
 }
+function customizeFocus(items, key) {
+    const config = {
+        ...structuredClone(items[0].configurationSnapshot),
+        qualities: [items[0].target.chord.quality],
+        targetMode: "exact",
+        targets: [items[0].target.degree],
+    };
+    if (rootFilter)
+        config.roots = [rootFilter];
+    let focus = presets.find((p) => !builtins.some((b) => b.id === p.id) && JSON.stringify(p.config) === JSON.stringify(config));
+    if (!focus) {
+        focus = { id: crypto.randomUUID(), name: `Focus: ${config.exercise.toUpperCase()} ${key}${rootFilter ? " / " + rootFilter : ""}`, config };
+        presets.push(focus);
+    }
+    persist();
+    customize(focus);
+}
 function insights() {
     heading("Insights");
     const all = sessions.flatMap((s) => s.attempts), groups = [...new Set(all.map(cohort))];
     if (!groups.length) {
-        host.append(el("p", "Not enough comparable data. Start an M1 or M2 preset."));
+        host.append(el("p", "Not enough comparable data. Start an M1 or M2 preset."), actions(button("Practice", () => location.hash = "home", false)));
         return;
     }
     if (!groups.includes(selectedCohort))
         selectedCohort = groups[groups.length - 1];
-    const labels = groups.map((g, i) => `${i + 1}. ${describe(all.find((a) => cohort(a) === g).configurationSnapshot)} / ${all.find((a) => cohort(a) === g).exposure}`);
-    host.append(select("Comparable practice conditions", labels[groups.indexOf(selectedCohort)], labels, (v) => {
-        selectedCohort = groups[labels.indexOf(v)];
+    const labels = groups.map((g, i) => {
+        const a = all.find((a) => cohort(a) === g), c = a.configurationSnapshot;
+        return `${i + 1}. ${a.exercise.toUpperCase()} / ${c.context ? "Context on" : "Context off"} / ${a.exposure === "fresh" ? "Fresh" : "Previously seen"}${a.exercise === "m1" ? " / " + c.method : ""}`;
+    });
+    const scope = el("section", "", "insight-scope");
+    const condition = select("Comparable practice conditions", labels[groups.indexOf(selectedCohort)], labels, (value) => {
+        selectedCohort = groups[labels.indexOf(value)];
         rootFilter = "";
         qualityFilter = "";
         render();
-    }));
+    });
+    condition.querySelector("select").setAttribute("aria-describedby", "comparison-description");
+    scope.append(condition);
     let rows = all.filter((a) => cohort(a) === selectedCohort);
-    host.append(select("Root", rootFilter || "All selected roots", ["All selected roots", ...new Set(rows.map((a) => a.target.chord.root))], (v) => {
-        rootFilter = v === "All selected roots" ? "" : v;
+    const c = rows[0].configurationSnapshot, sample = rows[0], description = el("p", "", "scope-description");
+    description.id = "comparison-description";
+    description.textContent = c.exercise === "m1" ? "Self-rated / " + c.method : "First-answer evidence";
+    scope.append(description);
+    const conditions = disclosure("Full comparison conditions", el("p", describe(c)), el("p", `Timing: ${sample.timingVersion}. Generator: ${sample.target.generatorVersion}. Answer policy: 12 pitch-class choices with exact target spelling.`));
+    scope.append(conditions);
+    const filters = el("div", "", "insight-filters");
+    filters.append(select("Root", rootFilter || "All selected roots", ["All selected roots", ...new Set(rows.map((a) => a.target.chord.root))], (value) => {
+        rootFilter = value === "All selected roots" ? "" : value;
         render();
-    }), select("Chord quality", qualityFilter || "All selected qualities", [
-        "All selected qualities",
-        ...new Set(rows.map((a) => a.target.chord.quality)),
-    ], (v) => {
-        qualityFilter = v === "All selected qualities" ? "" : v;
+    }), select("Chord quality", qualityFilter || "All selected qualities", ["All selected qualities", ...new Set(rows.map((a) => a.target.chord.quality))], (value) => {
+        qualityFilter = value === "All selected qualities" ? "" : value;
         render();
     }));
-    rows = rows.filter((a) => (!rootFilter || a.target.chord.root === rootFilter) &&
-        (!qualityFilter || a.target.chord.quality === qualityFilter));
+    host.append(scope, filters);
+    rows = rows.filter((a) => (!rootFilter || a.target.chord.root === rootFilter) && (!qualityFilter || a.target.chord.quality === qualityFilter));
     if (!rows.length) {
-        host.append(el("p", "Not enough comparable data."));
+        host.append(el("p", "Not enough comparable data for these filters."), button("Clear filters", () => { rootFilter = ""; qualityFilter = ""; render(); }));
         return;
     }
-    host.append(summary(rows, rows[0].configurationSnapshot), el("p", describe(rows[0].configurationSnapshot)), el("p", "Matched exercise, method, chord context, pools, answer policy, exposure and timing version. Small samples are descriptive, not proof of progress or live performance."));
-    const table = el("table"), head = el("tr");
-    table.append(el("caption", "Chord Quality × Degree"));
-    for (const name of [
-        "Quality / degree",
-        "Correct / assessed",
-        "Replay-assisted",
-        "Correct median (n)",
-        "Practice",
-    ])
-        head.append(el("th", name));
-    table.append(head);
-    const cells = [
-        ...new Set(rows.map((a) => `${a.target.chord.quality}/${a.target.degree}`)),
-    ].map((key) => {
+    const dates = sessions.filter((s) => rows.some((a) => a.sessionId === s.id)).map((s) => s.startedAt.slice(0, 10)).sort();
+    if (dates.length) {
+        const range = dates[0] === dates[dates.length - 1] ? dates[0] : `${dates[0]} to ${dates[dates.length - 1]}`;
+        scope.append(el("p", `Recorded ${range} · All matching sessions`, "scope-date"));
+    }
+    const cells = [...new Set(rows.map((a) => `${a.target.chord.quality}/${a.target.degree}`))].map((key) => {
         const items = rows.filter((a) => `${a.target.chord.quality}/${a.target.degree}` === key);
         return { key, items, m: metrics(items) };
     });
+    const supported = cells.filter((cell) => cell.m.n >= 10).sort((a, b) => a.m.correct / a.m.n - b.m.correct / b.m.n);
+    const overview = summary(rows, c, false), body = overview.querySelector(".evidence-body");
+    const patterns = el("section", "", "patterns");
+    patterns.append(el("h2", "Patterns worth attention"));
+    if (supported.length > 1 && supported[0].m.correct / supported[0].m.n < supported[supported.length - 1].m.correct / supported[supported.length - 1].m.n) {
+        patterns.append(el("p", "Descriptive, not a diagnosis. At least 10 assessed responses per group; roots and replay use may differ.", "pattern-caution"));
+        for (const [i, cell] of [supported[0], supported[supported.length - 1]].entries()) {
+            const row = el("article", "", "pattern-row"), rate = cell.m.correct / cell.m.n;
+            row.append(el("h3", cell.key.replace("/", " / ")));
+            const bar = el("div", "", "evidence-bar"), fill = el("span");
+            fill.style.width = `${rate * 100}%`;
+            bar.setAttribute("aria-hidden", "true");
+            bar.append(fill);
+            row.append(bar, el("strong", Math.round(rate * 100) + "%"), el("span", `${cell.m.correct} / ${cell.m.n} assessed`), el("small", `Replay-assisted ${cell.m.replayed} / ${cell.m.n}`), button("Customize focus", () => customizeFocus(cell.items, cell.key), i !== 0));
+            patterns.append(row);
+        }
+    }
+    else {
+        patterns.append(el("p", "Not enough comparable data to identify distinct strongest/weakest patterns. Explore individual observations below."));
+    }
+    const notes = body.querySelector(".evidence-notes");
+    body.append(patterns);
+    const table = el("table"), head = el("tr");
+    table.append(el("caption", "Chord Quality × Degree"));
+    for (const name of ["Quality / degree", "Correct / assessed", "Replay-assisted", "Correct median (n)", "Practice"]) {
+        const th = el("th", name);
+        th.scope = "col";
+        head.append(th);
+    }
+    const thead = el("thead");
+    thead.append(head);
+    table.append(thead);
+    const tbody = el("tbody");
     for (const cell of cells) {
         const tr = el("tr"), m = cell.m;
-        tr.append(el("td", cell.key), el("td", `${m.correct}/${m.n}`), el("td", `${m.replayed}/${m.n}`), el("td", `${m.median === null ? "—" : (m.median / 1000).toFixed(2) + "s"} (${m.timed})`));
+        tr.append(el("td", cell.key), el("td", `${m.correct}/${m.n}`), el("td", `${m.replayed}/${m.n}`), el("td", `${m.median === null ? "Unavailable" : (m.median / 1000).toFixed(2) + "s"} (${m.timed})`));
         const td = el("td");
-        td.append(button("Customize focus", () => {
-            const config = {
-                ...structuredClone(cell.items[0].configurationSnapshot),
-                qualities: [cell.items[0].target.chord.quality],
-                targetMode: "exact",
-                targets: [cell.items[0].target.degree],
-            };
-            let focus = presets.find((p) => !builtins.some((b) => b.id === p.id) &&
-                JSON.stringify(p.config) === JSON.stringify(config));
-            if (!focus) {
-                focus = {
-                    id: crypto.randomUUID(),
-                    name: `Focus: ${config.exercise.toUpperCase()} ${cell.key}`,
-                    config,
-                };
-                presets.push(focus);
-            }
-            persist();
-            customize(focus);
-        }));
+        td.append(button("Customize focus", () => customizeFocus(cell.items, cell.key)));
         tr.append(td);
-        table.append(tr);
+        tbody.append(tr);
     }
+    table.append(tbody);
     const scroll = el("div", "", "table-scroll");
     scroll.tabIndex = 0;
     scroll.setAttribute("role", "region");
     scroll.setAttribute("aria-label", "Chord quality and degree breakdown");
     scroll.append(table);
-    host.append(scroll);
-    const supported = cells
-        .filter((c) => c.m.n >= 10)
-        .sort((a, b) => a.m.correct / a.m.n - b.m.correct / b.m.n);
-    host.append(el("p", supported.length > 1
-        ? `Descriptive patterns (at least 10 assessed per cell): lowest ${supported[0].key}, highest ${supported[supported.length - 1].key}. Not a statistical confidence claim; compare root and replay exposure before drawing conclusions.`
-        : "Not enough comparable data to identify strongest/weakest patterns."));
-    const history = el("ul");
+    const detail = disclosure("Detailed breakdown", scroll, confusions(rows), notes);
+    detail.className = "insight-detail";
+    const history = el("ul", "", "session-history");
     for (const s of sessions.slice().reverse()) {
-        const li = el("li"), a = el("a", `${s.startedAt.slice(0, 10)} ${s.config.exercise.toUpperCase()} - ${s.attempts.length} records${s.endedAt ? "" : " (interrupted)"}`);
-        a.href = "#results/" + s.id;
-        li.append(a);
-        history.append(li);
+        const item = el("li"), link = el("a", `${s.startedAt.slice(0, 10)} · ${s.config.exercise.toUpperCase()} · ${s.attempts.length} records${s.endedAt ? "" : " (interrupted)"}`);
+        link.href = "#results/" + s.id;
+        item.append(link);
+        history.append(item);
     }
-    host.append(el("h2", "Sessions"), history);
+    const latest = sessions.slice().reverse().find((s) => rows.some((a) => a.sessionId === s.id));
+    if (latest) {
+        const link = el("a", "View latest matching session", "session-link");
+        link.href = "#results/" + latest.id;
+        const item = el("li");
+        item.append(link);
+        history.prepend(item);
+    }
+    host.append(overview, detail, disclosure("Sessions", history));
 }
 function render() {
     if (fatal)
         return;
     const route = location.hash.slice(1) || "home";
+    if (session && route !== "practice") {
+        finish(route);
+        return;
+    }
+    const focusedKey = document.activeElement?.dataset.focusKey;
+    headingFocus = route !== lastRoute;
+    lastRoute = route;
     document
         .querySelectorAll("nav[aria-label='Primary'] a")
         .forEach((link) => {
@@ -735,12 +877,8 @@ function render() {
         else
             link.removeAttribute("aria-current");
     });
-    if (session && route !== "practice") {
-        finish();
-        return;
-    }
     if (!session) {
-        operation++;
+        reviewOperation++;
         audio.stop();
     }
     host.replaceChildren();
@@ -754,29 +892,34 @@ function render() {
         results(route.slice(8));
     else
         home();
+    if (!headingFocus)
+        restoreControl(focusedKey);
 }
-window.addEventListener("hashchange", render);
-document.addEventListener("visibilitychange", () => {
-    if (document.hidden && current) {
-        operation++;
-        busy = false;
-        ready = false;
-        if (current.firstAnswer === null && !done)
-            current.timingValidity = "interrupted";
-        audio.stop();
-        feedback =
-            "Practice interrupted; unsubmitted timing excluded. Retry audio to continue.";
-        persist();
-        renderPractice();
+document.querySelector(".skip-link").addEventListener("click", (event) => {
+    event.preventDefault();
+    host.focus();
+});
+document.querySelector("nav[aria-label='Primary'] a[href='../jazz-ear-lab/']").addEventListener("click", (event) => {
+    if (!session)
+        return;
+    finish(null);
+    if (dirty) {
+        event.preventDefault();
+        location.hash = "results/" + sessions[sessions.length - 1].id;
+        render();
     }
 });
+window.addEventListener("hashchange", render);
+document.addEventListener("visibilitychange", () => {
+    if (document.hidden)
+        question?.interrupt("hidden");
+});
 window.addEventListener("pagehide", () => {
-    if (current) {
-        if (current.firstAnswer === null && !done)
-            current.timingValidity = "interrupted";
-        persist();
-    }
-    audio.stop();
+    reviewOperation++;
+    if (question)
+        question.interrupt("pagehide");
+    else
+        audio.stop();
 });
 window.addEventListener("beforeunload", (e) => {
     if (dirty) {

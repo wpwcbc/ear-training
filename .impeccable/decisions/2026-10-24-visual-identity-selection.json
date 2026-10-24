@@ -1,0 +1,22 @@
+{
+  "status": "Approved Signal Route / Split Desk V2 flow implemented; independent reviewer scored all five material fixes resolved. Automated responsive image gate remains open as documented.",
+  "date": "2026-10-24",
+  "seed": "6d59acfa",
+  "optionId": "challenger-wayfinding",
+  "label": "Signal Route",
+  "buildPath": "comp",
+  "buildPathFlipped": false,
+  "decisionComp": ".impeccable/mocks/decision/2026-10-24/signal-route.png",
+  "source": "serve-question --wait --key 57725d5e returned the user's selection",
+  "scope": "V2 whole flow; Legacy unchanged; Ear Train / Jazz Ear Lab naming unchanged",
+  "compositionApproved": true,
+  "approvedComp": ".impeccable/mocks/signal-route/03-split-desk.png",
+  "compositionApprovalSource": "User selected C - Split Desk in the structured composition question on 2026-10-24.",
+  "next": "Maintain the delivered V2 system in jazz-ear-lab-v2/DESIGN.md; physical-device and assistive-technology checks remain manual. Preserve Legacy and exercise semantics.",
+  "constraints": [
+    "UX_PRINCIPLES.md and approved flows remain binding.",
+    "Yellow for navigation/task direction and commands, not all content surfaces.",
+    "No hidden labels, swipe progression, new exercise mode or metric definition.",
+    "Generated numerical bar lengths, mobile labels and metric prominence require specification and verification."
+  ]
+}

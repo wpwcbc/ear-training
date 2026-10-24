@@ -1,0 +1,355 @@
+{
+  "regions": [
+    {
+      "id": "nav",
+      "kind": "chrome",
+      "grid": "A0:J9",
+      "box": {
+        "x": 0,
+        "y": 0,
+        "w": 1,
+        "h": 0.11848341232227488
+      },
+      "snap": false,
+      "note": "Flat black navigation band."
+    },
+    {
+      "id": "brand",
+      "kind": "text",
+      "grid": "A0:J9",
+      "box": {
+        "x": 0.02042711234911792,
+        "y": 0.02843601895734597,
+        "w": 0.1392757660167131,
+        "h": 0.05924170616113744
+      },
+      "snap": false,
+      "note": "Jazz Ear Lab in white bold humanist sans."
+    },
+    {
+      "id": "practice-link",
+      "kind": "control",
+      "grid": "A0:J9",
+      "box": {
+        "x": 0.18012999071494892,
+        "y": 0.016587677725118485,
+        "w": 0.10770659238625813,
+        "h": 0.0995260663507109
+      },
+      "snap": false,
+      "note": "White Practice label with music icon and yellow current-location underline."
+    },
+    {
+      "id": "insights-link",
+      "kind": "control",
+      "grid": "A0:J9",
+      "box": {
+        "x": 0.3110492107706592,
+        "y": 0.016587677725118485,
+        "w": 0.10027855153203342,
+        "h": 0.09004739336492891
+      },
+      "snap": false,
+      "note": "White Insights navigation with chart icon."
+    },
+    {
+      "id": "legacy-link",
+      "kind": "control",
+      "grid": "A0:J9",
+      "box": {
+        "x": 0.44196843082636955,
+        "y": 0.016587677725118485,
+        "w": 0.08356545961002786,
+        "h": 0.09004739336492891
+      },
+      "snap": false,
+      "note": "White Legacy navigation with library icon."
+    },
+    {
+      "id": "task-band",
+      "kind": "chrome",
+      "grid": "A0:J9",
+      "box": {
+        "x": 0,
+        "y": 0.11848341232227488,
+        "w": 1,
+        "h": 0.11611374407582939
+      },
+      "snap": false,
+      "note": "Flat yellow task band."
+    },
+    {
+      "id": "task-title",
+      "kind": "text",
+      "grid": "A0:J9",
+      "box": {
+        "x": 0.022284122562674095,
+        "y": 0.14928909952606634,
+        "w": 0.2135561745589601,
+        "h": 0.05924170616113744
+      },
+      "snap": false,
+      "note": "M2 Recognition in bold black humanist sans."
+    },
+    {
+      "id": "question-count",
+      "kind": "text",
+      "grid": "A0:J9",
+      "box": {
+        "x": 0.7539461467038069,
+        "y": 0.15876777251184834,
+        "w": 0.11606313834726091,
+        "h": 0.04976303317535545
+      },
+      "snap": false,
+      "note": "Question 4 / 20 in black."
+    },
+    {
+      "id": "stop",
+      "kind": "control",
+      "grid": "A0:J9",
+      "box": {
+        "x": 0.89322191272052,
+        "y": 0.12796208530805686,
+        "w": 0.09285051067780872,
+        "h": 0.10426540284360189
+      },
+      "snap": false,
+      "note": "Stop action with square icon in session header."
+    },
+    {
+      "id": "known-chord",
+      "kind": "text",
+      "grid": "A0:J9",
+      "box": {
+        "x": 0.022284122562674095,
+        "y": 0.2772511848341232,
+        "w": 0.11142061281337047,
+        "h": 0.04739336492890995
+      },
+      "snap": false,
+      "note": "Known chord label."
+    },
+    {
+      "id": "chord",
+      "kind": "text",
+      "grid": "A0:J9",
+      "box": {
+        "x": 0.022284122562674095,
+        "y": 0.3412322274881517,
+        "w": 0.09285051067780872,
+        "h": 0.14218009478672985
+      },
+      "snap": false,
+      "note": "C7 dominant black chord anchor."
+    },
+    {
+      "id": "prompt",
+      "kind": "text",
+      "grid": "A0:J9",
+      "box": {
+        "x": 0.022284122562674095,
+        "y": 0.5260663507109005,
+        "w": 0.22748375116063138,
+        "h": 0.05924170616113744
+      },
+      "snap": false,
+      "note": "Which chord degree? in bold."
+    },
+    {
+      "id": "status",
+      "kind": "text",
+      "grid": "A0:J9",
+      "box": {
+        "x": 0.022284122562674095,
+        "y": 0.5995260663507109,
+        "w": 0.1671309192200557,
+        "h": 0.04739336492890995
+      },
+      "snap": false,
+      "note": "Your turn readiness text."
+    },
+    {
+      "id": "replay",
+      "kind": "control",
+      "grid": "A0:J9",
+      "box": {
+        "x": 0.022284122562674095,
+        "y": 0.6895734597156398,
+        "w": 0.12534818941504178,
+        "h": 0.11611374407582939
+      },
+      "snap": false,
+      "note": "Replay outlined command with rotate icon."
+    },
+    {
+      "id": "answer-0",
+      "kind": "control",
+      "grid": "A0:J9",
+      "box": {
+        "x": 0.27948003714020425,
+        "y": 0.3412322274881517,
+        "w": 0.10863509749303621,
+        "h": 0.2014218009478673
+      },
+      "snap": false,
+      "note": "Equal outlined answer key 1, unselected."
+    },
+    {
+      "id": "answer-1",
+      "kind": "control",
+      "grid": "A0:J9",
+      "box": {
+        "x": 0.3983286908077994,
+        "y": 0.3412322274881517,
+        "w": 0.10863509749303621,
+        "h": 0.2014218009478673
+      },
+      "snap": false,
+      "note": "Equal outlined answer key b9, unselected."
+    },
+    {
+      "id": "answer-2",
+      "kind": "control",
+      "grid": "A0:J9",
+      "box": {
+        "x": 0.5171773444753947,
+        "y": 0.3412322274881517,
+        "w": 0.10863509749303621,
+        "h": 0.2014218009478673
+      },
+      "snap": false,
+      "note": "Equal outlined answer key 9, unselected."
+    },
+    {
+      "id": "answer-3",
+      "kind": "control",
+      "grid": "A0:J9",
+      "box": {
+        "x": 0.6360259981429898,
+        "y": 0.3412322274881517,
+        "w": 0.10863509749303621,
+        "h": 0.2014218009478673
+      },
+      "snap": false,
+      "note": "Equal outlined answer key b3, unselected."
+    },
+    {
+      "id": "answer-4",
+      "kind": "control",
+      "grid": "A0:J9",
+      "box": {
+        "x": 0.754874651810585,
+        "y": 0.3412322274881517,
+        "w": 0.10863509749303621,
+        "h": 0.2014218009478673
+      },
+      "snap": false,
+      "note": "Equal outlined answer key 3, unselected."
+    },
+    {
+      "id": "answer-5",
+      "kind": "control",
+      "grid": "A0:J9",
+      "box": {
+        "x": 0.8737233054781801,
+        "y": 0.3412322274881517,
+        "w": 0.10863509749303621,
+        "h": 0.2014218009478673
+      },
+      "snap": false,
+      "note": "Equal outlined answer key 11, unselected."
+    },
+    {
+      "id": "answer-6",
+      "kind": "control",
+      "grid": "A0:J9",
+      "box": {
+        "x": 0.27948003714020425,
+        "y": 0.566350710900474,
+        "w": 0.10863509749303621,
+        "h": 0.2014218009478673
+      },
+      "snap": false,
+      "note": "Equal outlined answer key #11, unselected."
+    },
+    {
+      "id": "answer-7",
+      "kind": "control",
+      "grid": "A0:J9",
+      "box": {
+        "x": 0.3983286908077994,
+        "y": 0.566350710900474,
+        "w": 0.10863509749303621,
+        "h": 0.2014218009478673
+      },
+      "snap": false,
+      "note": "Equal outlined answer key 5, unselected."
+    },
+    {
+      "id": "answer-8",
+      "kind": "control",
+      "grid": "A0:J9",
+      "box": {
+        "x": 0.5171773444753947,
+        "y": 0.566350710900474,
+        "w": 0.10863509749303621,
+        "h": 0.2014218009478673
+      },
+      "snap": false,
+      "note": "Equal outlined answer key b13, unselected."
+    },
+    {
+      "id": "answer-9",
+      "kind": "control",
+      "grid": "A0:J9",
+      "box": {
+        "x": 0.6360259981429898,
+        "y": 0.566350710900474,
+        "w": 0.10863509749303621,
+        "h": 0.2014218009478673
+      },
+      "snap": false,
+      "note": "Equal outlined answer key 13, unselected."
+    },
+    {
+      "id": "answer-10",
+      "kind": "control",
+      "grid": "A0:J9",
+      "box": {
+        "x": 0.754874651810585,
+        "y": 0.566350710900474,
+        "w": 0.10863509749303621,
+        "h": 0.2014218009478673
+      },
+      "snap": false,
+      "note": "Equal outlined answer key b7, unselected."
+    },
+    {
+      "id": "answer-11",
+      "kind": "control",
+      "grid": "A0:J9",
+      "box": {
+        "x": 0.8737233054781801,
+        "y": 0.566350710900474,
+        "w": 0.10863509749303621,
+        "h": 0.2014218009478673
+      },
+      "snap": false,
+      "note": "Equal outlined answer key maj7, unselected."
+    },
+    {
+      "id": "details",
+      "kind": "control",
+      "grid": "A0:J9",
+      "box": {
+        "x": 0.022284122562674095,
+        "y": 0.8815165876777251,
+        "w": 0.23212627669452182,
+        "h": 0.11374407582938388
+      },
+      "snap": false,
+      "note": "Session settings disclosure below response area."
+    }
+  ]
+}

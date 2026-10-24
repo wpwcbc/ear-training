@@ -1,0 +1,228 @@
+{
+  "title": "Ear Train: choose a new visual identity",
+  "question": "Compare the same M2 Practice and Insights content on desktop and mobile. These are generated concept mockups, not implemented screens; analytics values are illustrative. Choose, revise, or explore another hand.",
+  "options": [
+    {
+      "id": "assigned",
+      "label": "Phrase Desk",
+      "kicker": "THE ROLL",
+      "lineage": "A musician's transcription-editing workspace",
+      "thesis": "A steady working baseline makes listening the subject and evidence easy to inspect.",
+      "palette": [
+        "#FFFFFF",
+        "#182623",
+        "#007C72",
+        "#E34E39"
+      ],
+      "materials": [
+        "flat white workspace",
+        "sea-glass section rails",
+        "ink-stable response keys"
+      ],
+      "viewport": "Chord and answers share an editorial baseline; Insights stacks outcome, evidence and the next action.",
+      "risk": "Can feel like a specialist editor; labels and touch controls must stay immediately familiar.",
+      "comp": ".impeccable/mocks/decision/2026-10-24/phrase-desk.png",
+      "raised": [
+        {
+          "from": "Data field",
+          "raise": "Use uncompromising text contrast and tabular evidence without visual noise."
+        },
+        {
+          "from": "Vertical feed",
+          "raise": "Give the current listening task exclusive focal priority without swipe navigation."
+        },
+        {
+          "from": "Record catalog",
+          "raise": "Keep one disciplined identity across quiet practice and dense evidence."
+        },
+        {
+          "from": "Ticket wallet",
+          "raise": "Keep session position and recorded outcomes legible without invented stamps or steps."
+        },
+        {
+          "from": "Reference rail",
+          "raise": "Bind each qualification and action visibly to the evidence it belongs to."
+        }
+      ]
+    },
+    {
+      "id": "model-pick",
+      "label": "Ensemble Score",
+      "kicker": "IMPECCABLE'S PICK",
+      "lineage": "Readable contemporary ensemble parts and rehearsal marks",
+      "thesis": "A clear musical anchor sits above a measured, unchanging response grid.",
+      "palette": [
+        "#FAFCFF",
+        "#171D2C",
+        "#234AC7",
+        "#E2F26A"
+      ],
+      "materials": [
+        "cool white ground",
+        "cobalt structural brackets",
+        "compact rehearsal-style numerals"
+      ],
+      "viewport": "A spacious chord anchor and measured answer rows; Insights uses aligned evidence bands with nearby practice actions.",
+      "risk": "Closest to familiar musician tools; discipline must avoid decorative staves or a generic blue dashboard.",
+      "comp": ".impeccable/mocks/decision/2026-10-24/ensemble-score.png"
+    },
+    {
+      "id": "challenger-wayfinding",
+      "label": "Signal Route",
+      "verdict": "competitive",
+      "lineage": "International terminal wayfinding translated into a listening tool",
+      "thesis": "One unmistakable destination and action at every decision point.",
+      "palette": [
+        "#F9FCFF",
+        "#111111",
+        "#FFCC00",
+        "#DADDE2"
+      ],
+      "materials": [
+        "yellow sign bands",
+        "black inset pictograms",
+        "white evidence surfaces"
+      ],
+      "viewport": "A restrained yellow task band anchors the chord; answer keys and evidence remain on white, with edge-aligned actions.",
+      "case": "Stronger immediate wayfinding; weaker musician identification than the grounded workspaces.",
+      "risk": "Yellow can become visually tiring; reserve it for task location and the main action, never the entire page.",
+      "hero": "https://impeccable.style/worlds/cards/wayfinding-cartography-signage-terminal-yellow-wayfinding-hero.webp",
+      "board": "https://impeccable.style/worlds/cards/wayfinding-cartography-signage-terminal-yellow-wayfinding.webp",
+      "comp": ".impeccable/mocks/decision/2026-10-24/signal-route.png"
+    },
+    {
+      "id": "challenger-data-field",
+      "label": "Data Field",
+      "verdict": "declined",
+      "lineage": "Black/white lattices and mono data columns",
+      "thesis": "Black/white lattices and mono data columns",
+      "palette": [
+        "#000000",
+        "#FFFFFF"
+      ],
+      "materials": [
+        "crisp data columns",
+        "flat rules"
+      ],
+      "viewport": "Chord, answers and evidence as a monochrome scan field.",
+      "case": "After translation it remains less musically recognizable and more cognitively dense than Phrase Desk.",
+      "kept": "Uncompromising contrast and aligned numerics.",
+      "risk": "Dense plots would compete with listening; no strobing or fake audio visualization.",
+      "hero": "https://impeccable.style/worlds/cards/ikeda-datamatics-hero.webp"
+    },
+    {
+      "id": "challenger-vertical-feed",
+      "label": "Single-Item Feed",
+      "verdict": "declined",
+      "lineage": "Full-viewport single-item media grammar",
+      "thesis": "Full-viewport single-item media grammar",
+      "palette": [
+        "#000000",
+        "#FFFFFF"
+      ],
+      "materials": [
+        "full-viewport field",
+        "edge action rail"
+      ],
+      "viewport": "One question per viewport, with secondary actions at the edge.",
+      "case": "The single-item focus is useful, but media chrome is less recognizable and snap navigation conflicts with the approved progression.",
+      "kept": "Exclusive focal priority without swipe navigation.",
+      "risk": "Must not introduce swipe-to-next, hidden degree choices or media-first content.",
+      "hero": "https://impeccable.style/worlds/cards/pop-culture-shelf-vertical-video-feed-surface-hero.webp"
+    },
+    {
+      "id": "challenger-record-catalog",
+      "label": "Catalog Sleeve",
+      "verdict": "declined",
+      "lineage": "Factory-style catalog sleeves",
+      "thesis": "Factory-style catalog sleeves",
+      "palette": [
+        "#111111",
+        "#FFFFFF",
+        "#F34839"
+      ],
+      "materials": [
+        "matte black",
+        "sparse catalog rules"
+      ],
+      "viewport": "A catalog-like practice entry and evidence index.",
+      "case": "Music culture resonates, but coded labels, tiny metadata and a plot-dominated field weaken both task recognition and usable clarity.",
+      "kept": "Consistent identity across sparse and dense views.",
+      "risk": "Color codes cannot replace degree labels or outcome text.",
+      "hero": "https://impeccable.style/worlds/cards/brand-identity-canon-saville-catalog-sleeve-hero.webp"
+    },
+    {
+      "id": "challenger-ticket-wallet",
+      "label": "Session Coupon",
+      "verdict": "declined",
+      "lineage": "Jet-age ticket wallet fields",
+      "thesis": "Jet-age ticket wallet fields",
+      "palette": [
+        "#FFFFFF",
+        "#17274A",
+        "#C3323D",
+        "#6746A7"
+      ],
+      "materials": [
+        "flat coupon fields",
+        "fixed numerals"
+      ],
+      "viewport": "Session positions and responses occupy fixed ruled fields.",
+      "case": "Even without literal airline content, the travel ritual is less musician-specific and adds field scanning to a simple listening task.",
+      "kept": "Persistent session position and recorded outcomes.",
+      "risk": "No tear-off progression, fake validation stamps or compulsory steps.",
+      "hero": "https://impeccable.style/worlds/cards/vernacular-ephemera-jet-age-ticket-wallet-hero.webp"
+    },
+    {
+      "id": "challenger-reference-rail",
+      "label": "Reference Rail",
+      "verdict": "declined",
+      "lineage": "Two-column reference setting with an annotation rail",
+      "thesis": "Two-column reference setting with an annotation rail",
+      "palette": [
+        "#F0EADB",
+        "#181713",
+        "#CA3A24"
+      ],
+      "materials": [
+        "ruled text columns",
+        "annotation rail"
+      ],
+      "viewport": "Evidence and its qualifications align around a narrow central rail.",
+      "case": "Readable at reference scale, but dense apparatus is less familiar during ear practice and introduces more scanning than Phrase Desk.",
+      "kept": "Keep qualifications and actions next to their evidence.",
+      "risk": "Small apparatus and overlapping margins are unsuitable for phone practice.",
+      "hero": "https://impeccable.style/worlds/cards/rw-centre-rail-reference-setting-hero.webp"
+    }
+  ],
+  "reroll": {
+    "registers": [
+      "safer",
+      "bolder"
+    ]
+  },
+  "buildPath": {
+    "value": "comp",
+    "toggle": true
+  },
+  "canon": true,
+  "canonCard": {
+    "label": "Familiar Workspace",
+    "thesis": "The conventional training app, executed with clear native controls and minimal chrome.",
+    "palette": [
+      "#FFFFFF",
+      "#242832",
+      "#2563EB",
+      "#E7EAF0"
+    ],
+    "materials": [
+      "flat neutral surfaces",
+      "system sans",
+      "standard control geometry"
+    ],
+    "viewport": "Compact top navigation, centered practice grid and a straightforward stacked Insights overview.",
+    "risk": "Lowest visual learning cost, but intentionally less distinctive.",
+    "comp": ".impeccable/mocks/decision/2026-10-24/familiar-workspace.png"
+  },
+  "steer": true
+}
