@@ -1,7 +1,8 @@
 # V2 Per-Quality Targets and Voicing Mix
 
-Status: Design interview in progress. Three target-pool decisions confirmed
-by the user; no implementation or complete-design approval yet.
+Status: Design interview in progress. Six target-pool and voice-identity
+decisions confirmed by the user; no implementation or complete-design approval
+yet.
 
 Read alongside [project intent](jazz-ear-lab.md), [product context](PRODUCT.md),
 [Release 1](V2_RELEASE_1_SPEC.md), [audio refinement](V2_UX_AUDIO_REFINEMENT.md)
@@ -16,8 +17,9 @@ such as a b7 target against maj7. The requested control is a user-selected
 musical vocabulary, not a universal rule that an unselected tension is invalid.
 
 The user also requests individual volume control over chord voicing notes.
-What identifies a voice and how its level relates to the target are not yet
-decided. This is not authorization to change voicings or playback timing.
+Original low-to-high voice identity is confirmed; its level relationship to
+the target is not yet decided. This does not authorize changes to voicings or
+playback timing.
 
 ## Confirmed Decisions
 
@@ -26,6 +28,13 @@ decided. This is not authorization to change voicings or playback timing.
 | D1 | Target pools belong to chord qualities, not individual root/chord symbols. | A maj7 pool applies across selected roots; Root Pool stays independent. |
 | D2 | Each quality's complete target pool is editable, including chord tones, extensions and alterations. | Unselected degrees are not generated for that quality; the user may explicitly select them later. |
 | D3 | Pools are saved independently in each preset, not globally shared. | Editing one preset's vocabulary must not alter other presets. |
+| D4 | One per-quality exact-degree editor replaces the global Functional/Exact switch. | Convert old presets without changing their eligible target material; retain historical records unchanged. |
+| D5 | Balance selected chord qualities, then balance targets within each quality. | More eligible targets do not make a quality more frequent; individual quality/degree pairs need not have equal session counts. |
+| D6 | Volume controls follow original low-to-high voicing voices, with actual degree labels. | Preserve existing 3-, 4- and 5-note voicings; M1 target exclusion does not reassign the remaining voices to different controls. |
+
+D4 preserves eligible content, not the old pair-balanced frequency policy:
+D5 explicitly changes that policy for the new design. Do not regenerate,
+rewrite or relabel old attempts to imply they used the new sampling policy.
 
 These decisions concern generated targets. M2's reasonably complete,
 pitch-class-unambiguous answer options remain separate under the existing
@@ -49,17 +58,14 @@ These facts describe the current code, not approved implementation choices.
 
 ## Open Design Frontier
 
-- Whether the per-quality editor replaces the global Functional/Exact control
-  or coexists with it, and how old presets retain their effective content.
-- Whether sampling balances chord qualities or every eligible quality/degree
-  pair when qualities have different-sized target pools.
-- Voice identity: original low-to-high voicing slot versus chord-relative degree;
-  coverage of current 3-, 4- and 5-note voicings remains to be confirmed.
-- Voice/master/target level relationships, mute/range/default behavior,
-  preset ownership and when changes can be auditioned or take effect.
+- Whether one voice-level set applies to all qualities in a preset, or each
+  quality has its own levels; the levels' ownership still needs confirmation.
+- Voice/master/target level relationships, mute/range/default behavior and
+  when changes can be auditioned or take effect.
 - Empty-pool validation, quality selection changes and restoration defaults.
 - Historical configuration snapshots, comparability of different pools/mixes,
-  focused-preset handoff and compatibility of saved presets.
+  focused-preset handoff, generator versioning and detailed compatibility of
+  saved presets under the confirmed content-preservation rule.
 
 ## Existing Boundaries
 

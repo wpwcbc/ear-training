@@ -31,3 +31,13 @@ _Avoid_: Extension pool (the selection is not limited to extensions).
 The degree choices available when answering a recognition question, distinct
 from the pool of sounds eligible to become its target.
 _Avoid_: Target pool (when referring to response choices).
+
+**Chord-balanced sampling**:
+A question distribution giving selected chord qualities equal representation,
+with their eligible target degrees balanced within each quality.
+_Avoid_: Pair-balanced sampling (which instead balances every quality/degree pair).
+
+**Voicing voice**:
+A note's original low-to-high position in the complete chord voicing, before
+any target exclusion. This identity is distinct from its chord-relative degree.
+_Avoid_: Remaining-note position (which can change when a target is omitted).
