@@ -16,3 +16,18 @@ response and reference review until it is left or practice ends. An interruption
 and recovery can occur within the same question without replacing its first
 response evidence.
 _Avoid_: Session lifecycle (which also includes starting and ending practice).
+
+**Chord quality**:
+The chord type independent of its root, such as maj7, m7 or 7alt. Cmaj7 and
+Fmaj7 share a chord quality but are different chords.
+_Avoid_: Chord (when only its quality is meant).
+
+**Per-quality target pool**:
+The selected degrees that may become practice targets for one chord quality,
+including any selected chord tones, extensions and alterations.
+_Avoid_: Extension pool (the selection is not limited to extensions).
+
+**Answer options**:
+The degree choices available when answering a recognition question, distinct
+from the pool of sounds eligible to become its target.
+_Avoid_: Target pool (when referring to response choices).
