@@ -41,3 +41,8 @@ _Avoid_: Pair-balanced sampling (which instead balances every quality/degree pai
 A note's original low-to-high position in the complete chord voicing, before
 any target exclusion. This identity is distinct from its chord-relative degree.
 _Avoid_: Remaining-note position (which can change when a target is omitted).
+
+**Voicing mix**:
+The relative levels of the original chord-voicing voices, distinct from overall
+volume and from the independently sounded target.
+_Avoid_: Target volume (voicing mix controls accompaniment, not the target voice).

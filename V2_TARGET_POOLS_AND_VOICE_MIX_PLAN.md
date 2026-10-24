@@ -1,8 +1,7 @@
 # V2 Per-Quality Targets and Voicing Mix
 
-Status: Design interview in progress. Six target-pool and voice-identity
-decisions confirmed by the user; no implementation or complete-design approval
-yet.
+Status: Design interview in progress. Nine target-pool and voicing-mix decisions
+confirmed by the user; no implementation or complete-design approval yet.
 
 Read alongside [project intent](jazz-ear-lab.md), [product context](PRODUCT.md),
 [Release 1](V2_RELEASE_1_SPEC.md), [audio refinement](V2_UX_AUDIO_REFINEMENT.md)
@@ -17,9 +16,9 @@ such as a b7 target against maj7. The requested control is a user-selected
 musical vocabulary, not a universal rule that an unselected tension is invalid.
 
 The user also requests individual volume control over chord voicing notes.
-Original low-to-high voice identity is confirmed; its level relationship to
-the target is not yet decided. This does not authorize changes to voicings or
-playback timing.
+Original low-to-high voice identity, preset ownership, attenuation range and
+separation from the target voice are confirmed. This does not authorize changes
+to the notes in a voicing or to playback timing.
 
 ## Confirmed Decisions
 
@@ -31,6 +30,9 @@ playback timing.
 | D4 | One per-quality exact-degree editor replaces the global Functional/Exact switch. | Convert old presets without changing their eligible target material; retain historical records unchanged. |
 | D5 | Balance selected chord qualities, then balance targets within each quality. | More eligible targets do not make a quality more frequent; individual quality/degree pairs need not have equal session counts. |
 | D6 | Volume controls follow original low-to-high voicing voices, with actual degree labels. | Preserve existing 3-, 4- and 5-note voicings; M1 target exclusion does not reassign the remaining voices to different controls. |
+| D7 | Each preset has one shared set of up to five original-voice levels for all its chord qualities. | Absent voices do not sound; other presets keep independent levels. |
+| D8 | The new voice controls affect accompaniment only, not the independent target voice. | Keep the existing overall-volume/target relationship; do not add a target-level control or apply a same-pitch-class accompaniment level to the target. |
+| D9 | Voice levels range from 0% to 100%, defaulting to 100%. | Zero mutes that voice; 100% retains its existing standard level. No extra amplification is approved. |
 
 D4 preserves eligible content, not the old pair-balanced frequency policy:
 D5 explicitly changes that policy for the new design. Do not regenerate,
@@ -58,10 +60,11 @@ These facts describe the current code, not approved implementation choices.
 
 ## Open Design Frontier
 
-- Whether one voice-level set applies to all qualities in a preset, or each
-  quality has its own levels; the levels' ownership still needs confirmation.
-- Voice/master/target level relationships, mute/range/default behavior and
-  when changes can be auditioned or take effect.
+- Whether configurations that silence all remaining accompaniment after target
+  exclusion are permitted, and how affected quality/target combinations are
+  communicated. Individual zero levels are approved, not yet this edge policy.
+- When mix changes can be auditioned or take effect, and whether settings are
+  locked during a practice session.
 - Empty-pool validation, quality selection changes and restoration defaults.
 - Historical configuration snapshots, comparability of different pools/mixes,
   focused-preset handoff, generator versioning and detailed compatibility of
