@@ -1,6 +1,6 @@
 # V2 Per-Quality Targets and Voicing Mix
 
-Status: Design interview in progress. Nine target-pool and voicing-mix decisions
+Status: Design interview in progress. Twelve target-pool and voicing-mix decisions
 confirmed by the user; no implementation or complete-design approval yet.
 
 Read alongside [project intent](jazz-ear-lab.md), [product context](PRODUCT.md),
@@ -33,6 +33,9 @@ to the notes in a voicing or to playback timing.
 | D7 | Each preset has one shared set of up to five original-voice levels for all its chord qualities. | Absent voices do not sound; other presets keep independent levels. |
 | D8 | The new voice controls affect accompaniment only, not the independent target voice. | Keep the existing overall-volume/target relationship; do not add a target-level control or apply a same-pitch-class accompaniment level to the target. |
 | D9 | Voice levels range from 0% to 100%, defaulting to 100%. | Zero mutes that voice; 100% retains its existing standard level. No extra amplification is approved. |
+| D10 | A newly enabled quality without a saved pool starts with its own chord tones; re-enabling a previously configured quality retains its pool. | The user can edit every degree. Each enabled quality needs at least one target; do not silently skip an empty quality. |
+| D11 | Reject a mix if any eligible quality/target combination has no non-target, non-muted accompaniment voice after target exclusion. | Identify the affected quality and target and block Start until corrected; never silently change gains or remove the affected material. |
+| D12 | Mix editing and audition belong in Customize; session settings are fixed after Start. | No mid-session mix controls. Results replay uses the recorded session configuration, not later preset edits. |
 
 D4 preserves eligible content, not the old pair-balanced frequency policy:
 D5 explicitly changes that policy for the new design. Do not regenerate,
@@ -58,17 +61,40 @@ contract; this change does not narrow the answer buttons to the target pool.
 
 These facts describe the current code, not approved implementation choices.
 
+## Preserved Compatibility Rules
+
+- Retain historical attempts, their configuration snapshots, first-response
+  evidence and generator identities. Do not rewrite old sessions into the new
+  format or pretend they followed the new sampling policy.
+- Opening an old preset, or starting new practice from an old configuration,
+  must retain its effective target material: resolve Functional roles for each
+  selected quality; preserve Exact degrees for each selected quality. Missing
+  voice levels mean the existing standard levels, not mute.
+- D11 checks the structural voice mix, not device audibility. It does not
+  change existing overall-volume behavior or claim control over device volume.
+  Keep M1 pitch-class exclusion across octaves and original voice identities.
+- Keep valid auto-save and invalid-draft protection. Empty pools and invalid
+  mixes must not overwrite the last valid saved preset.
+- Restore Default retains its existing whole-preset meaning: factory target
+  material for that named preset and the standard voice levels. It does not
+  change historical configurations.
+- Focused presets retain the established handoff: inherit source conditions
+  and mix, narrow the selected quality and degree, follow an active Root filter
+  or otherwise retain the source Root Pool, and leave source/history unchanged.
+- Root sampling remains independently balanced under the existing contract.
+  D5 changes the quality/target distribution, not roots or scoring.
+
 ## Open Design Frontier
 
-- Whether configurations that silence all remaining accompaniment after target
-  exclusion are permitted, and how affected quality/target combinations are
-  communicated. Individual zero levels are approved, not yet this edge policy.
-- When mix changes can be auditioned or take effect, and whether settings are
-  locked during a practice session.
-- Empty-pool validation, quality selection changes and restoration defaults.
-- Historical configuration snapshots, comparability of different pools/mixes,
-  focused-preset handoff, generator versioning and detailed compatibility of
-  saved presets under the confirmed content-preservation rule.
+- How different active target pools, sampling policies and voice mixes are
+  separated or qualified in Insights comparisons.
+- Audition content and scope in Customize, including root/quality selection
+  and whether preview can simulate target exclusion/reference playback.
+
+Exact storage layout and helper boundaries are implementation details, not
+additional product choices. New generation must identify its changed policy;
+historical records keep their original policy. The complete design still
+requires user confirmation before any runtime implementation.
 
 ## Existing Boundaries
 
