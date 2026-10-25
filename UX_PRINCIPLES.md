@@ -9,7 +9,9 @@ production grouping. See [the current planning record](V2_INSIGHTS_MODULE_ROLLUP
 Earlier requirements below to partition these default totals by module,
 grading source or every configuration cohort describe the previous design and
 are superseded for this planned revision. Raw metadata and history remain;
-category selection and consolidated-design confirmation are still pending.
+The user selected four Overall categories: chord-degree performance and
+confusion directions as primary, response efficiency and replay use as secondary.
+Only consolidated-design confirmation is still pending.
 This notice is not a runtime implementation or test-completion claim.
 
 This is a **custom project document explicitly requested by the user**. It is

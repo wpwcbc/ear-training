@@ -1,7 +1,8 @@
 # V2 Per-Quality Targets and Voicing Mix
 
 Status: Target-pool, voice-mix and audition decisions individually confirmed;
-complete-design confirmation is still pending. On 2026-10-25 the user revised
+Insights scope, pooling, method mapping and four-category selection are also
+confirmed. Complete-design confirmation is still pending. On 2026-10-25 the user revised
 the Insights direction instead of accepting the proposed strict grouping in
 Q13. See [module and Overall Insights planning](V2_INSIGHTS_MODULE_ROLLUP_PLAN.md).
 No runtime implementation is approved by this record.
@@ -94,12 +95,71 @@ These facts describe the current code, not approved implementation choices.
 - Root sampling remains independently balanced under the existing contract.
   D5 changes the quality/target distribution, not roots or scoring.
 
-## Open Design Frontier
+## Consolidated Insights Selection
 
-- Select useful shared information categories in the linked Insights plan.
-  V2-only scope, equal treatment of self-ratings and the M1-only two-category
-  mapping are now explicitly confirmed; do not reopen them as defaults.
-- Obtain confirmation of the consolidated design before implementation.
+Overall totals use V2 M1/M2 only, counting self-assessed and selected-answer
+results equally. Module pages offer their own total and relevant detail.
+Only M1 has the two reporting categories Imagined / sung and Instrumental
+playing; M2 has no forced production grouping. Raw methods remain unchanged.
+
+The user selected all four shared information categories:
+
+1. Chord-degree performance: primary.
+2. Confusion directions: primary.
+3. Valid-correct mixed-practice response time: secondary.
+4. Replay use: secondary; educational retry detail currently belongs to M2.
+
+See the linked Insights plan for definitions and the required integration
+review whenever a V2 module is added. Do not reopen V2-only scope, equal
+treatment of self-ratings or the M1-only method mapping as default questions.
+
+## Consolidated Acceptance Checks
+
+These are future implementation checks, not a report that tests were executed.
+
+- Each selected quality has its own eligible target list across selected roots.
+  Unselected degrees are not generated; old preset conversion retains its
+  actual eligible content rather than silently sanitizing unusual choices.
+- Quality frequency is balanced independently of target-list length; targets
+  within each quality are balanced, with independent existing root sampling.
+- Missing new voice levels preserve current sound. Existing 3/4/5-note
+  voicings and original voice identities survive M1 pitch-class exclusion.
+- Zero-level voices are silent, other levels never amplify beyond standard,
+  and accompaniment levels never change the independent target level.
+- Every enabled quality has a target and every eligible combination retains
+  non-target accompaniment under the mix check. Errors identify the affected
+  material, block Start and preserve the last valid saved preset.
+- Customize auditions the chosen enabled quality with the first selected
+  root, only as mixed full accompaniment. Replays replace rather than layer;
+  leaving audition/start contexts must not leak stale preview sound or work.
+  Audition never creates assessment or exposure evidence.
+- Sessions retain their starting settings; Results replay uses that snapshot.
+  Later preset edits and Restore Default do not rewrite historical records.
+- Overall assessed/correct counts reconcile to the sum of its V2 module
+  contributors. M1 self-ratings have the same question weight as M2 results.
+  Retries/reveals do not replace first grades or create additional first grades.
+- M1 imagined and sung combine into one reporting category; played is the
+  other. Its total includes both. M2 does not acquire a method grouping.
+- Unknown wrong degrees count as incorrect but never become fabricated
+  confusion pairs. Unassessed questions do not count as incorrect.
+- Timing is recomputed from combined valid first-correct raw times, not module
+  medians; timing exclusions do not erase accuracy evidence. Replay assistance
+  uses its assessed denominator, distinct from all-record review totals.
+- Legacy records do not enter these totals; source history remains unchanged.
+  New module work includes an explicit category/contribution design review.
+
+Illustrative future fixtures, not personal practice results:
+
+- M1 6/10 plus M2 9/20 gives Overall 15/30 = 50%, not the 52.5% average of the
+  two module percentages.
+- M1 correct-valid times [1000] ms plus M2 [2000, 3000, 4000] ms give a combined
+  median of 2500 ms, not the 2000 ms average of their separate medians.
+
+## Final Confirmation
+
+The individual design decisions and information-category selection are settled.
+Obtain confirmation of this consolidated plan before visual design or runtime
+implementation; do not add further product requirements by assumption.
 
 Exact storage layout and helper boundaries are implementation details, not
 additional product choices. New generation must identify its changed policy;

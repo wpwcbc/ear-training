@@ -1,8 +1,9 @@
 # Insights: V2 Module Totals and Overall Categories
 
-Status: Q15-Q17 reporting direction confirmed by the user on 2026-10-25.
-Information-category selection and confirmation of the consolidated design
-remain pending. This record does not authorize runtime implementation.
+Status: Reporting direction and all four information categories confirmed by
+the user on 2026-10-25. Categories 1 and 2 are primary; 3 and 4 are secondary.
+Confirmation of the consolidated targets/mix/Insights design is still pending.
+This record does not authorize runtime implementation.
 
 This replaces the earlier proposal to keep self-rated and automatically graded
 outcomes out of a shared total. The user explicitly wants totals and trusts
@@ -58,7 +59,7 @@ not analysis of the user's personal browser records or measured performance.
 | Target chord root, quality, degree and MIDI | Recorded | Recorded | Chord-degree/target-relative interval breakdowns and coverage. |
 | First correctness | Binary self-rating | Binary selection result | Equal-weight assessed result totals. |
 | Wrong degree | Self-reported degree or Unknown | First selected degree | Combined expected-to-reported/chosen confusion directions. |
-| First response time | Done time | First answer time | A candidate mixed-practice response-time summary. |
+| First response time | Done time | First answer time | Combined mixed-practice response-time summary. |
 | Timing validity and version | Recorded | Recorded | Exclude invalid times from timing only, retain valid grades. |
 | Replays before/after first response | Recorded | Recorded | Shared listening/replay measures, retaining the existing attribution rules. |
 | Educational retries | No M2-style retry list | Count and answer history | M2 detail; do not invent a retry opportunity or zero retry rate for M1. |
@@ -69,11 +70,13 @@ The interval information presently shared by these modules is the target's
 relationship to the chord root (chord degree). The records do not establish
 answers about intervals between successive melody notes.
 
-## Candidate Shared Information Categories
+## Selected Shared Information Categories
 
-These are proposals to ask the user whether they are worthwhile, not an
-approved chart inventory. All four use existing M1/M2 records rather than
-inventing later modules or requiring new performance capture.
+The user selected all four, with chord-degree performance and confusion
+directions as the primary information; response efficiency and replay use are
+secondary. All use existing M1/M2 records rather than inventing later modules
+or requiring new performance capture. Exact visual composition follows the
+existing comp-first process after consolidated-design confirmation.
 
 ### 1. Chord-Degree Performance
 
@@ -101,7 +104,7 @@ Do not infer a wrong degree from an unassessed question.
 
 ### 3. Response Efficiency
 
-A possible combined median of valid first-correct response times from both
+A combined median of valid first-correct response times from both
 modules, optionally broken down by degree or chord context.
 
 Calculate from the combined eligible raw times, not the average of module
@@ -112,9 +115,9 @@ The pooled label would describe mixed-practice response time: M1 records Done
 after chord onset; M2 records answer submission after answer readiness. Retain
 these timing definitions in detail, without making separate module charts
 mandatory. Do not call the pooled number pure mental recognition speed or a
-measured vocal/instrument onset. Whether this category is useful is a user choice.
+measured vocal/instrument onset. The user selected this as secondary information.
 
-### 4. Listening / Replay Dependence
+### 4. Replay Use
 
 Combine the assessed questions that used replay before the initial response,
 alongside their assessed denominator. Context replay before M1 Done and replay
@@ -157,6 +160,5 @@ framework or future modules now.
 
 ## Remaining Confirmation
 
-Ask which of the four candidate categories is worth presenting now, including
-their priority. Then present the consolidated targets, mix and Insights plan
-for final confirmation before visual design or implementation.
+Category selection is complete. Present the consolidated targets, mix and
+Insights plan for final confirmation before visual design or implementation.
