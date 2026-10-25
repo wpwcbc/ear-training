@@ -51,3 +51,18 @@ _Avoid_: Target volume (voicing mix controls accompaniment, not the target voice
 Listening to the mixed full chord accompaniment in Customize, without an
 independent target voice or a recorded practice attempt.
 _Avoid_: Practice question (an audition is not assessed practice or target exposure).
+
+**Overall Insights**:
+The combined V2 results view organized by shared information categories, with
+the contributing modules available as detail.
+_Avoid_: Module comparison only (Overall includes actual cross-module totals).
+
+**Production category**:
+The Insights grouping of a production task into Imagined / sung or Instrumental
+playing; a recognition-only module has no required production category.
+_Avoid_: Stored response method (imagined and sung remain distinct raw values).
+
+**Combined degree accuracy**:
+The total first-correct results divided by total assessed questions from the
+contributing V2 modules, accepting self-ratings and selection grades equally.
+_Avoid_: Average module accuracy (module percentages are not averaged).

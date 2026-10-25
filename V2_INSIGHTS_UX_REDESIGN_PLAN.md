@@ -5,8 +5,12 @@ with integrated and detailed evidence, plus a category-first Overall view and
 fewer visible setting-based groups. See
 [the new planning record](V2_INSIGHTS_MODULE_ROLLUP_PLAN.md). The older approval
 below remains historical context, not authorization to ignore this revision.
-New aggregation rules and source scope are still being clarified; no runtime
-change or historical-data rewrite is implied by recording the new direction.
+The user has since confirmed V2-only scope and actual M1+M2 totals, accepting
+self-ratings equally with selected-answer grades. M1's reporting categories
+are imagined/sung together and instrumental playing; M2 has no forced method
+grouping. These decisions supersede the older mandatory partitions below for
+the revised default totals. Information categories still need selection; no
+runtime change or historical-data rewrite is implied by this planning update.
 
 Status: User-confirmed UX plan, 2026-10-24. Recorded at the user's request.
 The user confirmed architecture A and its information priorities, reliability

@@ -1,126 +1,162 @@
-# Insights: Module Views and Overall Categories
+# Insights: V2 Module Totals and Overall Categories
 
-Status: Revised user direction recorded on 2026-10-25; source-capability audit
-completed, aggregation and source-scope decisions still open. No UI, metric,
-storage or exercise implementation is authorized by this planning record.
+Status: Q15-Q17 reporting direction confirmed by the user on 2026-10-25.
+Information-category selection and confirmation of the consolidated design
+remain pending. This record does not authorize runtime implementation.
 
-The user explicitly revised Q13 of the
-[targets and mix interview](V2_TARGET_POOLS_AND_VOICE_MIX_PLAN.md). The proposed
-strict proliferation of setting/mix-based groups was not accepted.
+This replaces the earlier proposal to keep self-rated and automatically graded
+outcomes out of a shared total. The user explicitly wants totals and trusts
+self-assessment as a valid result, not a lower-weight or excluded substitute.
 
-## Confirmed Direction
+## Confirmed Scope and Hierarchy
 
-- Minimize visible groups rather than exposing every configuration cohort as
-  a primary destination.
-- Organize by exercise module. A module page should show its integrated
-  evidence and allow examination of smaller subgroups.
-- Overall should start with useful information categories, then identify
-  which modules' evidence can contribute to each category's charts.
-- The user specifically wants singing and instrumental playing distinguished
-  as major response categories. Placement of imagined audiation, button-based
-  recognition and unrecorded response methods needs clarification.
+- Only V2 records contribute. Currently this means M1 and M2. Legacy M1-M7,
+  earlier trainers and drone activity are outside this integration.
+- Overall organizes results by useful information categories and actually
+  combines contributing modules' data, not merely separate module panels.
+- Each module has its own integrated view and relevant subgroup details.
+- Keep visible grouping minimal. Context, pools, mix, exposure and recording
+  versions are metadata, not automatic top-level partitions of these totals.
+- Each newly added V2 module must trigger a fresh review of useful categories
+  and possible contributions. Do not freeze the category inventory around M1/M2
+  or automatically put every future module into every existing chart.
+- No new module or Release 2 implementation is approved by this discussion.
 
-This does not yet determine whether Overall includes only V2, Legacy M1-M7,
-or also the original scale/interval/chord-quality/progression trainers. Reading
-their source code is not approval to combine their records or redesign Legacy.
+## Confirmed Assessment and Method Policy
 
-## Source Audit and Its Limits
+M1 self-ratings and M2 selected-answer results are both valid assessed outcomes.
+Include them equally in relevant cross-module totals. Do not reject, downweight
+or forcibly separate a result simply because it came from self-assessment.
 
-Inspected the committed models, record-write paths and analytics adapters,
-not the user's browser history. Availability means the code can record a
-field; it does not prove every historical record contains it. No observed
-performance values, personal weaknesses or learning gains are claimed here.
+For M1 Insights, map existing reporting methods into two production categories:
 
-V2 sources: [record model and metrics](src/v2/model.ts),
-[current Insights adapter](src/v2/app.ts). Legacy sources:
-[assessment grain and evidence types](src/jazz/analytics/types.ts),
-[record creation](src/jazz/app.ts),
-[metric eligibility](src/jazz/analytics/metrics.ts),
-[outcome registry](src/jazz/analytics/summary/registry.ts),
-[historical adapters](src/jazz/analytics/adapters.ts).
+| Stored M1 method | Reporting category |
+| --- | --- |
+| imagined | Imagined / sung |
+| sung | Imagined / sung |
+| played | Instrumental playing |
 
-| Module/source | Recorded outcome unit | Potential contribution and important limit |
-| --- | --- | --- |
-| V2 M1 | One target, binary self-rating | Degree/chord context, imagined/sung/played, Done time and replay attribution. Not measured vocal/instrument pitch. |
-| V2 M2 | One target, objectively scored first answer | Degree selection/confusion, locked first evidence, valid-correct timing, replay assistance. Button response is not a singing/playing method. |
-| Legacy M1 | One target, correct/close/missed self-rating | Degree-context self-report; no explicit imagined/sung/played method axis. Close is not the V2 binary incorrect category. |
-| Legacy M2 | Recognition selections, including quality when hidden | Degree/quality/joint outcomes where captured; component and first-answer eligibility require their actual evidence. |
-| Legacy M3 | Sequence; recognition also has selected item answers | Eligible recognition items can support degree analysis. One production sequence rating cannot become independent per-chord grades. |
-| Legacy M4 | Transition/target step self-rating | Transition, target and prediction-window context; no measured produced pitch. |
-| Legacy M5 | Transition, target pair or entire run | Outcome stays at its actual unit. Whole-run or pair ratings do not identify which individual note was wrong. |
-| Legacy M6 | Activity or phrase-stage self-rating; objective landmark marking | Stage/phrase/variation evidence; marking selected indices is not singing or playing accuracy. |
-| Legacy M7 | Target production self-rating plus visual mapping selection | MIDI-position match can be objective; it is not verified physical instrument execution. |
+M1's default integrated view includes both categories. An All view is a total,
+not a third production category. M2 does not require singing or playing, so do
+not add these categories, an artificial Unknown method group, or a mandatory
+method selector to M2.
 
-Other trainers use [separate assessment logging](src/analytics/legacy.ts).
-[Drone activity](src/analytics/activity.ts) records foreground playback activity,
-not assessed hearing ability. Inclusion remains a scope decision.
+This is an Insights mapping, not authorization to rewrite stored methods or
+change practice's response-method controls. If a V2 record lacks method detail,
+keep its valid grade in the M1 total without guessing its subgroup membership.
+Source and method metadata remain available for traceability, not an obstacle
+to aggregation. Do not relabel a stored self-rating as microphone verification.
 
-The Legacy `actualNotes` and `actualMidis` fields are populated from challenge
-targets, not captured user performance. Do not mistake those names for pitch
-verification. Likewise, intended task/stage names cannot supply a missing
-historical singing/playing tag.
+## Current Data Actually Available
 
-## Candidate Information Categories
+Reviewed [V2 assessment fields and metrics](src/v2/model.ts) and
+[response/replay recording](src/v2/question.ts). This is a code-capability audit,
+not analysis of the user's personal browser records or measured performance.
 
-These are proposals for user review, not a selected dashboard inventory.
-Prefer a small useful set to one chart for every available field.
+| Field or evidence | M1 | M2 | Possible shared use |
+| --- | --- | --- | --- |
+| Target chord root, quality, degree and MIDI | Recorded | Recorded | Chord-degree/target-relative interval breakdowns and coverage. |
+| First correctness | Binary self-rating | Binary selection result | Equal-weight assessed result totals. |
+| Wrong degree | Self-reported degree or Unknown | First selected degree | Combined expected-to-reported/chosen confusion directions. |
+| First response time | Done time | First answer time | A candidate mixed-practice response-time summary. |
+| Timing validity and version | Recorded | Recorded | Exclude invalid times from timing only, retain valid grades. |
+| Replays before/after first response | Recorded | Recorded | Shared listening/replay measures, retaining the existing attribution rules. |
+| Educational retries | No M2-style retry list | Count and answer history | M2 detail; do not invent a retry opportunity or zero retry rate for M1. |
+| Exercise and method | M1 plus imagined/sung/played | M2 plus degree-button | Module drilldown and the M1-only two-category mapping. |
+| Session, timestamps and exposure | Recorded | Recorded | Counts, date scope and optional detail without mandatory group splitting. |
 
-| Candidate | Why it helps | Eligible material and boundary |
-| --- | --- | --- |
-| Harmonic degree outcomes | Find which degrees/chord contexts need practice across exercises. | V2 M1/M2; eligible Legacy M1/M2, M3 recognition and M7 production evidence if included. Keep objective and self-report identities; do not distribute run grades to individual notes. |
-| Continuity and phrase work | Understand difficulty over transitions, runs and phrase stages. | Legacy M3 production, M4, M5 and M6 if included. Place module/unit-specific results together where useful, but do not pool a step, pair and whole run as equivalent events. V2 does not yet implement these tasks. |
-| Assistance and review | Understand reliance on replay, reference or retries. | V2 has before/after-first attribution; Legacy eligibility depends on capture. Unknown attribution is not zero assistance. Total replay counts are not the same measure as pre-first-response assistance. |
-| Practice activity and coverage | Show participation and which material has been encountered, without calling it mastery. | Module/session/date/target-context fields where available; namespace and deduplicate sources. Target exposure alone is not a correct answer. |
+The interval information presently shared by these modules is the target's
+relationship to the chord root (chord degree). The records do not establish
+answers about intervals between successive melody notes.
 
-Correct-response timing is supporting evidence, not a universal Overall speed
-score. V2 M1 chord-onset-to-Done timing, V2 M2 answer-ready timing and Legacy
-active decision/sequence timings must retain their definitions and valid sample
-counts. Do not average existing medians into a new global median.
+## Candidate Shared Information Categories
 
-Visual bass mapping and phrase-landmark marking have useful module-specific
-outcomes but are not interchangeable with each other or with heard-degree
-recognition. Intended target MIDI sequences alone cannot establish performed
-melodic-interval or motion accuracy; do not fabricate those Overall charts.
+These are proposals to ask the user whether they are worthwhile, not an
+approved chart inventory. All four use existing M1/M2 records rather than
+inventing later modules or requiring new performance capture.
 
-## Proposed Presentation, Not Yet Final
+### 1. Chord-Degree Performance
 
-Navigation: Overall -> chosen module. Module pages lead with integrated
-descriptive results, then subgroup detail. Overall charts begin with the
-information category, not with a list of storage versions or configuration
-hashes. Keep relevant metadata available for explanation and drilldown rather
-than automatically turning every difference into a visible top-level group.
+A primary combined accuracy and degree-outcome view: how results vary by degree,
+chord quality and root, with module detail available when wanted.
 
-Same chart is not necessarily same denominator. Compatible observations may
-be candidates for pooling; different sources/measurement units may instead
-need named series or parallel summaries. The precise choice remains open.
-Neither presentation should imply a controlled improvement comparison merely
-because mixed historical observations have been summarized.
+- Total correct: add M1 first-correct self-ratings and M2 first-correct answers.
+- Total assessed: add recorded assessed questions from both modules.
+- Combined accuracy: total correct divided by total assessed.
+- Each assessed question has equal weight; do not average module percentages
+  or impose equal module weights.
+- Unassessed questions remain separate, not incorrect. Retries/reveals do not
+  replace a wrong first result.
+- Use actual target labels, including deliberate extensions/alterations.
+  Do not silently collapse different musical labels into one new score.
 
-## Unresolved Decisions
+### 2. Confusion Directions
 
-1. Which current sources does "all modules" include? V2 and Legacy must not
-   silently become one source or duplicate the same evidence.
-2. How should imagined audiation and button recognition sit alongside singing
-   and instrumental playing? Do not force-tag unrecorded historical methods.
-3. When compatible data exists, should a category lead with a pooled metric
-   and module breakdown, or module series in one chart without a pooled rate?
+Combine the target degree and M1's reported wrong degree or M2's first selected
+wrong degree into one confusion view. Both types of recorded wrong answer count.
 
-## Preserved Evidence Boundaries
+Unknown is still an incorrect assessed outcome for accuracy, but supplies no
+specific confusion direction. Show its count without inventing a wrong note.
+Do not infer a wrong degree from an unassessed question.
 
-- Keep immutable history, grading source, assessment unit, method when known,
-  replay attribution, timing validity and version metadata.
-- Objective choice accuracy, self-rating, visual mapping and stage/run grades
-  remain distinguishable even when navigation is simpler.
-- Do not transform Legacy close ratings into binary V2 failures, or missing
-  evidence into incorrect/zero. Any newly proposed conversion needs approval.
-- A parent's self-rating is not independent per-note success or confusion.
-- Do not infer singing, instrument execution or actual pitch from task names,
-  challenge MIDI or a correct visual selection.
-- Review source-specific numerator, denominator, first-answer eligibility and
-  coverage before pooling. Module labels or shared field names are insufficient.
-- No single global mastery score, new exercise or Release 2 implementation is
-  requested by this architecture discussion.
+### 3. Response Efficiency
 
-The current runtime and existing older plan remain unchanged while this
-revision is clarified. Obtain confirmation of the consolidated proposal before
-designing or implementing the changed Insights experience.
+A possible combined median of valid first-correct response times from both
+modules, optionally broken down by degree or chord context.
+
+Calculate from the combined eligible raw times, not the average of module
+medians. Invalid/missing times do not remove otherwise valid accuracy evidence.
+Wrong answers earn no speed credit.
+
+The pooled label would describe mixed-practice response time: M1 records Done
+after chord onset; M2 records answer submission after answer readiness. Retain
+these timing definitions in detail, without making separate module charts
+mandatory. Do not call the pooled number pure mental recognition speed or a
+measured vocal/instrument onset. Whether this category is useful is a user choice.
+
+### 4. Listening / Replay Dependence
+
+Combine the assessed questions that used replay before the initial response,
+alongside their assessed denominator. Context replay before M1 Done and replay
+before M2's first choice retain their existing recording rules.
+
+Mandatory initial/reference audio does not become an extra user replay. Keep
+pre-response replay assistance distinct from post-response review totals.
+Educational retry detail currently belongs to M2; its absence in M1 does not
+create an artificial M1 retry rate.
+
+Practice counts, assessed/unassessed counts and recorded date range can remain
+compact context in the page header rather than another chart category.
+
+## Aggregation Rules Already Settled
+
+- Overall is a real M1+M2 rollup. Module views filter that same population by
+  exercise; subgroup views narrow it only when relevant.
+- Preserve source records, first-response evidence and original configurations.
+  New reporting mapping must not rewrite historical assessment or method tags.
+- Self versus automatic, imagined versus sung, or different target/mix settings
+  must not silently prevent inclusion in the requested default combined totals.
+- Deduplicate an assessment's identity; retries do not count as new first grades.
+- Missing data is not a failure, a zero time or a fabricated response.
+- Explain what a combined metric counts; do not replace these totals with a
+  weighted mastery score or claim identical difficulty across all practice.
+- Show sample counts and offer module/degree/context detail, without a compulsory
+  chain of configuration-cohort selectors before the overview.
+
+## Review Required Whenever a V2 Module Is Added
+
+1. Identify what the module assesses and what it actually records.
+2. Check contributions to current categories and consider better/new categories.
+3. Define the correct numerator, denominator and any time boundary.
+4. Add relevant method categories only if that module uses them.
+5. Reconcile Overall, module totals and detail using recorded outcomes, without
+   inventing independent answers from a whole-activity rating.
+
+This is an integration-design checkpoint, not a request for a generic plugin
+framework or future modules now.
+
+## Remaining Confirmation
+
+Ask which of the four candidate categories is worth presenting now, including
+their priority. Then present the consolidated targets, mix and Insights plan
+for final confirmation before visual design or implementation.

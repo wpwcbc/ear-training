@@ -2,6 +2,16 @@
 
 Status: Consolidation of user-approved UX decisions, 2026-10-24.
 
+Insights revision recorded 2026-10-25: the user now requires V2 Overall totals
+across modules, counting M1 self-ratings and M2 answers equally. M1 reporting
+combines imagined/sung and separates instrumental playing; M2 has no forced
+production grouping. See [the current planning record](V2_INSIGHTS_MODULE_ROLLUP_PLAN.md).
+Earlier requirements below to partition these default totals by module,
+grading source or every configuration cohort describe the previous design and
+are superseded for this planned revision. Raw metadata and history remain;
+category selection and consolidated-design confirmation are still pending.
+This notice is not a runtime implementation or test-completion claim.
+
 This is a **custom project document explicitly requested by the user**. It is
 not a file that Impeccable necessarily creates automatically, a plugin schema,
 or a generated design contract. Its filename and role are project conventions.

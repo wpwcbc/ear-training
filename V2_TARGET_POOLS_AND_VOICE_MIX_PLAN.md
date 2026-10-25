@@ -39,6 +39,7 @@ to the notes in a voicing or to playback timing.
 | D10 | A newly enabled quality without a saved pool starts with its own chord tones; re-enabling a previously configured quality retains its pool. | The user can edit every degree. Each enabled quality needs at least one target; do not silently skip an empty quality. |
 | D11 | Reject a mix if any eligible quality/target combination has no non-target, non-muted accompaniment voice after target exclusion. | Identify the affected quality and target and block Start until corrected; never silently change gains or remove the affected material. |
 | D12 | Mix editing and audition belong in Customize; session settings are fixed after Start. | No mid-session mix controls. Results replay uses the recorded session configuration, not later preset edits. |
+| D13, Q15-Q17 revision | V2 Overall combines module outcomes, treating self-ratings as valid results. M1 reporting merges imagined/sung and keeps instrumental playing separate; M2 gets no forced production grouping. | Only current V2 M1/M2 contribute now. Review integration categories again whenever a V2 module is added; retain raw history and metadata without making every setting a mandatory group. |
 | D14 (Q14) | Audition only the mixed complete chord accompaniment for one enabled quality, using the first root in Root Pool and showing the actual chord. | No independent target, simulated M1 omission or practice/exposure records. Replaying replaces the prior audition rather than layering it. |
 
 Q13 is not an accepted strict-grouping decision. Its proposed addition of
@@ -95,8 +96,9 @@ These facts describe the current code, not approved implementation choices.
 
 ## Open Design Frontier
 
-- Resolve the revised Insights hierarchy and cross-module aggregation rules in
-  the linked plan, including source scope and response-method attribution.
+- Select useful shared information categories in the linked Insights plan.
+  V2-only scope, equal treatment of self-ratings and the M1-only two-category
+  mapping are now explicitly confirmed; do not reopen them as defaults.
 - Obtain confirmation of the consolidated design before implementation.
 
 Exact storage layout and helper boundaries are implementation details, not
