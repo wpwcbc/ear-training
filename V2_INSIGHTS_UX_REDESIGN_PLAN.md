@@ -1,5 +1,13 @@
 # V2 Insights UX and Information Architecture Redesign Plan
 
+Revision in discussion, 2026-10-25: the user now requests module-first views
+with integrated and detailed evidence, plus a category-first Overall view and
+fewer visible setting-based groups. See
+[the new planning record](V2_INSIGHTS_MODULE_ROLLUP_PLAN.md). The older approval
+below remains historical context, not authorization to ignore this revision.
+New aggregation rules and source scope are still being clarified; no runtime
+change or historical-data rewrite is implied by recording the new direction.
+
 Status: User-confirmed UX plan, 2026-10-24. Recorded at the user's request.
 The user confirmed architecture A and its information priorities, reliability
 rules and focused-preset behavior below. This is a planning record, not a

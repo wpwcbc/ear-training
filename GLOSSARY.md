@@ -46,3 +46,8 @@ _Avoid_: Remaining-note position (which can change when a target is omitted).
 The relative levels of the original chord-voicing voices, distinct from overall
 volume and from the independently sounded target.
 _Avoid_: Target volume (voicing mix controls accompaniment, not the target voice).
+
+**Audition**:
+Listening to the mixed full chord accompaniment in Customize, without an
+independent target voice or a recorded practice attempt.
+_Avoid_: Practice question (an audition is not assessed practice or target exposure).

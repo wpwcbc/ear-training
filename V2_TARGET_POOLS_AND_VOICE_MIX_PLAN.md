@@ -1,7 +1,10 @@
 # V2 Per-Quality Targets and Voicing Mix
 
-Status: Design interview in progress. Twelve target-pool and voicing-mix decisions
-confirmed by the user; no implementation or complete-design approval yet.
+Status: Target-pool, voice-mix and audition decisions individually confirmed;
+complete-design confirmation is still pending. On 2026-10-25 the user revised
+the Insights direction instead of accepting the proposed strict grouping in
+Q13. See [module and Overall Insights planning](V2_INSIGHTS_MODULE_ROLLUP_PLAN.md).
+No runtime implementation is approved by this record.
 
 Read alongside [project intent](jazz-ear-lab.md), [product context](PRODUCT.md),
 [Release 1](V2_RELEASE_1_SPEC.md), [audio refinement](V2_UX_AUDIO_REFINEMENT.md)
@@ -36,6 +39,12 @@ to the notes in a voicing or to playback timing.
 | D10 | A newly enabled quality without a saved pool starts with its own chord tones; re-enabling a previously configured quality retains its pool. | The user can edit every degree. Each enabled quality needs at least one target; do not silently skip an empty quality. |
 | D11 | Reject a mix if any eligible quality/target combination has no non-target, non-muted accompaniment voice after target exclusion. | Identify the affected quality and target and block Start until corrected; never silently change gains or remove the affected material. |
 | D12 | Mix editing and audition belong in Customize; session settings are fixed after Start. | No mid-session mix controls. Results replay uses the recorded session configuration, not later preset edits. |
+| D14 (Q14) | Audition only the mixed complete chord accompaniment for one enabled quality, using the first root in Root Pool and showing the actual chord. | No independent target, simulated M1 omission or practice/exposure records. Replaying replaces the prior audition rather than layering it. |
+
+Q13 is not an accepted strict-grouping decision. Its proposed addition of
+mix-based groups was superseded by a new user request for module-first and
+category-first Overall Insights; do not implement the rejected proposal from
+the earlier interview question.
 
 D4 preserves eligible content, not the old pair-balanced frequency policy:
 D5 explicitly changes that policy for the new design. Do not regenerate,
@@ -86,10 +95,9 @@ These facts describe the current code, not approved implementation choices.
 
 ## Open Design Frontier
 
-- How different active target pools, sampling policies and voice mixes are
-  separated or qualified in Insights comparisons.
-- Audition content and scope in Customize, including root/quality selection
-  and whether preview can simulate target exclusion/reference playback.
+- Resolve the revised Insights hierarchy and cross-module aggregation rules in
+  the linked plan, including source scope and response-method attribution.
+- Obtain confirmation of the consolidated design before implementation.
 
 Exact storage layout and helper boundaries are implementation details, not
 additional product choices. New generation must identify its changed policy;
