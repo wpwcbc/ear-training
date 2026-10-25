@@ -9,8 +9,10 @@ The user has since confirmed V2-only scope and actual M1+M2 totals, accepting
 self-ratings equally with selected-answer grades. M1's reporting categories
 are imagined/sung together and instrumental playing; M2 has no forced method
 grouping. These decisions supersede the older mandatory partitions below for
-the revised default totals. Information categories still need selection; no
-runtime change or historical-data rewrite is implied by this planning update.
+the revised default totals. All four information categories and the consolidated
+plan are now confirmed, with chord-degree performance and confusion primary,
+and response efficiency and replay use secondary. No runtime change or
+historical-data rewrite is implied by this planning update.
 
 Status: User-confirmed UX plan, 2026-10-24. Recorded at the user's request.
 The user confirmed architecture A and its information priorities, reliability

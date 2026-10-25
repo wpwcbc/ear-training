@@ -8,10 +8,12 @@ combines imagined/sung and separates instrumental playing; M2 has no forced
 production grouping. See [the current planning record](V2_INSIGHTS_MODULE_ROLLUP_PLAN.md).
 Earlier requirements below to partition these default totals by module,
 grading source or every configuration cohort describe the previous design and
-are superseded for this planned revision. Raw metadata and history remain;
+are superseded for this planned revision. Raw metadata and history remain.
 The user selected four Overall categories: chord-degree performance and
 confusion directions as primary, response efficiency and replay use as secondary.
-Only consolidated-design confirmation is still pending.
+The consolidated plan is confirmed, with accompaniment voice levels amended
+to 0-200%, default 100%; other approved decisions remain unchanged. See
+[the confirmed targets/mix plan](V2_TARGET_POOLS_AND_VOICE_MIX_PLAN.md).
 This notice is not a runtime implementation or test-completion claim.
 
 This is a **custom project document explicitly requested by the user**. It is

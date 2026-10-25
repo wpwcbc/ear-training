@@ -2,8 +2,9 @@
 
 Status: Reporting direction and all four information categories confirmed by
 the user on 2026-10-25. Categories 1 and 2 are primary; 3 and 4 are secondary.
-Confirmation of the consolidated targets/mix/Insights design is still pending.
-This record does not authorize runtime implementation.
+The user confirmed the consolidated targets/mix/Insights design on the same
+date, amending only accompaniment voice gain to 0-200%. The Insights decisions
+are unchanged. This record is not a claim of runtime implementation.
 
 This replaces the earlier proposal to keep self-rated and automatically graded
 outcomes out of a shared total. The user explicitly wants totals and trusts
@@ -76,7 +77,7 @@ The user selected all four, with chord-degree performance and confusion
 directions as the primary information; response efficiency and replay use are
 secondary. All use existing M1/M2 records rather than inventing later modules
 or requiring new performance capture. Exact visual composition follows the
-existing comp-first process after consolidated-design confirmation.
+existing comp-first process; consolidated-design confirmation is complete.
 
 ### 1. Chord-Degree Performance
 
@@ -158,7 +159,9 @@ compact context in the page header rather than another chart category.
 This is an integration-design checkpoint, not a request for a generic plugin
 framework or future modules now.
 
-## Remaining Confirmation
+## Confirmation Record
 
-Category selection is complete. Present the consolidated targets, mix and
-Insights plan for final confirmation before visual design or implementation.
+Category selection, priority and the complete consolidated plan are confirmed.
+The final user amendment concerns the 0-200% accompaniment voice range, not
+these Insights rules. Subsequent visual design and implementation must follow
+this agreed basis without reopening the rejected mandatory group partitions.

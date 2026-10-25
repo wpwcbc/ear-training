@@ -1,11 +1,10 @@
 # V2 Per-Quality Targets and Voicing Mix
 
-Status: Target-pool, voice-mix and audition decisions individually confirmed;
-Insights scope, pooling, method mapping and four-category selection are also
-confirmed. Complete-design confirmation is still pending. On 2026-10-25 the user revised
-the Insights direction instead of accepting the proposed strict grouping in
-Q13. See [module and Overall Insights planning](V2_INSIGHTS_MODULE_ROLLUP_PLAN.md).
-No runtime implementation is approved by this record.
+Status: Consolidated design confirmed by the user on 2026-10-25, with one
+amendment: accompaniment voice levels support 0-200%, replacing the earlier
+0-100% decision. All other targets, mix, audition and Insights decisions remain
+confirmed. See [module and Overall Insights planning](V2_INSIGHTS_MODULE_ROLLUP_PLAN.md).
+This is the agreed design basis, not a claim of runtime implementation.
 
 Read alongside [project intent](jazz-ear-lab.md), [product context](PRODUCT.md),
 [Release 1](V2_RELEASE_1_SPEC.md), [audio refinement](V2_UX_AUDIO_REFINEMENT.md)
@@ -20,7 +19,7 @@ such as a b7 target against maj7. The requested control is a user-selected
 musical vocabulary, not a universal rule that an unselected tension is invalid.
 
 The user also requests individual volume control over chord voicing notes.
-Original low-to-high voice identity, preset ownership, attenuation range and
+Original low-to-high voice identity, preset ownership, gain range and
 separation from the target voice are confirmed. This does not authorize changes
 to the notes in a voicing or to playback timing.
 
@@ -36,7 +35,7 @@ to the notes in a voicing or to playback timing.
 | D6 | Volume controls follow original low-to-high voicing voices, with actual degree labels. | Preserve existing 3-, 4- and 5-note voicings; M1 target exclusion does not reassign the remaining voices to different controls. |
 | D7 | Each preset has one shared set of up to five original-voice levels for all its chord qualities. | Absent voices do not sound; other presets keep independent levels. |
 | D8 | The new voice controls affect accompaniment only, not the independent target voice. | Keep the existing overall-volume/target relationship; do not add a target-level control or apply a same-pitch-class accompaniment level to the target. |
-| D9 | Voice levels range from 0% to 100%, defaulting to 100%. | Zero mutes that voice; 100% retains its existing standard level. No extra amplification is approved. |
+| D9, final amendment | Voice levels range from 0% to 200%, defaulting to 100%. | Zero mutes that voice; 100% retains its existing standard gain; 200% applies twice its nominal gain. Amplification above standard is explicitly approved. |
 | D10 | A newly enabled quality without a saved pool starts with its own chord tones; re-enabling a previously configured quality retains its pool. | The user can edit every degree. Each enabled quality needs at least one target; do not silently skip an empty quality. |
 | D11 | Reject a mix if any eligible quality/target combination has no non-target, non-muted accompaniment voice after target exclusion. | Identify the affected quality and target and block Start until corrected; never silently change gains or remove the affected material. |
 | D12 | Mix editing and audition belong in Customize; session settings are fixed after Start. | No mid-session mix controls. Results replay uses the recorded session configuration, not later preset edits. |
@@ -95,6 +94,24 @@ These facts describe the current code, not approved implementation choices.
 - Root sampling remains independently balanced under the existing contract.
   D5 changes the quality/target distribution, not roots or scoring.
 
+## Voice Boost Implementation Guardrails
+
+The final amendment changes the accompaniment voice range, not the existing
+overall-volume range or the independent target-level relationship. Percentages
+describe relative gain: 200% is twice the nominal voice gain, not a claim of
+twice the perceived loudness. Existing and restored defaults remain 100%.
+
+Implementation must handle the increased combined output without hard digital
+clipping. Verify boosted multi-voice chords plus the target at maximum overall
+volume in question, fresh-reference, live-reference and audition playback.
+Keep the independent target's nominal gain out of the accompaniment-level
+mapping. Do not silently remap 200% to 100% or flatten the chosen voice balance.
+
+The internal headroom/protection mechanism is an implementation detail to
+select and verify, not a new user-facing synthesis effect or control. Preserve
+default-level sound, playback timing, envelopes and Legacy behavior. These are
+future implementation acceptance obligations, not implemented protection.
+
 ## Consolidated Insights Selection
 
 Overall totals use V2 M1/M2 only, counting self-assessed and selected-answer
@@ -124,8 +141,12 @@ These are future implementation checks, not a report that tests were executed.
   within each quality are balanced, with independent existing root sampling.
 - Missing new voice levels preserve current sound. Existing 3/4/5-note
   voicings and original voice identities survive M1 pitch-class exclusion.
-- Zero-level voices are silent, other levels never amplify beyond standard,
-  and accompaniment levels never change the independent target level.
+- Zero-level voices are silent; 100% retains standard nominal gain and 200%
+  applies twice that gain. Reject values outside 0-200%. Accompaniment levels
+  never become a multiplier on the independent target voice.
+- Boosted output passes clipping/headroom checks with the actual 3/4/5-note
+  voicings and target, including reference continuation. Default levels preserve
+  existing sound; the protection mechanism does not affect Legacy playback.
 - Every enabled quality has a target and every eligible combination retains
   non-target accompaniment under the mix check. Errors identify the affected
   material, block Start and preserve the last valid saved preset.
@@ -155,16 +176,17 @@ Illustrative future fixtures, not personal practice results:
 - M1 correct-valid times [1000] ms plus M2 [2000, 3000, 4000] ms give a combined
   median of 2500 ms, not the 2000 ms average of their separate medians.
 
-## Final Confirmation
+## Final Confirmation Record
 
-The individual design decisions and information-category selection are settled.
-Obtain confirmation of this consolidated plan before visual design or runtime
-implementation; do not add further product requirements by assumption.
+The user confirmed the complete consolidated plan on 2026-10-25, amending only
+the voice-level range from 0-100% to 0-200% with amplification. The individual
+decisions, information-category selection and priorities are settled; do not
+reopen them as default questions or add product requirements by assumption.
 
 Exact storage layout and helper boundaries are implementation details, not
 additional product choices. New generation must identify its changed policy;
-historical records keep their original policy. The complete design still
-requires user confirmation before any runtime implementation.
+historical records keep their original policy. Subsequent visual design follows
+the saved comp-first process; the design approval does not mean code was changed.
 
 ## Existing Boundaries
 
@@ -174,5 +196,6 @@ progression unless a specific change is approved. Preserve Legacy and local
 history. No new exercise, progression/dictation release, synthesis editor or
 automatic musical-validity classifier is approved by this request.
 
-No new runtime settings or migration have been implemented. Continue the
-interview, then obtain confirmation of the complete design before coding.
+The design interview is complete. No new runtime settings or migration were
+implemented during it. This turn records the confirmation and final amendment;
+visual compositions and runtime implementation are subsequent work.
