@@ -1,0 +1,1509 @@
+{
+  "tool": "comp-spec",
+  "version": 1,
+  "createdAt": "2026-10-23T18:09:42.242Z",
+  "comp": ".impeccable/build/approved-desktop-practice.png",
+  "warnings": [],
+  "uncoveredInkCells": [
+    "A2",
+    "A6",
+    "B7"
+  ],
+  "compSize": {
+    "width": 1077,
+    "height": 422
+  },
+  "aspect": 2.5521,
+  "orientation": "landscape",
+  "palette": [
+    {
+      "hex": "#f8f8f8",
+      "coverage": 0.7383
+    },
+    {
+      "hex": "#161616",
+      "coverage": 0.1194
+    },
+    {
+      "hex": "#f8d908",
+      "coverage": 0.108
+    },
+    {
+      "hex": "#d3d6e3",
+      "coverage": 0.0248
+    },
+    {
+      "hex": "#9b9c9e",
+      "coverage": 0.0095
+    }
+  ],
+  "bands": [
+    {
+      "y": 0.02,
+      "strength": 0.2259
+    },
+    {
+      "y": 0.04,
+      "strength": 0.2632
+    },
+    {
+      "y": 0.08,
+      "strength": 0.4336
+    },
+    {
+      "y": 0.12,
+      "strength": 1
+    },
+    {
+      "y": 0.16,
+      "strength": 0.2557
+    },
+    {
+      "y": 0.24,
+      "strength": 1
+    },
+    {
+      "y": 0.46,
+      "strength": 0.2459
+    },
+    {
+      "y": 0.54,
+      "strength": 0.3136
+    }
+  ],
+  "regions": [
+    {
+      "id": "nav",
+      "kind": "chrome",
+      "note": "Flat black navigation band.",
+      "grid": "A0:J9",
+      "snap": false,
+      "box": {
+        "x": 0,
+        "y": 0,
+        "w": 1,
+        "h": 0.1185
+      },
+      "px": {
+        "x": 0,
+        "y": 0,
+        "w": 1077,
+        "h": 50
+      },
+      "aspect": 21.54,
+      "palette": [
+        {
+          "hex": "#181818",
+          "coverage": 0.8897
+        },
+        {
+          "hex": "#989a9d",
+          "coverage": 0.0667
+        },
+        {
+          "hex": "#eff2f2",
+          "coverage": 0.0285
+        },
+        {
+          "hex": "#434343",
+          "coverage": 0.0092
+        },
+        {
+          "hex": "#cbd1d8",
+          "coverage": 0.0059
+        }
+      ],
+      "detail": {
+        "energy": 27.5603
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "brand",
+      "kind": "text",
+      "note": "Jazz Ear Lab in white bold humanist sans.",
+      "grid": "A0:J9",
+      "snap": false,
+      "box": {
+        "x": 0.0204,
+        "y": 0.0284,
+        "w": 0.1393,
+        "h": 0.0592
+      },
+      "px": {
+        "x": 22,
+        "y": 12,
+        "w": 150,
+        "h": 25
+      },
+      "aspect": 6,
+      "palette": [
+        {
+          "hex": "#161616",
+          "coverage": 0.675
+        },
+        {
+          "hex": "#f6f7f6",
+          "coverage": 0.1864
+        },
+        {
+          "hex": "#373836",
+          "coverage": 0.0614
+        },
+        {
+          "hex": "#9fa1a1",
+          "coverage": 0.05
+        },
+        {
+          "hex": "#707375",
+          "coverage": 0.0273
+        }
+      ],
+      "detail": {
+        "energy": 51.89
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "type": {
+        "comp": {
+          "lines": 1,
+          "glyphs": 10,
+          "capHeightPx": 17.1,
+          "inkIsDark": false,
+          "allCaps": false,
+          "advance": 0.645,
+          "advTall": 0.689,
+          "advX": 0.645,
+          "gap": 0.088,
+          "xRatio": 0.7296,
+          "stemW": 0.2385,
+          "contrast": 1.2616,
+          "serif": null,
+          "densTall": 0.5274,
+          "densX": 0.7065,
+          "weight": 0.5274
+        },
+        "widthClass": "normal",
+        "weightClass": "medium",
+        "chosen": {
+          "family": "Gluten",
+          "weight": 400,
+          "fontSizePx": 24,
+          "source": "catalog",
+          "estimatedSize": true,
+          "stamp": "f325d1f4b033"
+        }
+      }
+    },
+    {
+      "id": "practice-link",
+      "kind": "control",
+      "note": "White Practice label with music icon and yellow current-location underline.",
+      "grid": "A0:J9",
+      "snap": false,
+      "box": {
+        "x": 0.1801,
+        "y": 0.0166,
+        "w": 0.1077,
+        "h": 0.0995
+      },
+      "px": {
+        "x": 194,
+        "y": 7,
+        "w": 116,
+        "h": 42
+      },
+      "aspect": 2.7619,
+      "palette": [
+        {
+          "hex": "#171717",
+          "coverage": 0.7819
+        },
+        {
+          "hex": "#f8db08",
+          "coverage": 0.1405
+        },
+        {
+          "hex": "#f5f6f6",
+          "coverage": 0.0444
+        },
+        {
+          "hex": "#c2c2c2",
+          "coverage": 0.0185
+        },
+        {
+          "hex": "#7a7c7e",
+          "coverage": 0.0148
+        }
+      ],
+      "detail": {
+        "energy": 26.7073
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "insights-link",
+      "kind": "control",
+      "note": "White Insights navigation with chart icon.",
+      "grid": "A0:J9",
+      "snap": false,
+      "box": {
+        "x": 0.311,
+        "y": 0.0166,
+        "w": 0.1003,
+        "h": 0.09
+      },
+      "px": {
+        "x": 335,
+        "y": 7,
+        "w": 108,
+        "h": 38
+      },
+      "aspect": 2.8421,
+      "palette": [
+        {
+          "hex": "#171717",
+          "coverage": 0.8712
+        },
+        {
+          "hex": "#e3e9ef",
+          "coverage": 0.0451
+        },
+        {
+          "hex": "#3d3e40",
+          "coverage": 0.0408
+        },
+        {
+          "hex": "#7b7e81",
+          "coverage": 0.0343
+        },
+        {
+          "hex": "#a8b0b4",
+          "coverage": 0.0086
+        }
+      ],
+      "detail": {
+        "energy": 19.2585
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "legacy-link",
+      "kind": "control",
+      "note": "White Legacy navigation with library icon.",
+      "grid": "A0:J9",
+      "snap": false,
+      "box": {
+        "x": 0.442,
+        "y": 0.0166,
+        "w": 0.0836,
+        "h": 0.09
+      },
+      "px": {
+        "x": 476,
+        "y": 7,
+        "w": 90,
+        "h": 38
+      },
+      "aspect": 2.3684,
+      "palette": [
+        {
+          "hex": "#171717",
+          "coverage": 0.8217
+        },
+        {
+          "hex": "#e1e9ee",
+          "coverage": 0.062
+        },
+        {
+          "hex": "#afb4bb",
+          "coverage": 0.0568
+        },
+        {
+          "hex": "#5e5e61",
+          "coverage": 0.0336
+        },
+        {
+          "hex": "#858892",
+          "coverage": 0.0258
+        }
+      ],
+      "detail": {
+        "energy": 19.2474
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "task-band",
+      "kind": "chrome",
+      "note": "Flat yellow task band.",
+      "grid": "A0:J9",
+      "snap": false,
+      "box": {
+        "x": 0,
+        "y": 0.1185,
+        "w": 1,
+        "h": 0.1161
+      },
+      "px": {
+        "x": 0,
+        "y": 50,
+        "w": 1077,
+        "h": 49
+      },
+      "aspect": 21.9796,
+      "palette": [
+        {
+          "hex": "#f8d808",
+          "coverage": 0.8399
+        },
+        {
+          "hex": "#caab0b",
+          "coverage": 0.0663
+        },
+        {
+          "hex": "#f8e757",
+          "coverage": 0.0621
+        },
+        {
+          "hex": "#0a0908",
+          "coverage": 0.0249
+        },
+        {
+          "hex": "#3b3008",
+          "coverage": 0.0068
+        }
+      ],
+      "detail": {
+        "energy": 20.4329
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "task-title",
+      "kind": "text",
+      "note": "M2 Recognition in bold black humanist sans.",
+      "grid": "A0:J9",
+      "snap": false,
+      "box": {
+        "x": 0.0223,
+        "y": 0.1493,
+        "w": 0.2136,
+        "h": 0.0592
+      },
+      "px": {
+        "x": 24,
+        "y": 63,
+        "w": 230,
+        "h": 25
+      },
+      "aspect": 9.2,
+      "palette": [
+        {
+          "hex": "#f8d808",
+          "coverage": 0.7725
+        },
+        {
+          "hex": "#090908",
+          "coverage": 0.1392
+        },
+        {
+          "hex": "#4e3d08",
+          "coverage": 0.0314
+        },
+        {
+          "hex": "#bb9808",
+          "coverage": 0.0284
+        },
+        {
+          "hex": "#7f6608",
+          "coverage": 0.0284
+        }
+      ],
+      "detail": {
+        "energy": 59.8743
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "type": {
+        "comp": {
+          "lines": 1,
+          "glyphs": 13,
+          "capHeightPx": 16.1,
+          "inkIsDark": true,
+          "allCaps": false,
+          "advance": 0.6828,
+          "advTall": 0.6053,
+          "advX": 0.6828,
+          "gap": 0.0931,
+          "xRatio": 0.7356,
+          "stemW": 0.2227,
+          "contrast": 1.1923,
+          "serif": 0.587,
+          "densTall": 0.6526,
+          "densX": 0.6489,
+          "weight": 0.6526
+        },
+        "widthClass": "normal",
+        "weightClass": "bold"
+      }
+    },
+    {
+      "id": "question-count",
+      "kind": "text",
+      "note": "Question 4 / 20 in black.",
+      "grid": "A0:J9",
+      "snap": false,
+      "box": {
+        "x": 0.7539,
+        "y": 0.1588,
+        "w": 0.1161,
+        "h": 0.0498
+      },
+      "px": {
+        "x": 812,
+        "y": 67,
+        "w": 125,
+        "h": 21
+      },
+      "aspect": 5.9524,
+      "palette": [
+        {
+          "hex": "#f8da08",
+          "coverage": 0.7594
+        },
+        {
+          "hex": "#e4b808",
+          "coverage": 0.0827
+        },
+        {
+          "hex": "#0c0908",
+          "coverage": 0.0827
+        },
+        {
+          "hex": "#937508",
+          "coverage": 0.0376
+        },
+        {
+          "hex": "#5e4808",
+          "coverage": 0.0376
+        }
+      ],
+      "detail": {
+        "energy": 44.6105
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "type": {
+        "comp": {
+          "lines": 1,
+          "glyphs": 12,
+          "capHeightPx": 14,
+          "inkIsDark": true,
+          "allCaps": false,
+          "advance": 0.5723,
+          "advTall": 0.6081,
+          "advX": 0.5723,
+          "gap": 0.0715,
+          "xRatio": 0.6626,
+          "stemW": 0.1608,
+          "contrast": 1.0668,
+          "serif": null,
+          "densTall": 0.5157,
+          "densX": 0.6099,
+          "weight": 0.5157
+        },
+        "widthClass": "condensed",
+        "weightClass": "medium"
+      }
+    },
+    {
+      "id": "stop",
+      "kind": "control",
+      "note": "Stop action with square icon in session header.",
+      "grid": "A0:J9",
+      "snap": false,
+      "box": {
+        "x": 0.8932,
+        "y": 0.128,
+        "w": 0.0929,
+        "h": 0.1043
+      },
+      "px": {
+        "x": 962,
+        "y": 54,
+        "w": 100,
+        "h": 44
+      },
+      "aspect": 2.2727,
+      "palette": [
+        {
+          "hex": "#f8d808",
+          "coverage": 0.8529
+        },
+        {
+          "hex": "#080808",
+          "coverage": 0.1054
+        },
+        {
+          "hex": "#e4b708",
+          "coverage": 0.0258
+        },
+        {
+          "hex": "#6e5808",
+          "coverage": 0.0099
+        },
+        {
+          "hex": "#433308",
+          "coverage": 0.006
+        }
+      ],
+      "detail": {
+        "energy": 11.3727
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "known-chord",
+      "kind": "text",
+      "note": "Known chord label.",
+      "grid": "A0:J9",
+      "snap": false,
+      "box": {
+        "x": 0.0223,
+        "y": 0.2773,
+        "w": 0.1114,
+        "h": 0.0474
+      },
+      "px": {
+        "x": 24,
+        "y": 117,
+        "w": 120,
+        "h": 20
+      },
+      "aspect": 6,
+      "palette": [
+        {
+          "hex": "#f6f7f8",
+          "coverage": 0.7857
+        },
+        {
+          "hex": "#59607b",
+          "coverage": 0.1536
+        },
+        {
+          "hex": "#a7aabe",
+          "coverage": 0.0571
+        },
+        {
+          "hex": "#c8d8e8",
+          "coverage": 0.0036
+        }
+      ],
+      "detail": {
+        "energy": 29.4121
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "type": {
+        "comp": {
+          "lines": 1,
+          "glyphs": 9,
+          "capHeightPx": 13,
+          "inkIsDark": true,
+          "allCaps": false,
+          "advance": 0.617,
+          "advTall": 0.617,
+          "advX": 0.5977,
+          "gap": 0.0771,
+          "xRatio": 0.7113,
+          "stemW": 0.1646,
+          "contrast": 1.0058,
+          "serif": null,
+          "densTall": 0.5047,
+          "densX": 0.5447,
+          "weight": 0.5047
+        },
+        "widthClass": "normal",
+        "weightClass": "medium"
+      }
+    },
+    {
+      "id": "chord",
+      "kind": "text",
+      "note": "C7 dominant black chord anchor.",
+      "grid": "A0:J9",
+      "snap": false,
+      "box": {
+        "x": 0.0223,
+        "y": 0.3412,
+        "w": 0.0929,
+        "h": 0.1422
+      },
+      "px": {
+        "x": 24,
+        "y": 144,
+        "w": 100,
+        "h": 60
+      },
+      "aspect": 1.6667,
+      "palette": [
+        {
+          "hex": "#f7f8f8",
+          "coverage": 0.6632
+        },
+        {
+          "hex": "#090909",
+          "coverage": 0.3072
+        },
+        {
+          "hex": "#969898",
+          "coverage": 0.0148
+        },
+        {
+          "hex": "#c8c8ca",
+          "coverage": 0.0103
+        },
+        {
+          "hex": "#333838",
+          "coverage": 0.0044
+        }
+      ],
+      "detail": {
+        "energy": 16.7671
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "type": {
+        "comp": null,
+        "measuredAt": "2026-10-23T18:09:42.711Z",
+        "note": "no separable lettering in the crop; size by the region box"
+      }
+    },
+    {
+      "id": "prompt",
+      "kind": "text",
+      "note": "Which chord degree? in bold.",
+      "grid": "A0:J9",
+      "snap": false,
+      "box": {
+        "x": 0.0223,
+        "y": 0.5261,
+        "w": 0.2275,
+        "h": 0.0592
+      },
+      "px": {
+        "x": 24,
+        "y": 222,
+        "w": 245,
+        "h": 25
+      },
+      "aspect": 9.8,
+      "palette": [
+        {
+          "hex": "#f7f7f7",
+          "coverage": 0.7839
+        },
+        {
+          "hex": "#0b0b0b",
+          "coverage": 0.1371
+        },
+        {
+          "hex": "#989a9a",
+          "coverage": 0.0277
+        },
+        {
+          "hex": "#c2c7ca",
+          "coverage": 0.0263
+        },
+        {
+          "hex": "#35383a",
+          "coverage": 0.0249
+        }
+      ],
+      "detail": {
+        "energy": 77.0724
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "type": {
+        "comp": {
+          "lines": 1,
+          "glyphs": 15,
+          "capHeightPx": 16.9,
+          "inkIsDark": true,
+          "allCaps": false,
+          "advance": 0.5757,
+          "advTall": 0.561,
+          "advX": 0.5905,
+          "gap": 0.0886,
+          "xRatio": 0.6678,
+          "stemW": 0.1777,
+          "contrast": 1.1682,
+          "serif": 0.546,
+          "densTall": 0.5187,
+          "densX": 0.6078,
+          "weight": 0.5187
+        },
+        "widthClass": "normal",
+        "weightClass": "medium"
+      }
+    },
+    {
+      "id": "status",
+      "kind": "text",
+      "note": "Your turn readiness text.",
+      "grid": "A0:J9",
+      "snap": false,
+      "box": {
+        "x": 0.0223,
+        "y": 0.5995,
+        "w": 0.1671,
+        "h": 0.0474
+      },
+      "px": {
+        "x": 24,
+        "y": 253,
+        "w": 180,
+        "h": 20
+      },
+      "aspect": 9,
+      "palette": [
+        {
+          "hex": "#f7f8f8",
+          "coverage": 0.9143
+        },
+        {
+          "hex": "#9ea7b7",
+          "coverage": 0.0333
+        },
+        {
+          "hex": "#4d586e",
+          "coverage": 0.031
+        },
+        {
+          "hex": "#7b7d95",
+          "coverage": 0.0143
+        },
+        {
+          "hex": "#383d5d",
+          "coverage": 0.0071
+        }
+      ],
+      "detail": {
+        "energy": 18.5792
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "type": {
+        "comp": {
+          "lines": 1,
+          "glyphs": 7,
+          "capHeightPx": 11.3,
+          "inkIsDark": true,
+          "allCaps": false,
+          "advance": 0.6795,
+          "advTall": 0.7386,
+          "advX": 0.5613,
+          "gap": 0.1034,
+          "xRatio": 0.8175,
+          "stemW": 0.1803,
+          "contrast": 1.122,
+          "serif": 0.3539,
+          "densTall": 0.4605,
+          "densX": 0.4987,
+          "weight": 0.4605
+        },
+        "widthClass": "condensed",
+        "weightClass": "regular"
+      }
+    },
+    {
+      "id": "replay",
+      "kind": "control",
+      "note": "Replay outlined command with rotate icon.",
+      "grid": "A0:J9",
+      "snap": false,
+      "box": {
+        "x": 0.0223,
+        "y": 0.6896,
+        "w": 0.1253,
+        "h": 0.1161
+      },
+      "px": {
+        "x": 24,
+        "y": 291,
+        "w": 135,
+        "h": 49
+      },
+      "aspect": 2.7551,
+      "palette": [
+        {
+          "hex": "#f4f6f7",
+          "coverage": 0.9018
+        },
+        {
+          "hex": "#0a0a0a",
+          "coverage": 0.0654
+        },
+        {
+          "hex": "#afafb0",
+          "coverage": 0.0183
+        },
+        {
+          "hex": "#4a4d4d",
+          "coverage": 0.0092
+        },
+        {
+          "hex": "#808084",
+          "coverage": 0.0052
+        }
+      ],
+      "detail": {
+        "energy": 23.6768
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "answer-0",
+      "kind": "control",
+      "note": "Equal outlined answer key 1, unselected.",
+      "grid": "A0:J9",
+      "snap": false,
+      "box": {
+        "x": 0.2795,
+        "y": 0.3412,
+        "w": 0.1086,
+        "h": 0.2014
+      },
+      "px": {
+        "x": 301,
+        "y": 144,
+        "w": 117,
+        "h": 85
+      },
+      "aspect": 1.3765,
+      "palette": [
+        {
+          "hex": "#f6f6f6",
+          "coverage": 0.9637
+        },
+        {
+          "hex": "#cad7e6",
+          "coverage": 0.0266
+        },
+        {
+          "hex": "#b2b2b2",
+          "coverage": 0.0044
+        },
+        {
+          "hex": "#403840",
+          "coverage": 0.0035
+        },
+        {
+          "hex": "#101010",
+          "coverage": 0.0018
+        }
+      ],
+      "detail": {
+        "energy": 3.0026
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "answer-1",
+      "kind": "control",
+      "note": "Equal outlined answer key b9, unselected.",
+      "grid": "A0:J9",
+      "snap": false,
+      "box": {
+        "x": 0.3983,
+        "y": 0.3412,
+        "w": 0.1086,
+        "h": 0.2014
+      },
+      "px": {
+        "x": 429,
+        "y": 144,
+        "w": 117,
+        "h": 85
+      },
+      "aspect": 1.3765,
+      "palette": [
+        {
+          "hex": "#f7f7f7",
+          "coverage": 0.9372
+        },
+        {
+          "hex": "#c9d8e4",
+          "coverage": 0.0381
+        },
+        {
+          "hex": "#0e0e0e",
+          "coverage": 0.0159
+        },
+        {
+          "hex": "#b6b8ba",
+          "coverage": 0.0071
+        },
+        {
+          "hex": "#909090",
+          "coverage": 0.0018
+        }
+      ],
+      "detail": {
+        "energy": 5.4255
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "answer-2",
+      "kind": "control",
+      "note": "Equal outlined answer key 9, unselected.",
+      "grid": "A0:J9",
+      "snap": false,
+      "box": {
+        "x": 0.5172,
+        "y": 0.3412,
+        "w": 0.1086,
+        "h": 0.2014
+      },
+      "px": {
+        "x": 557,
+        "y": 144,
+        "w": 117,
+        "h": 85
+      },
+      "aspect": 1.3765,
+      "palette": [
+        {
+          "hex": "#f7f7f7",
+          "coverage": 0.9496
+        },
+        {
+          "hex": "#c9d8e1",
+          "coverage": 0.0389
+        },
+        {
+          "hex": "#101010",
+          "coverage": 0.0088
+        },
+        {
+          "hex": "#9d9da3",
+          "coverage": 0.0027
+        }
+      ],
+      "detail": {
+        "energy": 3.4123
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "answer-3",
+      "kind": "control",
+      "note": "Equal outlined answer key b3, unselected.",
+      "grid": "A0:J9",
+      "snap": false,
+      "box": {
+        "x": 0.636,
+        "y": 0.3412,
+        "w": 0.1086,
+        "h": 0.2014
+      },
+      "px": {
+        "x": 685,
+        "y": 144,
+        "w": 117,
+        "h": 85
+      },
+      "aspect": 1.3765,
+      "palette": [
+        {
+          "hex": "#f6f7f7",
+          "coverage": 0.9664
+        },
+        {
+          "hex": "#0c0c0c",
+          "coverage": 0.015
+        },
+        {
+          "hex": "#c9d8e7",
+          "coverage": 0.0115
+        },
+        {
+          "hex": "#aeb2b2",
+          "coverage": 0.0044
+        },
+        {
+          "hex": "#5d5d5d",
+          "coverage": 0.0027
+        }
+      ],
+      "detail": {
+        "energy": 5.0702
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "answer-4",
+      "kind": "control",
+      "note": "Equal outlined answer key 3, unselected.",
+      "grid": "A0:J9",
+      "snap": false,
+      "box": {
+        "x": 0.7549,
+        "y": 0.3412,
+        "w": 0.1086,
+        "h": 0.2014
+      },
+      "px": {
+        "x": 813,
+        "y": 144,
+        "w": 117,
+        "h": 85
+      },
+      "aspect": 1.3765,
+      "palette": [
+        {
+          "hex": "#f7f7f7",
+          "coverage": 0.9354
+        },
+        {
+          "hex": "#d3ddea",
+          "coverage": 0.054
+        },
+        {
+          "hex": "#0c0c0c",
+          "coverage": 0.0071
+        },
+        {
+          "hex": "#a3a3a3",
+          "coverage": 0.0027
+        },
+        {
+          "hex": "#484848",
+          "coverage": 0.0009
+        }
+      ],
+      "detail": {
+        "energy": 3.107
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "answer-5",
+      "kind": "control",
+      "note": "Equal outlined answer key 11, unselected.",
+      "grid": "A0:J9",
+      "snap": false,
+      "box": {
+        "x": 0.8737,
+        "y": 0.3412,
+        "w": 0.1086,
+        "h": 0.2014
+      },
+      "px": {
+        "x": 941,
+        "y": 144,
+        "w": 117,
+        "h": 85
+      },
+      "aspect": 1.3765,
+      "palette": [
+        {
+          "hex": "#f7f7f7",
+          "coverage": 0.915
+        },
+        {
+          "hex": "#ced7dd",
+          "coverage": 0.069
+        },
+        {
+          "hex": "#817f83",
+          "coverage": 0.008
+        },
+        {
+          "hex": "#303030",
+          "coverage": 0.0053
+        },
+        {
+          "hex": "#0d0d0d",
+          "coverage": 0.0027
+        }
+      ],
+      "detail": {
+        "energy": 4.1016
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "answer-6",
+      "kind": "control",
+      "note": "Equal outlined answer key #11, unselected.",
+      "grid": "A0:J9",
+      "snap": false,
+      "box": {
+        "x": 0.2795,
+        "y": 0.5664,
+        "w": 0.1086,
+        "h": 0.2014
+      },
+      "px": {
+        "x": 301,
+        "y": 239,
+        "w": 117,
+        "h": 85
+      },
+      "aspect": 1.3765,
+      "palette": [
+        {
+          "hex": "#f6f7f7",
+          "coverage": 0.9655
+        },
+        {
+          "hex": "#0c0c0c",
+          "coverage": 0.0159
+        },
+        {
+          "hex": "#cdd1db",
+          "coverage": 0.0106
+        },
+        {
+          "hex": "#aaadaf",
+          "coverage": 0.0062
+        },
+        {
+          "hex": "#484850",
+          "coverage": 0.0018
+        }
+      ],
+      "detail": {
+        "energy": 5.9197
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "answer-7",
+      "kind": "control",
+      "note": "Equal outlined answer key 5, unselected.",
+      "grid": "A0:J9",
+      "snap": false,
+      "box": {
+        "x": 0.3983,
+        "y": 0.5664,
+        "w": 0.1086,
+        "h": 0.2014
+      },
+      "px": {
+        "x": 429,
+        "y": 239,
+        "w": 117,
+        "h": 85
+      },
+      "aspect": 1.3765,
+      "palette": [
+        {
+          "hex": "#f7f7f7",
+          "coverage": 0.9858
+        },
+        {
+          "hex": "#0f0f11",
+          "coverage": 0.0062
+        },
+        {
+          "hex": "#ccd0e0",
+          "coverage": 0.0035
+        },
+        {
+          "hex": "#808080",
+          "coverage": 0.0035
+        },
+        {
+          "hex": "#a8a8a8",
+          "coverage": 0.0009
+        }
+      ],
+      "detail": {
+        "energy": 2.9493
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "answer-8",
+      "kind": "control",
+      "note": "Equal outlined answer key b13, unselected.",
+      "grid": "A0:J9",
+      "snap": false,
+      "box": {
+        "x": 0.5172,
+        "y": 0.5664,
+        "w": 0.1086,
+        "h": 0.2014
+      },
+      "px": {
+        "x": 557,
+        "y": 239,
+        "w": 117,
+        "h": 85
+      },
+      "aspect": 1.3765,
+      "palette": [
+        {
+          "hex": "#f7f7f7",
+          "coverage": 0.9664
+        },
+        {
+          "hex": "#121213",
+          "coverage": 0.0168
+        },
+        {
+          "hex": "#bebfc3",
+          "coverage": 0.0115
+        },
+        {
+          "hex": "#8d888d",
+          "coverage": 0.0027
+        },
+        {
+          "hex": "#383838",
+          "coverage": 0.0027
+        }
+      ],
+      "detail": {
+        "energy": 5.9882
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "answer-9",
+      "kind": "control",
+      "note": "Equal outlined answer key 13, unselected.",
+      "grid": "A0:J9",
+      "snap": false,
+      "box": {
+        "x": 0.636,
+        "y": 0.5664,
+        "w": 0.1086,
+        "h": 0.2014
+      },
+      "px": {
+        "x": 685,
+        "y": 239,
+        "w": 117,
+        "h": 85
+      },
+      "aspect": 1.3765,
+      "palette": [
+        {
+          "hex": "#f7f7f7",
+          "coverage": 0.9797
+        },
+        {
+          "hex": "#080808",
+          "coverage": 0.0097
+        },
+        {
+          "hex": "#c5c5c8",
+          "coverage": 0.0053
+        },
+        {
+          "hex": "#98989b",
+          "coverage": 0.0044
+        },
+        {
+          "hex": "#686868",
+          "coverage": 0.0009
+        }
+      ],
+      "detail": {
+        "energy": 4.1061
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "answer-10",
+      "kind": "control",
+      "note": "Equal outlined answer key b7, unselected.",
+      "grid": "A0:J9",
+      "snap": false,
+      "box": {
+        "x": 0.7549,
+        "y": 0.5664,
+        "w": 0.1086,
+        "h": 0.2014
+      },
+      "px": {
+        "x": 813,
+        "y": 239,
+        "w": 117,
+        "h": 85
+      },
+      "aspect": 1.3765,
+      "palette": [
+        {
+          "hex": "#f6f7f7",
+          "coverage": 0.9788
+        },
+        {
+          "hex": "#0a0a0a",
+          "coverage": 0.0124
+        },
+        {
+          "hex": "#b8b8ba",
+          "coverage": 0.0071
+        },
+        {
+          "hex": "#585858",
+          "coverage": 0.0009
+        },
+        {
+          "hex": "#786878",
+          "coverage": 0.0009
+        }
+      ],
+      "detail": {
+        "energy": 4.2144
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "answer-11",
+      "kind": "control",
+      "note": "Equal outlined answer key maj7, unselected.",
+      "grid": "A0:J9",
+      "snap": false,
+      "box": {
+        "x": 0.8737,
+        "y": 0.5664,
+        "w": 0.1086,
+        "h": 0.2014
+      },
+      "px": {
+        "x": 941,
+        "y": 239,
+        "w": 117,
+        "h": 85
+      },
+      "aspect": 1.3765,
+      "palette": [
+        {
+          "hex": "#f6f7f7",
+          "coverage": 0.9538
+        },
+        {
+          "hex": "#cacbd0",
+          "coverage": 0.0169
+        },
+        {
+          "hex": "#434243",
+          "coverage": 0.0124
+        },
+        {
+          "hex": "#080809",
+          "coverage": 0.0115
+        },
+        {
+          "hex": "#959595",
+          "coverage": 0.0053
+        }
+      ],
+      "detail": {
+        "energy": 7.5049
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "details",
+      "kind": "control",
+      "note": "Session settings disclosure below response area.",
+      "grid": "A0:J9",
+      "snap": false,
+      "box": {
+        "x": 0.0223,
+        "y": 0.8815,
+        "w": 0.2321,
+        "h": 0.1137
+      },
+      "px": {
+        "x": 24,
+        "y": 372,
+        "w": 250,
+        "h": 48
+      },
+      "aspect": 5.2083,
+      "palette": [
+        {
+          "hex": "#f8f8f8",
+          "coverage": 0.9336
+        },
+        {
+          "hex": "#666d83",
+          "coverage": 0.0254
+        },
+        {
+          "hex": "#c6cbd6",
+          "coverage": 0.0224
+        },
+        {
+          "hex": "#969aaf",
+          "coverage": 0.0097
+        },
+        {
+          "hex": "#333953",
+          "coverage": 0.009
+        }
+      ],
+      "detail": {
+        "energy": 15.3602
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    }
+  ]
+}

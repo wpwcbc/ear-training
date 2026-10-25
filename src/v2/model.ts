@@ -20,6 +20,7 @@ export interface Config {
   targets: string[];
   method: "imagined" | "sung" | "played";
   context: boolean;
+  autoAdvance?: boolean;
   count: number;
   volume: number;
 }
@@ -36,6 +37,7 @@ const base: Config = {
   targets: ["Third", "Seventh"],
   method: "imagined",
   context: true,
+  autoAdvance: true,
   count: 10,
   volume: 0.6,
 };
@@ -106,9 +108,11 @@ export function validate(input: Config): Config {
     !["m1", "m2"].includes(c.exercise) ||
     !["functional", "exact"].includes(c.targetMode) ||
     !["imagined", "sung", "played"].includes(c.method) ||
-    typeof c.context !== "boolean"
+    typeof c.context !== "boolean" ||
+    (c.autoAdvance !== undefined && typeof c.autoAdvance !== "boolean")
   )
     throw new Error("Unsupported exercise settings.");
+  c.autoAdvance ??= true;
   for (const [items, vocabulary, label] of [
     [c.roots, roots, "root"],
     [c.qualities, qualities, "chord quality"],
@@ -244,7 +248,7 @@ export function attempt(
     firstAnswer: null,
     firstCorrect: null,
     firstResponseMs: null,
-    timingVersion,
+    timingVersion: c.exercise === "m1" ? "v2-m1-chord-onset-2" : timingVersion,
     timingValidity: "unavailable",
     replaysBeforeFirst: 0,
     replaysAfterFirst: 0,

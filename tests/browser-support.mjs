@@ -1,4 +1,4 @@
-export const labURL = "http://127.0.0.1:4173/jazz-ear-lab/";
+export const labURL = `${process.env.BASE_URL || "http://127.0.0.1:4173"}/jazz-ear-lab/`;
 export async function configure(page, config, customs) {
   await page.goto(labURL + "#/home");
   await page.evaluate(
