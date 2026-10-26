@@ -700,7 +700,7 @@ function results(id) {
                 await audio.ready();
                 if (token !== reviewOperation || location.hash !== "#results/" + s.id)
                     return;
-                audio.playReference(a.target.chord, a.target.midi, s.config.volume);
+                audio.playReference(a.target.chord, a.target.midi, s.config.volume, null, s.config.voiceLevels);
                 a.replaysAfterFirst++;
                 a.revealedReference = true;
                 persist();
