@@ -326,3 +326,10 @@ runtime captures were checked; this extends the system without replacing tokens.
 Progression homepage entries use the same `.exercise` rows as M1/M2, including
 identical yellow Start and secondary Customize actions with the existing sliders
 icon. Start launches that mode directly; Customize opens its configuration.
+
+The progression consistency repair reuses the actual M1/M2 configuration steps,
+yellow session bar, musical anchor/response workspace and accuracy-led result
+summary. Answers stay grouped by chord, disclosed mix controls use the shared
+label/range/value rows, and detailed per-note outcomes live in expandable review
+tables with local horizontal scrolling. Desktop/mobile runtime evidence and check
+limits are recorded in `.impeccable/critique/2026-10-26-progression-consistency.md`.
