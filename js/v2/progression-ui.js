@@ -55,13 +55,35 @@ export function progressionEvidence() {
         };
     })));
 }
-export function mountProgression(root, initialMode = "recognition", autoStart = false) {
+export function progressionSessions() {
+    return (retainedRuns ?? read(historyKey, [])).map((run) => ({
+        id: run.id,
+        startedAt: run.questions[0]?.created ?? "",
+        label: run.config.mode === "singing" ? "Guided Singing" : "Progression Recognition",
+        count: run.questions.length,
+        ended: run.ended,
+        href: `#progression/${run.config.mode}/results/${encodeURIComponent(run.id)}`,
+    }));
+}
+export function progressionConditions(context) {
+    try {
+        const c = validate(JSON.parse(context));
+        const pools = Object.entries(c.pools).map(([quality, pool]) => `${quality}: ${pool.join(", ")}`).join("; ");
+        return `${c.mode === "singing" ? "Guided Singing" : "Progression Recognition"} · ${c.chords.map(row => `${row.symbol} (${row.beats} beats)`).join(" → ")} · ${c.bpm} BPM · ${c.notes} ${c.notes === 1 ? "note" : "notes"} per chord · Targets: ${pools} · Voice mix: ${c.levels.map(level => Math.round(level * 100) + "%").join(", ")} · Volume: ${Math.round(c.volume * 100)}% · Progression timing unavailable`;
+    }
+    catch {
+        return "Progression · stored conditions unavailable";
+    }
+}
+export function mountProgression(root, initialMode = "recognition", autoStart = false, resultId) {
     const host = document.createElement("div");
     host.className = "progression-work";
     const audio = new AudioEngine();
     let token = 0, closed = false, busy = false, heard = false, referenceHeard = false, view = "settings", activeRun = null, question = null, answers = [], frame = 0;
     const presets = read(presetKey, {}), runs = retainedRuns ?? read(historyKey, []);
     let mixOpen = false, settingsStep = "Harmony";
+    const buttonCounts = new Map();
+    let ratingFocus = false, feedback = "";
     let config = structuredClone(presets[initialMode] ?? { ...defaults, mode: initialMode }), message = retainedRuns
         ? "Unsaved progression results retained. Retry saving."
         : "";
@@ -87,6 +109,9 @@ export function mountProgression(root, initialMode = "recognition", autoStart = 
     const button = (text, action, disabled = false) => {
         const b = el("button", text);
         b.type = "button";
+        const occurrence = buttonCounts.get(text) ?? 0;
+        buttonCounts.set(text, occurrence + 1);
+        b.dataset.control = `button:${text}:${occurrence}`;
         b.disabled = disabled;
         b.className = [
             "Start practice",
@@ -218,6 +243,8 @@ export function mountProgression(root, initialMode = "recognition", autoStart = 
         answers = question.notes.map(() => "");
         heard = false;
         referenceHeard = false;
+        feedback = "";
+        ratingFocus = false;
         view = "practice";
         save();
         render();
@@ -383,6 +410,8 @@ export function mountProgression(root, initialMode = "recognition", autoStart = 
     function render() {
         const focused = document.activeElement;
         const key = focused?.dataset.control;
+        const priorView = host.dataset.view;
+        const openDetails = new Set(Array.from(root.querySelectorAll("details[data-disclosure]")).filter(node => node.open).map(node => node.dataset.disclosure));
         renderContent();
         host.dataset.view = view;
         const title = host.querySelector("h1");
@@ -422,7 +451,7 @@ export function mountProgression(root, initialMode = "recognition", autoStart = 
             if (playback)
                 anchor.append(playback);
             const workspace = el("div");
-            workspace.className = "practice-workspace";
+            workspace.className = "practice-workspace" + (config.mode === "singing" ? " progression-singing" : "");
             workspace.append(anchor, host);
             root.replaceChildren(top, workspace);
         }
@@ -440,14 +469,38 @@ export function mountProgression(root, initialMode = "recognition", autoStart = 
             title.remove();
             root.replaceChildren(title, ...Array.from(host.children));
         }
-        if (key)
-            host
-                .querySelector(`[data-control="${key}"]`)
-                ?.focus({ preventScroll: true });
+        for (const node of Array.from(root.querySelectorAll("details[data-disclosure]")))
+            node.open = openDetails.has(node.dataset.disclosure);
+        const controls = Array.from(root.querySelectorAll("[data-control]"));
+        let target = controls.find(node => node.dataset.control === key && !node.disabled);
+        const moveToRating = ratingFocus && referenceHeard;
+        if (moveToRating) {
+            target = root.querySelector("[data-unrated] button") ?? controls.find(node => node.textContent === "Next question" || node.textContent === "Finish");
+            ratingFocus = false;
+        }
+        if (!target && key?.startsWith("review-") && question)
+            target = controls.find(node => node.dataset.control === `${busy ? "review-stop" : "review-replay"}:${question.id}`);
+        if (!target && (key || priorView !== view)) {
+            target = root.querySelector(view === "results" || view === "settings" ? "h1" : busy ? "[data-playback-status]" : ".progression-answer-board h2");
+        }
+        if (target && (key || priorView !== view || document.activeElement === document.body)) {
+            if (!target.matches("button,input,select,summary,a"))
+                target.tabIndex = -1;
+            target.focus({ preventScroll: true });
+            if (moveToRating)
+                target.scrollIntoView({ block: "nearest" });
+        }
+        const announcement = document.getElementById("practice-announcement");
+        const state = message || (view === "practice"
+            ? `${config.mode === "singing" ? "Guided Singing" : "Progression Recognition"}. Question ${activeRun.questions.length}. ${busy ? "Playing" : question.submitted ? "Answers checked" : referenceHeard ? "Reference complete. Rate your response" : heard ? config.mode === "singing" ? "Ready to sing or hear full reference" : "Ready to answer" : "Ready"}. ${feedback}`
+            : view === "results" ? `${config.mode === "singing" ? "Guided Singing" : "Progression Recognition"} results. ${busy ? "Reference playing" : "Playback stopped"}` : `Progression settings. ${settingsStep}`);
+        if (announcement && announcement.textContent !== state)
+            announcement.textContent = state;
     }
     let control = 0;
     function renderContent() {
         control = 0;
+        buttonCounts.clear();
         if (closed)
             return;
         host.replaceChildren();
@@ -538,14 +591,14 @@ export function mountProgression(root, initialMode = "recognition", autoStart = 
                 group.append(field(`Chord ${i + 1}`, row.symbol, (value) => {
                     row.symbol = value;
                     addQualityPools(config);
-                }), field("Beats", String(row.beats), (value) => (row.beats = Number(value)), "number"), button("Up", () => {
+                }), field(`Chord ${i + 1} beats`, String(row.beats), (value) => (row.beats = Number(value)), "number"), button(`Move chord ${i + 1} up`, () => {
                     [config.chords[i - 1], config.chords[i]] = [
                         config.chords[i],
                         config.chords[i - 1],
                     ];
                     persistConfig();
                     render();
-                }, i === 0), button("Remove", () => {
+                }, i === 0), button(`Remove chord ${i + 1}`, () => {
                     config.chords.splice(i, 1);
                     try {
                         persistConfig();
@@ -633,10 +686,12 @@ export function mountProgression(root, initialMode = "recognition", autoStart = 
             host.append(summary(run.questions));
             const review = el("details");
             review.className = "question-review";
+            review.dataset.disclosure = "question-review";
             review.append(el("summary", "Question review"));
             for (const q of run.questions) {
                 const item = el("details");
                 item.className = "progression-review-group";
+                item.dataset.disclosure = q.id;
                 const m = report([q]);
                 item.append(el("summary", `Progression ${run.questions.indexOf(q) + 1} · ${m.correct} / ${m.assessed} assessed`), el("p", `${q.before} pre-check replay events · ${q.after} review events`));
                 const table = el("table"), head = el("tr");
@@ -676,10 +731,24 @@ export function mountProgression(root, initialMode = "recognition", autoStart = 
                 scroll.setAttribute("role", "region");
                 scroll.setAttribute("aria-label", "Progression note outcomes");
                 scroll.append(table);
-                item.append(scroll, button("Replay whole reference", () => {
+                const replay = button("Replay whole reference", () => {
                     question = q;
                     return play(true, true);
-                }));
+                }, busy);
+                replay.dataset.control = "review-replay:" + q.id;
+                const playback = el("div");
+                playback.className = "actions";
+                playback.append(replay);
+                if (busy && question?.id === q.id) {
+                    const stop = button("Stop reference", () => { stopAudio(); render(); });
+                    stop.dataset.control = "review-stop:" + q.id;
+                    playback.append(stop);
+                    const status = el("p", "Reference playing");
+                    status.className = "playback-status";
+                    status.dataset.playbackStatus = "";
+                    item.append(status);
+                }
+                item.append(scroll, playback);
                 review.append(item);
             }
             host.append(review);
@@ -692,7 +761,11 @@ export function mountProgression(root, initialMode = "recognition", autoStart = 
             return;
         }
         const q = question;
-        host.append(el("p", busy ? "Playing" : heard ? "Ready to answer" : "Ready"));
+        const status = el("p", busy ? "Playing" : referenceHeard ? "Reference complete · rate each note" : heard ? config.mode === "singing" ? "Ready to sing" : "Ready to answer" : "Ready");
+        status.dataset.playbackStatus = "";
+        status.dataset.control = "playback-status";
+        status.className = "playback-status";
+        host.append(status);
         const chords = el("div");
         chords.className = "actions";
         q.config.chords.forEach((row, i) => {
@@ -700,7 +773,8 @@ export function mountProgression(root, initialMode = "recognition", autoStart = 
             item.dataset.chord = String(i);
             chords.append(item);
         });
-        host.append(chords);
+        if (q.config.mode === "recognition")
+            host.append(chords);
         const checked = q.submitted || q.done;
         const playback = el("div");
         playback.className = "actions progression-playback";
@@ -709,6 +783,7 @@ export function mountProgression(root, initialMode = "recognition", autoStart = 
         if (q.config.mode === "singing" && !q.done)
             host.append(button("Done — hear full reference", () => {
                 q.done = true;
+                ratingFocus = true;
                 save();
                 return play(true, false);
             }, busy || !heard));
@@ -734,7 +809,12 @@ export function mountProgression(root, initialMode = "recognition", autoStart = 
             host.append(el("p", "Individual self-ratings · no microphone verification"));
             q.notes.forEach((n, i) => {
                 const row = el("section");
-                row.append(el("h3", `${n.occurrence + 1} · ${n.chord.symbol} · note ${n.position + 1}`));
+                row.dataset.note = String(i);
+                row.setAttribute("role", "group");
+                row.setAttribute("aria-label", `${n.occurrence + 1} · ${n.chord.symbol} · note ${n.position + 1}`);
+                if (n.correct === null)
+                    row.dataset.unrated = "";
+                row.append(el("h3", `Note ${n.position + 1}`));
                 const target = el("p", n.degree);
                 target.className = "progression-target-degree";
                 row.append(target);
@@ -746,6 +826,8 @@ export function mountProgression(root, initialMode = "recognition", autoStart = 
                         actions.className = "actions";
                         actions.append(button("Correct", () => {
                             rate(q, i, true);
+                            feedback = `Chord ${n.occurrence + 1}, note ${n.position + 1}: self-rated correct.`;
+                            ratingFocus = true;
                             save();
                             render();
                         }), button("Incorrect", () => {
@@ -762,9 +844,13 @@ export function mountProgression(root, initialMode = "recognition", autoStart = 
                                 save();
                             }), button("Save incorrect rating", () => {
                                 rate(q, i, false, n.answer ?? "unknown");
+                                feedback = `Chord ${n.occurrence + 1}, note ${n.position + 1}: self-rated incorrect.`;
+                                ratingFocus = true;
                                 save();
                                 render();
                             }));
+                        for (const action of Array.from(actions.querySelectorAll("button,select")))
+                            action.dataset.control = `note:${n.id}:${action.textContent?.startsWith("Correct") ? "correct" : action.tagName === "SELECT" ? "answer" : action.textContent}`;
                         row.append(actions, el("p", "Unassessed until rated."));
                     }
                 }
@@ -794,15 +880,31 @@ export function mountProgression(root, initialMode = "recognition", autoStart = 
             });
         }
         else {
-            const rows = Array.from(host.querySelectorAll(":scope > section"));
-            for (const row of rows)
-                board.append(row);
+            const rows = Array.from(host.querySelectorAll(":scope > section[data-note]"));
+            q.config.chords.forEach((chord, occurrence) => {
+                const group = el("fieldset");
+                group.className = "progression-chord-group";
+                group.append(el("legend", `${occurrence + 1} · ${chord.symbol} · ${chord.beats} beats`));
+                const grid = el("div");
+                grid.className = "progression-note-grid";
+                grid.style.gridTemplateColumns = `repeat(${q.config.notes}, minmax(0, 1fr))`;
+                for (const row of rows.slice(occurrence * q.config.notes, (occurrence + 1) * q.config.notes))
+                    grid.append(row);
+                group.append(grid);
+                board.append(group);
+            });
         }
         const submitButton = Array.from(host.querySelectorAll(":scope > button")).find((b) => b.textContent === "Submit all answers");
         const doneButton = Array.from(host.querySelectorAll(":scope > button")).find((b) => b.textContent === "Done — hear full reference");
         if (doneButton)
             doneButton.classList.add("done-action");
-        host.append(board);
+        const boardTitle = board.querySelector("h2");
+        boardTitle.dataset.control = "answer-board-title";
+        boardTitle.tabIndex = -1;
+        if (doneButton)
+            host.insertBefore(board, doneButton);
+        else
+            host.append(board);
         if (submitButton) {
             const row = el("div");
             row.className = "actions";
@@ -830,8 +932,18 @@ export function mountProgression(root, initialMode = "recognition", autoStart = 
         }
     };
     document.addEventListener("visibilitychange", hidden);
+    if (resultId) {
+        const saved = runs.find(run => run.id === resultId);
+        if (saved) {
+            activeRun = saved;
+            config = structuredClone(saved.config);
+            view = "results";
+        }
+        else
+            message = "This progression session is not available in this browser. Choose a preset to practice.";
+    }
     render();
-    if (autoStart) {
+    if (autoStart && !resultId) {
         try {
             startPractice();
         }

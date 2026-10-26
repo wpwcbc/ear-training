@@ -1,4 +1,4 @@
-import { mountProgression, progressionEvidence } from "./progression-ui.js";
+import { mountProgression, progressionEvidence, progressionSessions, progressionConditions } from "./progression-ui.js";
 import { AudioEngine } from "../jazz/audio.js";
 import { parseChord, chordNotes, chordToneDegrees, degreeForPc } from "../jazz/theory.js";
 import { QuestionLifecycle } from "./question.js";
@@ -803,12 +803,20 @@ function insights() {
     let rows = insightRows(all, insightModule, production);
     host.append(scope);
     if (!rows.length) {
-        host.append(el("p", "No matching V2 records. Start an M1 or M2 preset."), button("Practice", () => location.hash = "home"));
+        const progressionMode = insightModule === "progression-singing" ? "singing" : insightModule === "progression-recognition" ? "recognition" : null;
+        const label = progressionMode === "singing" ? "Guided Singing" : "Progression Recognition";
+        host.append(el("p", progressionMode ? `No ${label} records yet. Start a progression practice.` : "No matching V2 records. Choose an exercise to start practicing."), button(progressionMode ? `Practice ${label}` : "Practice", () => location.hash = progressionMode ? `progression/${progressionMode}` : "home"));
         return;
     }
     const c = rows[0].configurationSnapshot;
     scope.append(el("p", "V2 outcomes · self-ratings and selected answers count equally. Self-ratings are not pitch-verified."));
-    scope.append(disclosure("Source conditions", ...[...new Set(rows.map(a => (a.progressionContext ?? describe(a.configurationSnapshot)) + " · " + a.timingVersion + " · " + a.target.generatorVersion))].map(text => el("p", text))));
+    const conditions = [...new Set(rows.map(a => a.progressionContext ? progressionConditions(a.progressionContext) : describe(a.configurationSnapshot)))];
+    const versions = [...new Set(rows.map(a => `${a.timingVersion} · ${a.target.generatorVersion}`))];
+    scope.append(disclosure("Source conditions", ...conditions.map(text => el("p", text)), disclosure("Technical versions", ...versions.map(text => el("p", text)))));
+    const historyEntries = [
+        ...sessions.map(s => ({ id: s.id, startedAt: s.startedAt, label: s.config.exercise.toUpperCase(), count: s.attempts.length, unit: "records", ended: Boolean(s.endedAt), href: "#results/" + s.id })),
+        ...progressionSessions().map(s => ({ ...s, unit: s.count === 1 ? "progression" : "progressions" })),
+    ].sort((a, b) => b.startedAt.localeCompare(a.startedAt));
     const filters = el("div", "", "insight-filters");
     filters.append(select("Root", rootFilter || "All selected roots", ["All selected roots", ...new Set(rows.map((a) => a.target.chord.root))], (value) => {
         rootFilter = value === "All selected roots" ? "" : value;
@@ -823,7 +831,7 @@ function insights() {
         host.append(el("p", "Not enough comparable data for these filters."), button("Clear filters", () => { rootFilter = ""; qualityFilter = ""; render(); }));
         return;
     }
-    const dates = sessions.filter((s) => rows.some((a) => a.sessionId === s.id)).map((s) => s.startedAt.slice(0, 10)).sort();
+    const dates = historyEntries.filter((s) => rows.some((a) => a.sessionId === s.id)).map((s) => s.startedAt.slice(0, 10)).sort();
     if (dates.length) {
         const range = dates[0] === dates[dates.length - 1] ? dates[0] : `${dates[0]} to ${dates[dates.length - 1]}`;
         scope.append(el("p", `Recorded ${range} · All matching sessions`, "scope-date"));
@@ -879,16 +887,16 @@ function insights() {
     const detail = disclosure("Detailed breakdown", scroll, confusions(rows), notes);
     detail.className = "insight-detail";
     const history = el("ul", "", "session-history");
-    for (const s of sessions.slice().reverse()) {
-        const item = el("li"), link = el("a", `${s.startedAt.slice(0, 10)} · ${s.config.exercise.toUpperCase()} · ${s.attempts.length} records${s.endedAt ? "" : " (interrupted)"}`);
-        link.href = "#results/" + s.id;
+    const matching = historyEntries.filter(s => rows.some(a => a.sessionId === s.id));
+    for (const s of matching) {
+        const item = el("li"), link = el("a", `${s.startedAt.slice(0, 10)} · ${s.label} · ${s.count} ${s.unit}${s.ended ? "" : " (interrupted)"}`);
+        link.href = s.href;
         item.append(link);
         history.append(item);
     }
-    const latest = sessions.slice().reverse().find((s) => rows.some((a) => a.sessionId === s.id));
-    if (latest) {
+    if (matching[0]) {
         const link = el("a", "View latest matching session", "session-link");
-        link.href = "#results/" + latest.id;
+        link.href = matching[0].href;
         const item = el("li");
         item.append(link);
         history.prepend(item);
@@ -902,6 +910,8 @@ function render() {
     if (fatal)
         return;
     const route = location.hash.slice(1) || "home";
+    if (route !== "practice")
+        document.getElementById("practice-announcement").textContent = "";
     if (session && route !== "practice") {
         finish(route);
         return;
@@ -928,7 +938,7 @@ function render() {
     host.replaceChildren();
     if (route === "progression" || route.startsWith("progression/")) {
         try {
-            disposeProgression = mountProgression(host, route.split("/")[1] === "singing" ? "singing" : "recognition", route.endsWith("/start"));
+            disposeProgression = mountProgression(host, route.split("/")[1] === "singing" ? "singing" : "recognition", route.endsWith("/start"), route.split("/")[2] === "results" ? decodeURIComponent(route.split("/")[3] ?? "") : undefined);
         }
         catch (e) {
             report(e);
