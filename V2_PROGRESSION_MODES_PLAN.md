@@ -1,7 +1,7 @@
 # V2 Progression Recognition and Guided Audiation — discovery
 
-Status: Design interview opened on 2026-10-26. No implementation authorized by
-this document; unsettled choices remain explicit. This is a new V2 progression
+Status: Design interview and consolidated design confirmed by the user on
+2026-10-26. This document records the agreed design, not implementation approval. This is a new V2 progression
 scope beyond Release 1, not a request to replace Legacy progression exercises.
 
 ## User request
@@ -156,7 +156,16 @@ Each mode has its own statistics. Per-note assessed accuracy contributes equally
 to Overall; no duplicate whole-question grade. Progression speed does not enter
 Overall and no per-note latency is inferred. Replay attribution follows Q18.
 
-All individual decisions Q1–Q18 are confirmed. This consolidated summary still
-awaits the user's final shared-understanding confirmation. This document is a
+All individual decisions Q1–Q18 and the consolidated summary were confirmed
+by the user on 2026-10-26. The design interview is complete. This document is a
 design record, not runtime implementation, an implementation spec or approval
 of a visual composition. No specific new module IDs are assigned here.
+
+## Final confirmation
+
+The user explicitly confirmed the complete shared understanding after Q18.
+Earlier open-question/status sections describe the interview's historical state;
+the confirmed rounds and consolidated design govern the final scope. Do not
+reopen those product choices by default. Implementation details and visual
+compositions remain subsequent work, with existing comp-first conventions.
+No application code, grading, history or runtime behavior changed in this interview.
