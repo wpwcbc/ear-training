@@ -4,7 +4,7 @@ const browser=await chromium.launch({executablePath:process.env.PLAYWRIGHT_CHROM
 try{
  const page=await browser.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
  const url='http://127.0.0.1:4173/jazz-ear-lab-v2/';
- await page.goto(url+'#home');await page.getByRole('button',{name:'Progression Recognition',exact:true}).click();
+ await page.goto(url+'#home');await page.getByRole('article',{name:'Progression Recognition',exact:true}).getByRole('button',{name:'Customize',exact:true}).click();
  await page.getByLabel('BPM',{exact:true}).fill('300');await page.getByLabel('BPM',{exact:true}).dispatchEvent('change');
  await page.getByLabel('Questions (0 = Unlimited)',{exact:true}).fill('1');await page.getByLabel('Questions (0 = Unlimited)',{exact:true}).dispatchEvent('change');
  await page.getByRole('button',{name:'Start practice',exact:true}).click();

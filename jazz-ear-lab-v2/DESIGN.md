@@ -322,3 +322,7 @@ settings group harmony, practice timing, quality pools and disclosed mix control
 mobile Start remains viewport-attached. Recognition presents all positions on one
 answer surface, independent of fill order. Source/Spec review and desktop/mobile
 runtime captures were checked; this extends the system without replacing tokens.
+
+Progression homepage entries use the same `.exercise` rows as M1/M2, including
+identical yellow Start and secondary Customize actions with the existing sliders
+icon. Start launches that mode directly; Customize opens its configuration.

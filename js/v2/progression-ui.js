@@ -55,7 +55,7 @@ export function progressionEvidence() {
         };
     })));
 }
-export function mountProgression(root, initialMode = "recognition") {
+export function mountProgression(root, initialMode = "recognition", autoStart = false) {
     const host = document.createElement("div");
     host.className = "progression-work";
     const audio = new AudioEngine();
@@ -181,6 +181,12 @@ export function mountProgression(root, initialMode = "recognition") {
         const valid = validate(config);
         write(presetKey, { ...presets, [presetId]: valid });
         presets[presetId] = valid;
+    }
+    function startPractice() {
+        const valid = validate(config);
+        activeRun = { id: crypto.randomUUID(), config: valid, questions: [], ended: false };
+        runs.push(activeRun);
+        next();
     }
     function next() {
         stopAudio();
@@ -472,17 +478,7 @@ export function mountProgression(root, initialMode = "recognition") {
                 mix.append(field(`Voice ${i + 1} (%)`, String(config.levels[i] * 100), (value) => (config.levels[i] = Number(value) / 100), "number"));
             mix.append(field("Overall volume (%)", String(config.volume * 100), (value) => (config.volume = Number(value) / 100), "number"));
             host.append(mix);
-            host.append(button("Start practice", () => {
-                const valid = validate(config);
-                activeRun = {
-                    id: crypto.randomUUID(),
-                    config: valid,
-                    questions: [],
-                    ended: false,
-                };
-                runs.push(activeRun);
-                next();
-            }));
+            host.append(button("Start practice", startPractice));
             for (const run of runs.slice().reverse())
                 host.append(button(`Results · ${run.config.mode} · ${run.questions.length} questions`, () => {
                     activeRun = run;
@@ -608,6 +604,15 @@ export function mountProgression(root, initialMode = "recognition") {
     };
     document.addEventListener("visibilitychange", hidden);
     render();
+    if (autoStart) {
+        try {
+            startPractice();
+        }
+        catch (e) {
+            message = e.message;
+            render();
+        }
+    }
     return () => {
         closed = true;
         stopAudio();

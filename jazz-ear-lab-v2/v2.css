@@ -266,3 +266,7 @@ th { background: var(--quiet); }
  .progression-start { position: fixed; bottom: 12px; left: 16px; right: 16px; z-index: 4; width: calc(100% - 32px); }
  .progression-work[data-view="settings"] { padding-bottom: 80px; }
 }
+@media (max-width: 359px) {
+  .exercise { grid-template-columns: minmax(0, 1fr); }
+  .exercise .actions { justify-content: flex-end; }
+}

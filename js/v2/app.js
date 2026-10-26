@@ -164,6 +164,13 @@ function home() {
         card.append(title, actions(button("Start", () => start(p), false), button("Customize", () => customize(p))));
         grid.append(card);
     }
+    for (const [mode, name] of [["recognition", "Progression Recognition"], ["singing", "Guided Singing"]]) {
+        const card = el("article", "", "exercise"), title = el("h2", name);
+        title.id = "progression-" + mode;
+        card.setAttribute("aria-labelledby", title.id);
+        card.append(title, actions(button("Start", () => location.hash = "progression/" + mode + "/start", false), button("Customize", () => location.hash = "progression/" + mode)));
+        grid.append(card);
+    }
     host.append(grid);
     const secondary = el("section", "", "saved-presets");
     secondary.setAttribute("aria-labelledby", "saved-presets-title");
@@ -194,7 +201,7 @@ function home() {
     }
     host.append(secondary);
     const pageTitle = host.querySelector("h1"), work = el("div", "", "home-work");
-    work.append(el("h2", "Exercises"), grid, actions(button("Progression Recognition", () => location.hash = "progression/recognition"), button("Guided Singing", () => location.hash = "progression/singing")), secondary);
+    work.append(el("h2", "Exercises"), grid, secondary);
     host.replaceChildren(splitView(pageTitle, work, "home-layout"));
 }
 function select(label, value, options, update) {
@@ -921,7 +928,7 @@ function render() {
     host.replaceChildren();
     if (route === "progression" || route.startsWith("progression/")) {
         try {
-            disposeProgression = mountProgression(host, route.endsWith("/singing") ? "singing" : "recognition");
+            disposeProgression = mountProgression(host, route.split("/")[1] === "singing" ? "singing" : "recognition", route.endsWith("/start"));
         }
         catch (e) {
             report(e);
