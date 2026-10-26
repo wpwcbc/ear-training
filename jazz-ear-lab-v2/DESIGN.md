@@ -302,3 +302,13 @@ The sidecar's ten self-contained, `ds-`-scoped examples sample these delivered p
 - **Don't** treat generated comp text, glyphs or example numbers as domain truth.
 - **Don't** use these visual tokens to redefine metrics, lifecycle behavior or Release 1 scope.
 - **Don't** treat captures, component previews or a limited fix verdict as whole-surface accessibility certification.
+
+## Target pools, voicing mix and Overall extension (2026-10-26)
+
+The user approved the voice-mix desktop/mobile compositions. The implementation
+extends the existing Signal Route system: per-quality checkbox groups, labeled
+original-voice range controls and unrecorded audition in Targets; Overall/M1/M2
+navigation, primary degree/confusion evidence and subordinate timing/replay in
+Insights. Existing typography, colors, controls and Split Desk breakpoints remain.
+Desktop/mobile captures were inspected and the module navigation spans the scope
+width on mobile. This extension does not replace tokens or the visual identity.

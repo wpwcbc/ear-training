@@ -1,6 +1,6 @@
 # Targets / voice mix / Insights compositions
 
-Status: Proposed, awaiting user confirmation. Synthetic illustrative data only.
+Status: Composition direction approved by the user on 2026-10-26. Synthetic illustrative data only.
 These are static layout proposals, not functional application pages or proof of
 implemented UI. Existing Signal Route / Split Desk identity is retained.
 
@@ -15,7 +15,7 @@ were opened and inspected, and their documents checked for horizontal overflow
 at 1440px and 390px. No application UI has been changed to these compositions.
 The illustrative target choices are not the complete supported degree vocabulary.
 
-## Implementation checkpoint
+## Historical core checkpoint (before UI approval)
 
 The core model supports optional per-quality pools and original-voice levels,
 old-preset conversion without historical mutation, a separately versioned
@@ -55,3 +55,5 @@ until composition confirmation. In particular, this is not a completed feature.
 The spec's full Customize → audition → Practice → Results → Insights acceptance
 flow remains pending UI implementation. Tests do not establish subjective sound
 quality, device loudness, learning gains or complete feature readiness.
+
+UI integration has since been completed; see V2_VOICE_MIX_DELIVERY.md at the repository root for current delivery status.
