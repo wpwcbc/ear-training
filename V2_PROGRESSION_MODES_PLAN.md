@@ -115,3 +115,48 @@ The main practice flow, generation, per-note grades and Overall accuracy boundar
 are confirmed. Final consolidated confirmation is pending. Replay-assistance
 attribution still needs an explicit decision if included in initial Insights.
 No implementation, spec conversion or ticket execution has begun in this interview.
+
+## Confirmed round 5 (Q18)
+
+- Whole-progression replays before first Recognition submission, or before
+  guided-singing Done, count as replay assistance for every assessed target
+  position in that progression question. Unassessed positions do not enter
+  the assessed replay-assistance denominator.
+- Initial playback and the first mandatory reference are not user replays.
+  After-boundary replays are review activity, recorded separately; they never
+  overwrite first grades or create per-note timing.
+
+## Consolidated design for final confirmation
+
+Two new V2 progression modes: Recognition and Guided Singing/Audiation.
+Custom editable/transposable progressions and common major ii–V–I, minor
+ ii–V–i and backdoor presets. Chord symbols and the current chord are visible.
+Configurable BPM, individual chord beats, one-bar count-in and uniform 1–4
+sequential targets per chord with equal within-chord spacing. Generate targets
+independently from preset-owned per-quality pools; repetitions allowed.
+
+Recognition plays the full progression, then presents every target position
+on one answer board. Fill in any order, retain answers across whole replay,
+and submit all together after choosing a degree or Don't know for each.
+Grade each position independently; Don't know is wrong without a fabricated
+confusion direction. Reveal individual results and offer a full reference.
+
+Guided singing displays all degrees from the start and plays full accompaniment
+without a separate target melody. Do not omit accompaniment target pitch classes.
+After the initial pass ends, Done triggers the whole reference; self-rate each
+position, recording wrong degree or Unknown for Incorrect, with unassessed
+remaining separate. No microphone verification is claimed.
+
+Each progression is one question; next retains the progression but generates
+new targets. Fixed question count or Unlimited. Presets retain pools, voice mix,
+overall volume, tempo and notes-per-chord settings; session snapshots govern
+practice and Results replay. Preserve existing modes and historical records.
+
+Each mode has its own statistics. Per-note assessed accuracy contributes equally
+to Overall; no duplicate whole-question grade. Progression speed does not enter
+Overall and no per-note latency is inferred. Replay attribution follows Q18.
+
+All individual decisions Q1–Q18 are confirmed. This consolidated summary still
+awaits the user's final shared-understanding confirmation. This document is a
+design record, not runtime implementation, an implementation spec or approval
+of a visual composition. No specific new module IDs are assigned here.
