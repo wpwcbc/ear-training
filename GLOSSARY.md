@@ -81,3 +81,8 @@ _Avoid_: Voicing voice (a target position belongs to the melody, not accompanime
 The single response surface containing all target positions of a progression
 question, allowing answers to be filled in any order before joint submission.
 _Avoid_: Per-note question screen.
+
+**Progression note outcome**:
+The result for one target position: a recognition selection grade or a guided
+singing self-rating, distinct from a whole-progression summary.
+_Avoid_: Whole-run rating (one overall rating cannot establish separate note outcomes).

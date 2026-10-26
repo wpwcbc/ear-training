@@ -68,3 +68,19 @@ Per-quality target generation, within-chord repetition, incomplete answers,
 self-rated wrong-degree detail, repeated progression questions and Insights
 contribution are not settled by Q6–Q9. Earlier open-question bullets are resolved
 only to the extent explicitly recorded in the confirmed rounds above.
+
+## Confirmed round 3 (Q10–Q13)
+
+- Each target position is independently generated from its chord quality's
+  selected degree pool. Repeated degrees, including consecutive repetitions,
+  are allowed. No initial voice-leading or curated-phrase generation.
+- Recognition uses one board with arbitrary fill order and whole replay. Every
+  position must contain a degree or explicit Don't know before joint submission.
+  Don't know is incorrect but has no fabricated confusion direction. Answers
+  may change freely before the first submission; preserve that first submission.
+- Guided singing self-rates each target position Correct/Incorrect. Incorrect
+  records the reported wrong degree or Unknown, like M1. Unassessed is supported
+  and is not incorrect. Do not claim microphone-verified accuracy.
+- A question is the entire progression. After grading it, next question retains
+  the progression and generates new target material. Sessions support a fixed
+  question count or Unlimited. No automatic progression switching initially.
