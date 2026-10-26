@@ -66,3 +66,18 @@ _Avoid_: Stored response method (imagined and sung remain distinct raw values).
 The total first-correct results divided by total assessed questions from the
 contributing V2 modules, accepting self-ratings and selection grades equally.
 _Avoid_: Average module accuracy (module percentages are not averaged).
+
+**Progression question**:
+A harmonic-hearing task spanning a known sequence of chords and its ordered
+melodic targets, heard or performed as a complete progression.
+_Avoid_: Session (a session may contain multiple progression questions).
+
+**Target position**:
+One ordered melodic-note position within a particular chord occurrence of a
+progression question; its degree is relative to that occurrence's chord.
+_Avoid_: Voicing voice (a target position belongs to the melody, not accompaniment).
+
+**Progression answer board**:
+The single response surface containing all target positions of a progression
+question, allowing answers to be filled in any order before joint submission.
+_Avoid_: Per-note question screen.
