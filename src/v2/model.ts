@@ -242,7 +242,7 @@ export interface Attempt {
   id: string;
   sessionId: string;
   questionId: string;
-  exercise: Config["exercise"];
+  exercise: Config["exercise"] | "progression-recognition" | "progression-singing";
   gradingSource: "self" | "automatic";
   responseMethod: string;
   configurationSnapshot: Config;
@@ -253,6 +253,10 @@ export interface Attempt {
   firstResponseMs: number | null;
   timingVersion: string;
   timingValidity: "valid" | "interrupted" | "unavailable";
+  replayQuestionId?: string;
+  replayEventsBefore?: number;
+  replayEventsAfter?: number;
+  progressionContext?: string;
   replaysBeforeFirst: number;
   replaysAfterFirst: number;
   retryCount: number;
@@ -387,9 +391,9 @@ export function uniqueAttempts(rows: Attempt[]): Attempt[] {
     return true;
   });
 }
-export function insightRows(input: Attempt[], module: "overall" | Config["exercise"] = "overall", production = "all"): Attempt[] {
+export function insightRows(input: Attempt[], module: "overall" | Attempt["exercise"] = "overall", production = "all"): Attempt[] {
   return uniqueAttempts(input).filter(a => {
-    if (a.exercise !== "m1" && a.exercise !== "m2") return false;
+    if (!["m1", "m2", "progression-recognition", "progression-singing"].includes(a.exercise)) return false;
     if (module !== "overall" && a.exercise !== module) return false;
     if (module !== "m1" || production === "all") return true;
     return production === "imagined-sung"
@@ -399,6 +403,8 @@ export function insightRows(input: Attempt[], module: "overall" | Config["exerci
 }
 export function metrics(input: Attempt[]) {
   const rows = uniqueAttempts(input);
+  const replayKeys=new Set<string>();
+  const eventRows=rows.filter(a=>{if(!a.replayQuestionId)return true;if(replayKeys.has(a.replayQuestionId))return false;replayKeys.add(a.replayQuestionId);return true;});
   const assessed = rows.filter((a) => a.firstCorrect !== null),
     correct = assessed.filter((a) => a.firstCorrect);
   const times = correct
@@ -414,8 +420,8 @@ export function metrics(input: Attempt[]) {
     correct: correct.length,
     unassessed: rows.length - assessed.length,
     replayed: assessed.filter((a) => a.replaysBeforeFirst > 0).length,
-    before: rows.reduce((n, a) => n + a.replaysBeforeFirst, 0),
-    after: rows.reduce((n, a) => n + a.replaysAfterFirst, 0),
+    before: eventRows.reduce((n, a) => n + (a.replayEventsBefore ?? a.replaysBeforeFirst), 0),
+    after: eventRows.reduce((n, a) => n + (a.replayEventsAfter ?? a.replaysAfterFirst), 0),
     median,
     timed: n,
   };

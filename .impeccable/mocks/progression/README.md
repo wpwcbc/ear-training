@@ -1,6 +1,6 @@
 # Progression compositions — ticket 01
 
-Status: Ready for user composition review; approval is pending. These static
+Status: The user approved the displayed composition direction on 2026-10-26. These static
 HTML proposals do not implement playback, persistence or grading. All examples
 are synthetic. Existing application code and browser records are unchanged.
 
@@ -35,7 +35,5 @@ The fixed mobile configuration action bar belongs to the existing design. Full-p
 captures display it at viewport height; it remains viewport-attached when browsing.
 Do not read that screenshot placement as a content row in the progression editor.
 
-All requested screen families are prepared. Ticket 01 remains open until the user
-explicitly approves these compositions. Tickets 02–08 are not implemented; their
-blocking edges remain in force. Existing unit/browser suites were not rerun for
+All requested screen families are prepared. Ticket 01 and tickets 02–08 have since been completed; see the repository-root progression implementation report for runtime delivery evidence. Existing unit/browser suites were not rerun for
 this static mock-only change. No new dependencies or application routes were added.

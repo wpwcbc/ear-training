@@ -1,3 +1,4 @@
+import { mountProgression, progressionEvidence } from "./progression-ui.js";
 import { AudioEngine } from "../jazz/audio.js";
 import { parseChord, chordNotes, chordToneDegrees, degreeForPc } from "../jazz/theory.js";
 import { QuestionLifecycle } from "./question.js";
@@ -193,7 +194,7 @@ function home() {
     }
     host.append(secondary);
     const pageTitle = host.querySelector("h1"), work = el("div", "", "home-work");
-    work.append(el("h2", "Exercises"), grid, secondary);
+    work.append(el("h2", "Exercises"), grid, actions(button("Progression Recognition", () => location.hash = "progression/recognition"), button("Guided Singing", () => location.hash = "progression/singing")), secondary);
     host.replaceChildren(splitView(pageTitle, work, "home-layout"));
 }
 function select(label, value, options, update) {
@@ -681,7 +682,7 @@ function confusions(rows) {
     }
     section.append(mistakes.size ? list : el("p", "No recorded first-response confusions."));
     if (unknown)
-        section.append(el("p", `Unknown imagined degree: ${unknown}. No specific wrong degree was reported.`));
+        section.append(el("p", `Unknown / Don’t know: ${unknown}. No specific wrong degree was reported.`));
     return section;
 }
 function summary(rows, c, showConfusions = true) {
@@ -762,6 +763,10 @@ function results(id) {
     host.append(review);
 }
 function customizeFocus(items, key) {
+    if (items[0].exercise.startsWith("progression-")) {
+        location.hash = "progression";
+        return;
+    }
     const config = {
         ...editableConfig(items[0].configurationSnapshot),
         qualities: [items[0].target.chord.quality],
@@ -781,9 +786,9 @@ function customizeFocus(items, key) {
 }
 function insights() {
     heading("Insights");
-    const all = sessions.flatMap(s => s.attempts), scope = el("section", "", "insight-scope");
+    const all = [...sessions.flatMap(s => s.attempts), ...progressionEvidence()], scope = el("section", "", "insight-scope");
     const nav = actions();
-    for (const [value, label] of [["overall", "Overall"], ["m1", "M1 Audiation"], ["m2", "M2 Recognition"]])
+    for (const [value, label] of [["overall", "Overall"], ["m1", "M1 Audiation"], ["m2", "M2 Recognition"], ["progression-recognition", "Progression Recognition"], ["progression-singing", "Guided Singing"]])
         nav.append(button(label, () => { insightModule = value; production = "all"; rootFilter = ""; qualityFilter = ""; render(); }, insightModule !== value));
     scope.append(nav);
     if (insightModule === "m1")
@@ -796,7 +801,7 @@ function insights() {
     }
     const c = rows[0].configurationSnapshot;
     scope.append(el("p", "V2 outcomes · self-ratings and selected answers count equally. Self-ratings are not pitch-verified."));
-    scope.append(disclosure("Source conditions", ...[...new Set(rows.map(a => describe(a.configurationSnapshot) + " · " + a.timingVersion + " · " + a.target.generatorVersion))].map(text => el("p", text))));
+    scope.append(disclosure("Source conditions", ...[...new Set(rows.map(a => (a.progressionContext ?? describe(a.configurationSnapshot)) + " · " + a.timingVersion + " · " + a.target.generatorVersion))].map(text => el("p", text))));
     const filters = el("div", "", "insight-filters");
     filters.append(select("Root", rootFilter || "All selected roots", ["All selected roots", ...new Set(rows.map((a) => a.target.chord.root))], (value) => {
         rootFilter = value === "All selected roots" ? "" : value;
@@ -821,7 +826,7 @@ function insights() {
         return { key, items, m: metrics(items) };
     });
     const overview = summary(rows, c, false), body = overview.querySelector(".evidence-body");
-    overview.querySelector(".outcome h2").textContent = insightModule === "overall" ? "Combined degree accuracy" : insightModule === "m1" ? "Self-rated accuracy" : "First-answer accuracy";
+    overview.querySelector(".outcome h2").textContent = insightModule === "overall" ? "Combined degree accuracy" : (insightModule === "m1" || insightModule === "progression-singing") ? "Self-rated accuracy" : "First-answer accuracy";
     overview.querySelector(".assessment-source")?.remove();
     const labels = overview.querySelectorAll(".supporting-metric > p");
     labels[1].textContent = "Mixed-practice response time";
@@ -834,7 +839,7 @@ function insights() {
     patterns.append(el("p", "Descriptive observations, not a diagnosis. Sample counts and practice conditions may differ."));
     for (const cell of cells) {
         const row = el("article", "", "pattern-row");
-        row.append(el("h3", cell.key.replace("/", " / ")), el("strong", `${cell.m.correct} / ${cell.m.n} assessed`), button("Customize focus", () => customizeFocus(cell.items, cell.key)));
+        row.append(el("h3", cell.key.replace("/", " / ")), el("strong", `${cell.m.correct} / ${cell.m.n} assessed`), button(cell.items.every(a => a.exercise.startsWith("progression-")) ? "Progression settings" : "Customize focus", () => customizeFocus(cell.items, cell.key)));
         patterns.append(row);
     }
     const notes = body.querySelector(".evidence-notes");
@@ -854,7 +859,7 @@ function insights() {
         const tr = el("tr"), m = cell.m;
         tr.append(el("td", cell.key), el("td", `${m.correct}/${m.n}`), el("td", `${m.replayed}/${m.n}`), el("td", `${m.median === null ? "Unavailable" : (m.median / 1000).toFixed(2) + "s"} (${m.timed})`));
         const td = el("td");
-        td.append(button("Customize focus", () => customizeFocus(cell.items, cell.key)));
+        td.append(button(cell.items.every(a => a.exercise.startsWith("progression-")) ? "Progression settings" : "Customize focus", () => customizeFocus(cell.items, cell.key)));
         tr.append(td);
         tbody.append(tr);
     }
@@ -883,7 +888,10 @@ function insights() {
     }
     host.append(overview, detail, disclosure("Sessions", history));
 }
+let disposeProgression;
 function render() {
+    disposeProgression?.();
+    disposeProgression = undefined;
     if (fatal)
         return;
     const route = location.hash.slice(1) || "home";
@@ -911,7 +919,15 @@ function render() {
         audio.stop();
     }
     host.replaceChildren();
-    if (route === "practice" && session)
+    if (route === "progression" || route.startsWith("progression/")) {
+        try {
+            disposeProgression = mountProgression(host, route.endsWith("/singing") ? "singing" : "recognition");
+        }
+        catch (e) {
+            report(e);
+        }
+    }
+    else if (route === "practice" && session)
         renderPractice();
     else if (route === "configure")
         config();

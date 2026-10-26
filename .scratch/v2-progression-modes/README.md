@@ -28,3 +28,7 @@ than deferring all testing until the end. Do not close or modify a parent issue.
 For GitHub/another external tracker later, run `/setup-matt-pocock-skills` and
 establish working API access before publication. These local files are the current
 ticket deliverable, not evidence of external issue creation.
+
+## Delivery
+
+All eight tickets are implemented, reviewed and marked done. See [implementation evidence](../../V2_PROGRESSION_MODES_IMPLEMENTATION.md) for actual checks and remaining manual verification. Earlier frontier notes above describe the approved implementation order, not remaining blockers.

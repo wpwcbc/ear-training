@@ -1,0 +1,242 @@
+import {
+  parseChord,
+  chordToneDegrees,
+  chordNotes,
+  targetPc,
+  inRange,
+  qualities,
+  degrees,
+  type Chord,
+  type Quality,
+} from "../jazz/theory.js";
+export interface ProgressionConfig {
+  mode: "recognition" | "singing";
+  chords: { symbol: string; beats: number }[];
+  bpm: number;
+  notes: number;
+  count: number;
+  volume: number;
+  levels: number[];
+  pools: Partial<Record<Quality, string[]>>;
+}
+export interface NoteOutcome {
+  exposure?: "fresh" | "previously-seen";
+  id: string;
+  occurrence: number;
+  position: number;
+  chord: Chord;
+  degree: string;
+  midi: number;
+  answer: string | null;
+  correct: boolean | null;
+  assisted: boolean;
+}
+export interface ProgressionQuestion {
+  id: string;
+  config: ProgressionConfig;
+  notes: NoteOutcome[];
+  submitted: boolean;
+  done: boolean;
+  referencePlayed?: boolean;
+  before: number;
+  after: number;
+  created: string;
+}
+export const templates = {
+  major: ["Dm7", "G7", "Cmaj7"],
+  minor: ["Dm7b5", "G7", "Cm7"],
+  backdoor: ["Fm7", "Bb7", "Cmaj7"],
+};
+export const defaults: ProgressionConfig = {
+  mode: "recognition",
+  chords: templates.major.map((symbol) => ({ symbol, beats: 4 })),
+  bpm: 80,
+  notes: 2,
+  count: 10,
+  volume: 0.6,
+  levels: [1, 1, 1, 1, 1],
+  pools: {
+    m7: ["1", "b3", "5", "b7"],
+    "7": ["3", "b7", "9"],
+    maj7: ["1", "3", "5", "maj7"],
+  },
+};
+export function validate(input: ProgressionConfig): ProgressionConfig {
+  const c = structuredClone(input);
+  if (
+    !["recognition", "singing"].includes(c.mode) ||
+    !Number.isFinite(c.bpm) ||
+    c.bpm < 20 ||
+    c.bpm > 300 ||
+    !Number.isInteger(c.notes) ||
+    c.notes < 1 ||
+    c.notes > 4 ||
+    !Number.isInteger(c.count) ||
+    c.count < 0 ||
+    c.count > 200 ||
+    !Number.isFinite(c.volume) ||
+    c.volume < 0 ||
+    c.volume > 1
+  )
+    throw Error(
+      "Choose BPM 20–300, 1–4 notes/chord, 0–200 questions and valid volume.",
+    );
+  if (!Array.isArray(c.chords) || c.chords.length < 2 || c.chords.length > 32)
+    throw Error("Choose 2–32 chord occurrences.");
+  if (
+    !Array.isArray(c.levels) ||
+    c.levels.length !== 5 ||
+    c.levels.some((x) => !Number.isFinite(x) || x < 0 || x > 2)
+  )
+    throw Error("Voice levels must be 0–200%.");
+  for (const row of c.chords) {
+    const chord = parseChord(row.symbol);
+    if (!Number.isInteger(row.beats) || row.beats < 1 || row.beats > 16)
+      throw Error("Each chord needs 1–16 beats.");
+    const pool = c.pools[chord.quality];
+    if (
+      !Array.isArray(pool) ||
+      !pool.length ||
+      pool.some((d) => !degrees.includes(d)) ||
+      new Set(pool).size !== pool.length
+    )
+      throw Error(
+        chord.quality + " needs supported target degrees without duplicates.",
+      );
+  }
+  return c;
+}
+export function generate(
+  input: ProgressionConfig,
+  random = Math.random,
+): ProgressionQuestion {
+  const config = validate(input),
+    id = crypto.randomUUID();
+  return {
+    id,
+    config,
+    created: new Date().toISOString(),
+    submitted: false,
+    done: false,
+    before: 0,
+    after: 0,
+    notes: config.chords.flatMap((row, occurrence) => {
+      const chord = parseChord(row.symbol),
+        pool = config.pools[chord.quality]!;
+      return Array.from({ length: config.notes }, (_, position) => {
+        const degree = pool[Math.floor(random() * pool.length)];
+        return {
+          id: `${id}:${occurrence}:${position}`,
+          occurrence,
+          position,
+          chord,
+          degree,
+          midi: inRange(targetPc(chord, degree), 60, 83),
+          answer: null,
+          correct: null,
+          assisted: false,
+        };
+      });
+    }),
+  };
+}
+export function submit(q: ProgressionQuestion, answers: string[]) {
+  if (q.submitted) return;
+  if (
+    answers.length !== q.notes.length ||
+    answers.some((a) => a !== "unknown" && !degrees.includes(a))
+  )
+    throw Error("Choose a degree or Don’t know for every note.");
+  q.notes.forEach((n, i) => {
+    n.answer = answers[i];
+    n.correct = answers[i] === n.degree;
+    n.assisted = q.before > 0;
+  });
+  q.submitted = true;
+}
+export function rate(
+  q: ProgressionQuestion,
+  index: number,
+  correct: boolean,
+  wrong?: string,
+) {
+  const n = q.notes[index];
+  if (q.config.mode !== "singing" || !n) throw Error("Invalid self-rating.");
+  if (n.correct !== null) return;
+  if (
+    !correct &&
+    (!wrong ||
+      wrong === n.degree ||
+      (wrong !== "unknown" && !degrees.includes(wrong)))
+  )
+    throw Error("Choose a different degree or Unknown.");
+  n.correct = correct;
+  n.answer = correct ? n.degree : wrong!;
+  n.assisted = q.before > 0;
+}
+export function report(questions: ProgressionQuestion[]) {
+  const notes = [
+      ...new Map(
+        questions.flatMap((q) => q.notes).map((n) => [n.id, n]),
+      ).values(),
+    ],
+    assessed = notes.filter((n) => n.correct !== null);
+  return {
+    assessed: assessed.length,
+    correct: assessed.filter((n) => n.correct).length,
+    unassessed: notes.length - assessed.length,
+    assisted: assessed.filter((n) => n.assisted).length,
+  };
+}
+export function sequence(q: ProgressionQuestion, melody: boolean) {
+  const c = q.config,
+    beat = 60 / c.bpm;
+  let cursor = 4 * beat;
+  const events: {
+    midi: number;
+    start: number;
+    duration: number;
+    level: number;
+  }[] = [];
+  const starts: number[] = [];
+  c.chords.forEach((row, i) => {
+    const duration = row.beats * beat,
+      chord = parseChord(row.symbol),
+      notes = chordNotes(chord),
+      scale =
+        1 /
+        Math.max(
+          1,
+          (notes.reduce((s, _, j) => s + c.levels[j] * 0.09, 0) + 0.24) / 0.94,
+        );
+    starts.push(cursor);
+    notes.forEach((midi, j) => {
+      if (c.levels[j] > 0)
+        events.push({
+          midi,
+          start: cursor,
+          duration: Math.max(0.03, duration - 0.03),
+          level: c.volume * c.levels[j] * 0.09 * scale,
+        });
+    });
+    if (melody)
+      q.notes
+        .filter((n) => n.occurrence === i)
+        .forEach((n) =>
+          events.push({
+            midi: n.midi,
+            start: cursor + (n.position * duration) / c.notes,
+            duration: Math.max(0.03, duration / c.notes - 0.03),
+            level: c.volume * 0.24 * scale,
+          }),
+        );
+    cursor += duration;
+  });
+  return { events, starts, duration: cursor, countIn: beat };
+}
+export function addQualityPools(c: ProgressionConfig) {
+  for (const row of c.chords) {
+    const chord = parseChord(row.symbol);
+    c.pools[chord.quality] ??= chordToneDegrees(chord);
+  }
+}

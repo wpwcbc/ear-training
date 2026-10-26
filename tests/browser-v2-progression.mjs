@@ -1,0 +1,72 @@
+import assert from 'node:assert/strict';
+const {chromium}=await import(process.env.PLAYWRIGHT_MODULE||'playwright');
+const browser=await chromium.launch({executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE||'/usr/bin/chromium',headless:true});
+try{
+ const page=await browser.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ const url='http://127.0.0.1:4173/jazz-ear-lab-v2/';
+ await page.goto(url+'#home');await page.getByRole('button',{name:'Progression Recognition',exact:true}).click();
+ await page.getByLabel('BPM',{exact:true}).fill('300');await page.getByLabel('BPM',{exact:true}).dispatchEvent('change');
+ await page.getByLabel('Questions (0 = Unlimited)',{exact:true}).fill('1');await page.getByLabel('Questions (0 = Unlimited)',{exact:true}).dispatchEvent('change');
+ await page.getByRole('button',{name:'Start practice',exact:true}).click();
+ await page.waitForFunction(()=>[...document.querySelectorAll('select')].length===6&&![...document.querySelectorAll('select')][0].disabled);
+ const selects=page.locator('select');await selects.nth(5).selectOption('unknown');
+ await page.getByRole('button',{name:'Replay whole progression',exact:true}).click();
+ await page.waitForFunction(()=>![...document.querySelectorAll('select')][0].disabled);
+ assert.equal(await selects.nth(5).inputValue(),'unknown');
+ for(let i=0;i<6;i++)await selects.nth(i).selectOption('unknown');
+ await page.screenshot({path:'/tmp/progression-board-mobile.png',fullPage:true});
+ await page.getByRole('button',{name:'Submit all answers',exact:true}).click();
+ await page.evaluate(()=>{window.originalSetItem=Storage.prototype.setItem;Storage.prototype.setItem=function(k,v){if(k==='jazzEarLab:v2:progressionHistory')throw Error('quota');return window.originalSetItem.call(this,k,v);};});
+ await page.getByRole('button',{name:'Finish',exact:true}).click();
+ await page.getByRole('button',{name:'Overall Insights',exact:true}).click();await page.waitForURL(/#insights$/);
+ await page.evaluate(()=>location.hash='progression');await page.getByRole('button',{name:'Retry saving',exact:true}).waitFor();
+ await page.evaluate(()=>Storage.prototype.setItem=window.originalSetItem);await page.getByRole('button',{name:'Retry saving',exact:true}).click();
+ await page.getByRole('button',{name:'Results · recognition · 1 questions',exact:true}).click();
+ await page.getByText('0 / 6 assessed notes · 0 unassessed',{exact:true}).waitFor();
+ const history=await page.evaluate(()=>JSON.parse(localStorage.getItem('jazzEarLab:v2:progressionHistory')));
+ assert.equal(history[0].questions[0].before,1);assert.ok(history[0].questions[0].notes.every(n=>n.assisted));
+ await page.getByRole('button',{name:'Practice again',exact:true}).click();
+ await page.getByLabel('Mode',{exact:true}).waitFor({timeout:3000}).catch(async e=>{console.log(await page.locator('main').innerText(),errors);throw e;});
+ await page.getByLabel('Mode',{exact:true}).selectOption('singing');
+ await page.getByLabel('BPM',{exact:true}).fill('300');await page.getByLabel('BPM',{exact:true}).dispatchEvent('change');
+ await page.getByLabel('Questions (0 = Unlimited)',{exact:true}).fill('1');await page.getByLabel('Questions (0 = Unlimited)',{exact:true}).dispatchEvent('change');
+ await page.getByRole('button',{name:'Start practice',exact:true}).click();
+ const done=page.getByRole('button',{name:'Done — hear full reference',exact:true});await done.waitFor();assert.equal(await done.isDisabled(),true);
+ await page.waitForFunction(()=>[...document.querySelectorAll('button')].some(b=>b.textContent==='Done — hear full reference'&&!b.disabled));await done.click();
+ await page.getByRole('button',{name:'Correct',exact:true}).first().waitFor();await page.getByRole('button',{name:'Correct',exact:true}).first().click();
+ await page.getByRole('button',{name:'Finish',exact:true}).click();await page.getByText('1 / 1 assessed notes · 5 unassessed',{exact:true}).waitFor();
+ await page.getByRole('button',{name:'Overall Insights',exact:true}).click();await page.waitForURL(/#insights$/);
+ assert.equal(await page.locator('.outcome').getAttribute('data-assessed'),'7');assert.equal(await page.locator('.outcome').getAttribute('data-correct'),'1');
+ assert.ok((await page.locator('.supporting-metric').allTextContents()).join(' ').includes('Unavailable'));
+ await page.goto(url+'#progression');await page.screenshot({path:'/tmp/progression-runtime-desktop.png',fullPage:true});await page.setViewportSize({width:390,height:844});await page.screenshot({path:'/tmp/progression-runtime-mobile.png',fullPage:true});
+ assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);assert.deepEqual(errors,[]);
+ await page.evaluate(()=>{const key='jazzEarLab:v2:progressionPresets',p=JSON.parse(localStorage.getItem(key));p.singing.levels=[0,0,0,0,0];p.singing.chords.forEach(c=>c.beats=1);localStorage.setItem(key,JSON.stringify(p));});
+ await page.reload();await page.getByLabel('Mode',{exact:true}).selectOption('singing');await page.getByRole('button',{name:'Start practice',exact:true}).click();
+ const silentStart=Date.now();await page.waitForTimeout(500);assert.equal(await page.getByRole('button',{name:'Done — hear full reference',exact:true}).isDisabled(),true);
+ await page.waitForFunction(()=>[...document.querySelectorAll('button')].some(b=>b.textContent==='Done — hear full reference'&&!b.disabled));assert.ok(Date.now()-silentStart>=1200,'silent count-in and progression finish before Done');
+ await page.getByRole('button',{name:'Stop',exact:true}).click();await page.getByRole('button',{name:'Practice again',exact:true}).click();
+ page.once('dialog',d=>d.accept('Keyboard mix test'));await page.getByRole('button',{name:'Save as new preset',exact:true}).click();
+ await page.getByText('Voicing mix & volume',{exact:true}).click();
+ const level=page.getByLabel('Voice 1 (%)',{exact:true});await level.fill('100');await level.dispatchEvent('change');
+ assert.equal(await page.locator('details').evaluate(d=>d.open),true);
+ assert.equal(await page.evaluate(()=>document.activeElement.getAttribute('aria-label')),'Voice 1 (%)');
+ const pool=page.getByRole('group',{name:'7',exact:true}).getByLabel('9',{exact:true});await pool.click();assert.equal(await pool.evaluate(n=>n===document.activeElement),true);
+ const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('jazzEarLab:v2:progressionPresets')));assert.equal(saved.singing.levels[0],0);assert.equal(saved['singing / Keyboard mix test'].levels[0],1);
+
+
+ await page.getByLabel('Mode',{exact:true}).selectOption('recognition');
+ await page.getByLabel('Questions (0 = Unlimited)',{exact:true}).fill('0');await page.getByLabel('Questions (0 = Unlimited)',{exact:true}).dispatchEvent('change');
+ await page.getByRole('button',{name:'Start practice',exact:true}).click();
+ await page.waitForFunction(()=>document.querySelectorAll('select').length===6&&![...document.querySelectorAll('select')][0].disabled);
+ for(let i=0;i<6;i++)await page.locator('select').nth(i).selectOption('unknown');
+ await page.getByRole('button',{name:'Submit all answers',exact:true}).click();await page.getByRole('button',{name:'Next question',exact:true}).click();await page.getByRole('button',{name:'Stop',exact:true}).click();
+ const unlimited=await page.evaluate(()=>JSON.parse(localStorage.getItem('jazzEarLab:v2:progressionHistory')).at(-1));assert.equal(unlimited.questions.length,2);assert.notEqual(unlimited.questions[0].id,unlimited.questions[1].id);assert.deepEqual(unlimited.questions[0].config.chords,unlimited.questions[1].config.chords);
+ const output=await page.evaluate(async()=>{
+  const {AudioEngine}=await import('/js/jazz/audio.js');const {defaults,generate,sequence,addQualityPools}=await import('/js/v2/progression.js');
+  const c=structuredClone(defaults);c.bpm=300;c.notes=4;c.volume=1;c.levels=[2,2,2,2,2];c.chords=[{symbol:'Cmaj',beats:1},{symbol:'G7',beats:1},{symbol:'C7alt',beats:1}];addQualityPools(c);
+  const plan=sequence(generate(c,()=>0.9),true),offline=new OfflineAudioContext(1,Math.ceil((plan.duration+.2)*44100),44100),native=window.AudioContext;
+  window.AudioContext=function(){return new Proxy(offline,{get(target,key){if(key==='state')return 'running';if(key==='resume')return async()=>{};const value=Reflect.get(target,key,target);return typeof value==='function'?value.bind(target):value;}});};
+  try{const engine=new AudioEngine();await engine.ready();engine.playSequence(plan.events,plan.countIn,plan.duration);const buffer=await offline.startRendering();let peak=0;for(const value of buffer.getChannelData(0))peak=Math.max(peak,Math.abs(value));engine.stop();return peak;}finally{window.AudioContext=native;}
+ });assert.ok(output>0&&output<1,'boosted four-note progression must render without clipping: '+output);
+ console.log('Progression browser passed: whole replay retains arbitrary-order answers, first grades, singing completion/reference, partial ratings and Overall1/7 with no speed sample.');
+}finally{await browser.close();}

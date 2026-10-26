@@ -302,6 +302,93 @@ export class AudioEngine {
     }
     return this.playSingle(chord, midi, volume, true, { fullReference: true, voiceLevels });
   }
+  playSequence(
+    events: { midi: number; start: number; duration: number; level: number }[],
+    countInBeat: number,
+    duration: number,
+  ): SinglePlayback {
+    if (!this.context || this.context.state !== "running")
+      throw new Error("Audio unavailable. Retry playback.");
+    this.stop();
+    const ctx = this.context,
+      start = ctx.currentTime + 0.04;
+    this.playbackStart = start;
+    let resolve!: (end: SinglePlaybackEnd) => void,
+      ended = false;
+    const completed = new Promise<SinglePlaybackEnd>((r) => (resolve = r));
+    const voices = new Set<ReturnType<AudioEngine["tone"]>>();
+    const settle = (end: SinglePlaybackEnd) => {
+      if (!ended) {
+        ended = true;
+        ctx.removeEventListener("statechange", changed);
+        resolve(end);
+      }
+    };
+    const cancel = () => {
+      for (const voice of voices) {
+        try {
+          voice.source.stop();
+        } catch {}
+      }
+      voices.clear();
+      settle("cancelled");
+    };
+    const changed = () => {
+      if (ctx.state !== "running") {
+        settle("interrupted");
+        this.stop();
+      }
+    };
+    ctx.addEventListener("statechange", changed);
+    const plan: SinglePlayback = {
+      readyMs: 40,
+      durationMs: duration * 1000 + 40,
+      get activeVoices() {
+        return voices.size;
+      },
+      ready: Promise.resolve(true),
+      completed,
+      cancel,
+      fadeOut: async () => {
+        cancel();
+        return "cancelled";
+      },
+    };
+    this.single = plan;
+    try {
+      for (let i = 0; i < 4; i++) this.click(start + i * countInBeat, 0.08);
+      const sentinel = this.tone(60, start, duration, 0, false, true, () => {
+        voices.delete(sentinel);
+        if (!voices.size) settle("completed");
+      });
+      voices.add(sentinel);
+      for (const event of events) {
+        const voice = this.tone(
+          event.midi,
+          start + event.start,
+          event.duration,
+          event.level,
+          false,
+          true,
+          () => {
+            voices.delete(voice);
+            if (!voices.size) settle("completed");
+          },
+        );
+        voices.add(voice);
+      }
+    } catch (error) {
+      this.stop();
+      throw error;
+    }
+    if (!voices.size) settle("completed");
+    return plan;
+  }
+  close(): void {
+    this.stop();
+    void this.context?.close();
+    this.context = null;
+  }
   stop(): void {
     this.single?.cancel();
     this.single = null;
@@ -334,7 +421,8 @@ export class AudioEngine {
     oscillator.frequency.value = 440 * 2 ** ((midi - 69) / 12);
     gain.gain.setValueAtTime(0, start);
     gain.gain.linearRampToValueAtTime(volume, start + (pad ? 0.12 : 0.015));
-    gain.gain.exponentialRampToValueAtTime(
+    if(volume===0) gain.gain.linearRampToValueAtTime(0,start+duration*.75);
+    else gain.gain.exponentialRampToValueAtTime(
       Math.max(volume * (natural ? 0.04 : 0.35), 0.0001),
       start + duration * (natural ? 0.75 : 0.8),
     );
