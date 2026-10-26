@@ -312,3 +312,13 @@ navigation, primary degree/confusion evidence and subordinate timing/replay in
 Insights. Existing typography, colors, controls and Split Desk breakpoints remain.
 Desktop/mobile captures were inspected and the module navigation spans the scope
 width on mobile. This extension does not replace tokens or the visual identity.
+
+## Progression extension (2026-10-26)
+
+The user approved Recognition, Guided Singing and review compositions. Runtime
+uses the incumbent Split Desk proportions and mobile semantic stack, neutral
+self-rating controls, visible keyboard focus and yellow task actions. Progression
+settings group harmony, practice timing, quality pools and disclosed mix controls;
+mobile Start remains viewport-attached. Recognition presents all positions on one
+answer surface, independent of fill order. Source/Spec review and desktop/mobile
+runtime captures were checked; this extends the system without replacing tokens.

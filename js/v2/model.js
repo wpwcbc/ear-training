@@ -296,7 +296,7 @@ export function uniqueAttempts(rows) {
 }
 export function insightRows(input, module = "overall", production = "all") {
     return uniqueAttempts(input).filter(a => {
-        if (a.exercise !== "m1" && a.exercise !== "m2")
+        if (!["m1", "m2", "progression-recognition", "progression-singing"].includes(a.exercise))
             return false;
         if (module !== "overall" && a.exercise !== module)
             return false;
@@ -309,6 +309,10 @@ export function insightRows(input, module = "overall", production = "all") {
 }
 export function metrics(input) {
     const rows = uniqueAttempts(input);
+    const replayKeys = new Set();
+    const eventRows = rows.filter(a => { if (!a.replayQuestionId)
+        return true; if (replayKeys.has(a.replayQuestionId))
+        return false; replayKeys.add(a.replayQuestionId); return true; });
     const assessed = rows.filter((a) => a.firstCorrect !== null), correct = assessed.filter((a) => a.firstCorrect);
     const times = correct
         .filter((a) => a.timingValidity === "valid" && a.firstResponseMs !== null && Number.isFinite(a.firstResponseMs) && a.firstResponseMs >= 0)
@@ -322,8 +326,8 @@ export function metrics(input) {
         correct: correct.length,
         unassessed: rows.length - assessed.length,
         replayed: assessed.filter((a) => a.replaysBeforeFirst > 0).length,
-        before: rows.reduce((n, a) => n + a.replaysBeforeFirst, 0),
-        after: rows.reduce((n, a) => n + a.replaysAfterFirst, 0),
+        before: eventRows.reduce((n, a) => n + (a.replayEventsBefore ?? a.replaysBeforeFirst), 0),
+        after: eventRows.reduce((n, a) => n + (a.replayEventsAfter ?? a.replaysAfterFirst), 0),
         median,
         timed: n,
     };
