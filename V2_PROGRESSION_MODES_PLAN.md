@@ -45,3 +45,26 @@ Existing Release 2 notes proposed one target per chord initially. This new reque
 explicitly extends discovery to multiple notes per chord; do not silently constrain
 it to that older one-note proposal. No microphone verification, new mode IDs or
 automatic grading of sung pitch is assumed.
+
+## Confirmed round 2 (Q6–Q9)
+
+- Replay is whole-progression replay only. Do not add chord-local or isolated-note
+  replay from the earlier recommendation. Preserve all entered answers on replay.
+- BPM is adjustable in settings. One shared tempo; each chord has its own beat
+  duration (default four beats). Uniform 1–4 sequential notes per chord evenly
+  divide its duration. Include the agreed one-bar count-in.
+- Guided singing does not require target-pitch-class exclusion from accompaniment.
+  Keep the full chord accompaniment; only the separate target melody is withheld
+  until reference checking. Do not carry M1's single-target omission rule into
+  this mode or remove all accompaniment when several chord tones are targets.
+- Custom progressions use actual chord symbols with add/remove/reorder and
+  per-chord duration, and support whole-progression transposition. Common presets
+  are editable: major ii–V–I, minor ii–V–i and backdoor. Initial C examples are
+  Dm7–G7–Cmaj7, Dm7b5–G7–Cm7 and Fm7–Bb7–Cmaj7; users may edit chord qualities.
+
+## Next decisions
+
+Per-quality target generation, within-chord repetition, incomplete answers,
+self-rated wrong-degree detail, repeated progression questions and Insights
+contribution are not settled by Q6–Q9. Earlier open-question bullets are resolved
+only to the extent explicitly recorded in the confirmed rounds above.
