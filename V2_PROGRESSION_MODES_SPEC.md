@@ -1,7 +1,7 @@
 # V2 Progression Recognition and Guided Singing — Specification
 
 Status: Synthesized on 2026-10-26 from the final user-confirmed Q1–Q18 design.
-Product decisions are confirmed. Testing-seam confirmation is pending separately.
+Product decisions and testing seams are confirmed by the user on 2026-10-26.
 This is a future implementation contract, not a claim of implemented behavior,
 completed tests, issue publication or approved visual compositions.
 
@@ -209,7 +209,7 @@ reinterpret previous outcomes to claim progression evidence they never recorded.
 
 ## Testing Decisions
 
-Proposed seam, awaiting explicit user confirmation: existing V2 user flow from
+User-confirmed seam (2026-10-26): existing V2 user flow from
 progression settings through complete playback/replay, answer-board submission or
 self-rating, Results and Overall. Use the existing V2 browser testing family.
 Only add public model/audio contract checks for deterministic musical generation,
