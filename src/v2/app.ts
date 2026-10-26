@@ -1,4 +1,5 @@
 import { AudioEngine } from "../jazz/audio.js";
+import { parseChord, chordNotes, chordToneDegrees, degreeForPc } from "../jazz/theory.js";
 import { QuestionLifecycle } from "./question.js";
 import {
   builtins,
@@ -6,15 +7,16 @@ import {
   roots,
   qualities,
   degrees,
-  roles,
   validate,
+  editableConfig,
+  targetsFor,
+  insightRows,
   stream,
   attempt,
   read,
   write,
   keys,
   metrics,
-  cohort,
   type Config,
   type Preset,
   type Question,
@@ -37,8 +39,8 @@ let session: Session | null = null,
 let step = "Harmony",
   dirty = false,
   fatal = false;
-let selectedCohort = "",
-  rootFilter = "",
+let insightModule: "overall" | "m1" | "m2" = "overall", production = "all", auditionQuality = "";
+let rootFilter = "",
   qualityFilter = "";
 let headingFocus = true, lastRoute = "", savedPresetId = "";
 let practiceSignature = "";
@@ -183,11 +185,11 @@ function load() {
   }
 }
 function describe(c: Config) {
-  return `${c.exercise.toUpperCase()} / ${c.roots.join(", ")} / ${c.qualities.join(", ")} / ${c.targets.join(", ")} (${c.targetMode}) / context ${c.context ? "on" : "off"} / ${c.count || "Unlimited"} questions${c.exercise === "m1" ? " / " + c.method : ""}`;
+  return `${c.exercise.toUpperCase()} / ${c.roots.join(", ")} / ${c.qualities.join(", ")} / ${c.qualities.map(q => q + ": " + targetsFor(c, q).join(", ")).join("; ")} / mix ${(c.voiceLevels ?? [1,1,1,1,1]).map(v => Math.round(v * 100) + "%").join(", ")} / context ${c.context ? "on" : "off"} / ${c.count || "Unlimited"} questions${c.exercise === "m1" ? " / " + c.method : ""}`;
 }
 function customize(p: Preset) {
   activeId = p.id;
-  draft = structuredClone(p.config);
+  draft = editableConfig(p.config);
   location.hash = "configure";
   if (location.hash === "#configure") render();
 }
@@ -260,7 +262,7 @@ function select<T extends string>(
   const l = el("label", label),
     s = el("select");
   options.forEach((v) => {
-    const o = el("option", v === "All selected roots" ? "All roots" : v === "All selected qualities" ? "All qualities" : v);
+    const o = el("option", v === "all" ? "All" : v === "imagined-sung" ? "Imagined / sung" : v === "played" ? "Instrumental playing" : v === "All selected roots" ? "All roots" : v === "All selected qualities" ? "All qualities" : v);
     o.value = v;
     s.append(o);
   });
@@ -272,6 +274,7 @@ function select<T extends string>(
   return l;
 }
 function autoSave() {
+  reviewOperation++; audio.stop();
   const status = document.getElementById("config-status")!;
   try {
     const c = validate(draft);
@@ -295,7 +298,7 @@ function configurationSummary() {
   return [
     `Roots: ${draft.roots.length} / 12 selected`,
     `Qualities: ${draft.qualities.join(", ") || "None selected"}`,
-    `Targets: ${draft.targets.join(", ") || "None selected"} (${draft.targetMode})`,
+    `Targets: ${draft.qualities.map(q => q + ": " + targetsFor(draft, q).join(", ")).join("; ")}`,
   ].map((text) => el("p", text));
 }
 function pool(
@@ -327,6 +330,7 @@ function pool(
   return f;
 }
 function config() {
+  draft = editableConfig(draft);
   heading("Customize " + preset().name);
   const tabs = el("nav", "", "steps");
   tabs.setAttribute("aria-label", "Configuration steps");
@@ -351,30 +355,41 @@ function config() {
         "Chord qualities",
         qualities,
         draft.qualities,
-        (v) => (draft.qualities = v as Config["qualities"]),
-      ),
-    );
-  if (step === "Targets")
-    host.append(
-      select(
-        "Degree selection",
-        draft.targetMode,
-        ["functional", "exact"],
         (v) => {
-          draft.targetMode = v;
-          draft.targets =
-            v === "functional" ? ["Third", "Seventh"] : ["3", "b7"];
-          autoSave();
-          configRender();
+          draft.qualities = v as Config["qualities"];
+          for (const q of draft.qualities) draft.targetPools![q] ??= chordToneDegrees(parseChord("C" + q));
         },
       ),
-      pool(
-        "Target degrees",
-        draft.targetMode === "functional" ? roles : degrees,
-        draft.targets,
-        (v) => (draft.targets = v),
-      ),
     );
+  if (step === "Targets") {
+    host.append(el("h2", "Target degrees by quality"));
+    for (const quality of draft.qualities)
+      host.append(pool(quality, degrees, targetsFor(draft, quality), values => {
+        draft.targetPools![quality] = values;
+      }));
+    host.append(el("h2", "Voicing mix"), el("p", "Original voices, low to high. 0% mutes; 100% standard; 200% double nominal gain. Accompaniment only."));
+    if (!draft.qualities.includes(auditionQuality as Config["qualities"][number])) auditionQuality = draft.qualities[0] ?? "";
+    if (auditionQuality && draft.roots.length) {
+      host.append(select("Audition quality", auditionQuality, draft.qualities, value => { auditionQuality = value; audio.stop(); configRender(); }));
+      const chord = parseChord(draft.roots[0] + auditionQuality), notes = chordNotes(chord);
+      host.append(el("p", "Preview chord: " + chord.symbol));
+      for (let i = 0; i < 5; i++) {
+        const label = el("label", `Voice ${i + 1} · ${notes[i] === undefined ? "absent" : degreeForPc(chord, notes[i] % 12)}`, "voice-control"), input = el("input"), value = el("output", Math.round(draft.voiceLevels![i] * 100) + "%");
+        input.type = "range"; input.min = "0"; input.max = "200"; input.step = "5";
+        input.value = String(draft.voiceLevels![i] * 100);
+        input.setAttribute("aria-label", `Voice ${i + 1} volume`);
+        input.oninput = () => value.textContent = input.value + "%";
+        input.onchange = () => { audio.stop(); reviewOperation++; draft.voiceLevels![i] = Number(input.value) / 100; autoSave(); };
+        label.append(input, value); host.append(label);
+      }
+      host.append(button("Audition " + chord.symbol, async () => {
+        const c = validate(draft), token = ++reviewOperation;
+        audio.stop(); await audio.ready();
+        if (token !== reviewOperation || location.hash !== "#configure") return;
+        audio.playSingle(chord, null, c.volume, true, { voiceLevels: c.voiceLevels });
+      }), el("p", "Full accompaniment only · no practice record", "muted"));
+    }
+  }
   if (step === "Practice") {
     if (!primaryPresets.some((p) => p.id === activeId))
       host.append(
@@ -490,7 +505,7 @@ function config() {
       if (original) {
         const i = presets.findIndex((p) => p.id === activeId);
         presets[i] = structuredClone(original);
-        draft = structuredClone(original.config);
+        draft = editableConfig(original.config);
         persist();
         configRender();
       } else {
@@ -523,6 +538,7 @@ function config() {
   host.replaceChildren(splitView(anchor, work, "configuration"));
 }
 function configRender() {
+  reviewOperation++; audio.stop();
   const key = (document.activeElement as HTMLElement)?.dataset.focusKey;
   headingFocus = false;
   host.replaceChildren();
@@ -531,7 +547,8 @@ function configRender() {
 }
 async function start(p: Preset) {
   if (session) return;
-  const c = validate(p.config);
+  reviewOperation++; audio.stop();
+  const c = validate(editableConfig(p.config));
   activeId = p.id;
   session = {
     id: crypto.randomUUID(),
@@ -871,7 +888,7 @@ function results(id: string) {
       button("Practice again", () => start({ id: s.presetId, name: "Similar practice", config: s.config }), false),
       button("Customize", () => {
         activeId = presets.some((p) => p.id === s.presetId) ? s.presetId : presets[0].id;
-        draft = structuredClone(s.config); location.hash = "configure";
+        draft = editableConfig(s.config); location.hash = "configure";
       }),
       button("Presets", () => location.hash = "home"),
     ));
@@ -891,7 +908,7 @@ function results(id: string) {
       try {
         await audio.ready();
         if (token !== reviewOperation || location.hash !== "#results/" + s.id) return;
-        audio.playReference(a.target.chord, a.target.midi, s.config.volume);
+        audio.playReference(a.target.chord, a.target.midi, s.config.volume, null, s.config.voiceLevels);
         a.replaysAfterFirst++; a.revealedReference = true; persist();
         host.querySelector(".evidence-summary")?.replaceWith(overview());
       } catch (e) { if (token === reviewOperation) throw e; }
@@ -903,10 +920,11 @@ function results(id: string) {
 }
 function customizeFocus(items: Attempt[], key: string) {
   const config: Config = {
-    ...structuredClone(items[0].configurationSnapshot),
+    ...editableConfig(items[0].configurationSnapshot),
     qualities: [items[0].target.chord.quality],
     targetMode: "exact",
     targets: [items[0].target.degree],
+    targetPools: { [items[0].target.chord.quality]: [items[0].target.degree] },
   };
   if (rootFilter) config.roots = [rootFilter];
   let focus = presets.find((p) => !builtins.some((b) => b.id === p.id) && JSON.stringify(p.config) === JSON.stringify(config));
@@ -919,32 +937,18 @@ function customizeFocus(items: Attempt[], key: string) {
 }
 function insights() {
   heading("Insights");
-  const all = sessions.flatMap((s) => s.attempts), groups = [...new Set(all.map(cohort))];
-  if (!groups.length) {
-    host.append(el("p", "Not enough comparable data. Start an M1 or M2 preset."),
-      actions(button("Practice", () => location.hash = "home", false)));
-    return;
-  }
-  if (!groups.includes(selectedCohort)) selectedCohort = groups[groups.length - 1];
-  const labels = groups.map((g, i) => {
-    const a = all.find((a) => cohort(a) === g)!, c = a.configurationSnapshot;
-    return `${i + 1}. ${a.exercise.toUpperCase()} / ${c.context ? "Context on" : "Context off"} / ${a.exposure === "fresh" ? "Fresh" : "Previously seen"}${a.exercise === "m1" ? " / " + c.method : ""}`;
-  });
-  const scope = el("section", "", "insight-scope");
-  const condition = select("Comparable practice conditions", labels[groups.indexOf(selectedCohort)], labels, (value) => {
-    selectedCohort = groups[labels.indexOf(value)];
-    rootFilter = ""; qualityFilter = ""; render();
-  });
-  condition.querySelector("select")!.setAttribute("aria-describedby", "comparison-description");
-  scope.append(condition);
-  let rows = all.filter((a) => cohort(a) === selectedCohort);
-  const c = rows[0].configurationSnapshot, sample = rows[0], description = el("p", "", "scope-description");
-  description.id = "comparison-description";
-  description.textContent = c.exercise === "m1" ? "Self-rated / " + c.method : "First-answer evidence";
-  scope.append(description);
-  const conditions = disclosure("Full comparison conditions",
-    el("p", describe(c)), el("p", `Timing: ${sample.timingVersion}. Generator: ${sample.target.generatorVersion}. Answer policy: 12 pitch-class choices with exact target spelling.`));
-  scope.append(conditions);
+  const all = sessions.flatMap(s => s.attempts), scope = el("section", "", "insight-scope");
+  const nav = actions();
+  for (const [value, label] of [["overall", "Overall"], ["m1", "M1 Audiation"], ["m2", "M2 Recognition"]] as const)
+    nav.append(button(label, () => { insightModule = value; production = "all"; rootFilter = ""; qualityFilter = ""; render(); }, insightModule !== value));
+  scope.append(nav);
+  if (insightModule === "m1") scope.append(select("Production category", production, ["all", "imagined-sung", "played"], value => { production = value; render(); }));
+  let rows = insightRows(all, insightModule, production);
+  host.append(scope);
+  if (!rows.length) { host.append(el("p", "No matching V2 records. Start an M1 or M2 preset."), button("Practice", () => location.hash = "home")); return; }
+  const c = rows[0].configurationSnapshot;
+  scope.append(el("p", "V2 outcomes · self-ratings and selected answers count equally. Self-ratings are not pitch-verified."));
+  scope.append(disclosure("Source conditions", ...[...new Set(rows.map(a => describe(a.configurationSnapshot) + " · " + a.timingVersion + " · " + a.target.generatorVersion))].map(text => el("p", text))));
   const filters = el("div", "", "insight-filters");
   filters.append(
     select("Root", rootFilter || "All selected roots", ["All selected roots", ...new Set(rows.map((a) => a.target.chord.root))], (value) => {
@@ -970,29 +974,25 @@ function insights() {
     const items = rows.filter((a) => `${a.target.chord.quality}/${a.target.degree}` === key);
     return { key, items, m: metrics(items) };
   });
-  const supported = cells.filter((cell) => cell.m.n >= 10).sort((a, b) => a.m.correct / a.m.n - b.m.correct / b.m.n);
   const overview = summary(rows, c, false), body = overview.querySelector(".evidence-body")!;
+  overview.querySelector(".outcome h2")!.textContent = insightModule === "overall" ? "Combined degree accuracy" : insightModule === "m1" ? "Self-rated accuracy" : "First-answer accuracy";
+  overview.querySelector(".assessment-source")?.remove();
+  const labels = overview.querySelectorAll(".supporting-metric > p");
+  labels[1].textContent = "Mixed-practice response time";
+  body.prepend(confusions(rows));
+  body.append(el("p", "M1 Done and M2 answer submission use different readiness boundaries. Mixed-practice time is not pure recognition speed or measured performance onset."));
+  overview.querySelector(".evidence-notes > p:last-child")?.remove();
+  overview.querySelector(".evidence-notes")!.append(el("p", "Methods, pools, mix and versions remain in source records; totals combine mixed practice."));
   const patterns = el("section", "", "patterns");
-  patterns.append(el("h2", "Patterns worth attention"));
-  if (supported.length > 1 && supported[0].m.correct / supported[0].m.n < supported[supported.length - 1].m.correct / supported[supported.length - 1].m.n) {
-    patterns.append(el("p", "Descriptive, not a diagnosis. At least 10 assessed responses per group; roots and replay use may differ.", "pattern-caution"));
-    for (const [i, cell] of [supported[0], supported[supported.length - 1]].entries()) {
-      const row = el("article", "", "pattern-row"), rate = cell.m.correct / cell.m.n;
-      row.append(el("h3", cell.key.replace("/", " / ")));
-      const bar = el("div", "", "evidence-bar"), fill = el("span");
-      fill.style.width = `${rate * 100}%`;
-      bar.setAttribute("aria-hidden", "true");
-      bar.append(fill);
-      row.append(bar, el("strong", Math.round(rate * 100) + "%"), el("span", `${cell.m.correct} / ${cell.m.n} assessed`),
-        el("small", `Replay-assisted ${cell.m.replayed} / ${cell.m.n}`),
-        button("Customize focus", () => customizeFocus(cell.items, cell.key), i !== 0));
-      patterns.append(row);
-    }
-  } else {
-    patterns.append(el("p", "Not enough comparable data to identify distinct strongest/weakest patterns. Explore individual observations below."));
+  patterns.append(el("h2", "Chord-degree performance"));
+  patterns.append(el("p", "Descriptive observations, not a diagnosis. Sample counts and practice conditions may differ."));
+  for (const cell of cells) {
+    const row = el("article", "", "pattern-row");
+    row.append(el("h3", cell.key.replace("/", " / ")), el("strong", `${cell.m.correct} / ${cell.m.n} assessed`), button("Customize focus", () => customizeFocus(cell.items, cell.key)));
+    patterns.append(row);
   }
   const notes = body.querySelector<HTMLElement>(".evidence-notes")!;
-  body.append(patterns);
+  body.prepend(patterns);
   const table = el("table"), head = el("tr");
   table.append(el("caption", "Chord Quality × Degree"));
   for (const name of ["Quality / degree", "Correct / assessed", "Replay-assisted", "Correct median (n)", "Practice"]) {

@@ -248,3 +248,7 @@ th { background: var(--quiet); }
   .patterns h2 { font-size: 20px; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; } }
+.voice-control { display: grid; grid-template-columns: 130px minmax(60px, 1fr) 60px; gap: 12px; align-items: center; margin: 16px 0; }
+.voice-control output { text-align: right; font-variant-numeric: tabular-nums; }
+@media (max-width: 767px) { .voice-control { grid-template-columns: 100px minmax(60px, 1fr) 48px; } }
+.insight-scope > .actions, .insight-scope > p { grid-column: 1 / -1; }

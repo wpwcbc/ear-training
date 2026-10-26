@@ -1,4 +1,4 @@
-import { qualities, degrees, parseChord, targetPc, inRange, recognitionDegrees, chordToneDegrees, } from "../jazz/theory.js";
+import { qualities, degrees, parseChord, targetPc, inRange, recognitionDegrees, chordToneDegrees, chordNotes, } from "../jazz/theory.js";
 export { qualities, degrees };
 export const roots = "C C# D Eb E F F# G Ab A Bb B".split(" ");
 export const roles = ["Root", "Third", "Fifth", "Seventh"];
@@ -81,7 +81,7 @@ export function validate(input) {
     for (const [items, vocabulary, label] of [
         [c.roots, roots, "root"],
         [c.qualities, qualities, "chord quality"],
-        [c.targets, c.targetMode === "exact" ? degrees : roles, "target"],
+        ...(!c.targetPools ? [[c.targets, c.targetMode === "exact" ? degrees : roles, "target"]] : []),
     ]) {
         if (!Array.isArray(items) ||
             !items.length ||
@@ -96,12 +96,40 @@ export function validate(input) {
         c.volume < 0 ||
         c.volume > 1)
         throw new Error("Question count must be 0 (Unlimited) to 200; volume must be 0 to 1.");
+    if (c.voiceLevels !== undefined && (!Array.isArray(c.voiceLevels) ||
+        c.voiceLevels.length !== 5 || c.voiceLevels.some(level => !Number.isFinite(level) || level < 0 || level > 2)))
+        throw new Error("Voice levels must contain five values from 0% to 200%.");
+    if (c.targetPools !== undefined) {
+        if (!c.targetPools || typeof c.targetPools !== "object" || Array.isArray(c.targetPools))
+            throw new Error("Invalid per-quality target pools.");
+        for (const [quality, pool] of Object.entries(c.targetPools))
+            if (!qualities.includes(quality) || !Array.isArray(pool) ||
+                pool.some(degree => !degrees.includes(degree)) || new Set(pool).size !== pool.length)
+                throw new Error(`Select supported target degrees for ${quality}, without duplicates.`);
+        for (const quality of c.qualities)
+            if (!c.targetPools[quality]?.length)
+                throw new Error(`Select at least one target for ${quality}.`);
+    }
     for (const root of c.roots)
         for (const quality of c.qualities)
-            for (const requested of c.targets) {
-                const chord = parseChord(root + quality), degree = resolve(chord, requested, c.targetMode);
+            for (const requested of targetsFor(c, quality)) {
+                const chord = parseChord(root + quality), degree = requested;
                 inRange(targetPc(chord, degree), 60, 83);
+                if (c.voiceLevels && !chordNotes(chord).some((note, i) => note % 12 !== targetPc(chord, degree) && c.voiceLevels[i] > 0))
+                    throw new Error(`No non-target accompaniment remains for ${quality} / ${degree}. Adjust the voicing mix.`);
             }
+    return c;
+}
+// Resolve old presets lazily; never rewrite historical configuration snapshots.
+export function targetsFor(c, quality) {
+    if (c.targetPools)
+        return [...(c.targetPools[quality] ?? [])];
+    return [...new Set(c.targets.map(target => resolve(parseChord("C" + quality), target, c.targetMode)))];
+}
+export function editableConfig(input) {
+    const c = structuredClone(input);
+    c.targetPools ?? (c.targetPools = Object.fromEntries(c.qualities.map(quality => [quality, targetsFor(c, quality)])));
+    c.voiceLevels ?? (c.voiceLevels = [1, 1, 1, 1, 1]);
     return c;
 }
 export function optionsFor(chord, degree) {
@@ -125,22 +153,32 @@ export function stream(input, seed) {
         }
         return items;
     };
-    const pairs = c.qualities.flatMap((quality) => [
-        ...new Set(c.targets.map((t) => resolve(parseChord("C" + quality), t, c.targetMode))),
-    ].map((degree) => ({ quality, degree })));
+    const pairs = c.qualities.flatMap(quality => targetsFor(c, quality).map(degree => ({ quality, degree })));
+    let qualityBag = [];
+    const targetBags = new Map();
     return () => {
         if (!bag.length)
             bag = shuffle([...pairs]);
         if (!rootBag.length)
             rootBag = shuffle([...c.roots]);
-        const pair = bag.pop(), chord = parseChord(rootBag.pop() + pair.quality);
+        let pair = bag.pop();
+        if (c.targetPools) {
+            if (!qualityBag.length)
+                qualityBag = shuffle([...c.qualities]);
+            const quality = qualityBag.pop();
+            let targets = targetBags.get(quality);
+            if (!targets?.length)
+                targetBags.set(quality, targets = shuffle(targetsFor(c, quality)));
+            pair = { quality, degree: targets.pop() };
+        }
+        const chord = parseChord(rootBag.pop() + pair.quality);
         return {
             id: `${seed}:${index++}`,
             chord,
             degree: pair.degree,
             midi: inRange(targetPc(chord, pair.degree), 60, 83),
             options: optionsFor(chord, pair.degree),
-            generatorVersion: "v2-balanced-1",
+            generatorVersion: c.targetPools ? "v2-quality-balanced-2" : "v2-balanced-1",
         };
     };
 }
@@ -241,12 +279,39 @@ export function cohort(a) {
         c.targetMode,
         [...c.targets].sort(),
         a.exposure,
+        ...(c.targetPools || c.voiceLevels ? [
+            c.targetPools ? c.qualities.slice().sort().map(quality => [quality, targetsFor(c, quality).sort()]) : null,
+            c.voiceLevels ?? [1, 1, 1, 1, 1],
+        ] : []),
     ]);
 }
-export function metrics(rows) {
+export function uniqueAttempts(rows) {
+    const seen = new Set();
+    return rows.filter(a => {
+        if (seen.has(a.id))
+            return false;
+        seen.add(a.id);
+        return true;
+    });
+}
+export function insightRows(input, module = "overall", production = "all") {
+    return uniqueAttempts(input).filter(a => {
+        if (a.exercise !== "m1" && a.exercise !== "m2")
+            return false;
+        if (module !== "overall" && a.exercise !== module)
+            return false;
+        if (module !== "m1" || production === "all")
+            return true;
+        return production === "imagined-sung"
+            ? a.responseMethod === "imagined" || a.responseMethod === "sung"
+            : production === "played" && a.responseMethod === "played";
+    });
+}
+export function metrics(input) {
+    const rows = uniqueAttempts(input);
     const assessed = rows.filter((a) => a.firstCorrect !== null), correct = assessed.filter((a) => a.firstCorrect);
     const times = correct
-        .filter((a) => a.timingValidity === "valid" && a.firstResponseMs !== null)
+        .filter((a) => a.timingValidity === "valid" && a.firstResponseMs !== null && Number.isFinite(a.firstResponseMs) && a.firstResponseMs >= 0)
         .map((a) => a.firstResponseMs)
         .sort((a, b) => a - b);
     const n = times.length, median = n

@@ -309,3 +309,14 @@ test("Fading before M2 target onset silences future target instead of starting i
   assert.equal(await ending, "faded");
   assert.equal(playback.activeVoices, 0);
 });
+
+test('voicing mix keeps original identities through target omission, mutes exactly, and preserves target gain',async(t)=>{
+ const {audio,sources,gains}=await audioClock(t);
+ audio.playSingle(parseChord('G7'),null,0.5,true,{excludeTarget:83,voiceLevels:[1,2,0,0.5,1]});
+ const midi=sources.map(s=>Math.round(69+12*Math.log2(s.frequency.value/440)));
+ assert.deepEqual(midi,[55,65]);
+ assert.deepEqual(gains.map(g=>g.events.find(e=>e.kind==='linear').value),[0.045,0.0225]);
+ audio.playSingle(parseChord('G7'),83,0.5,true,{voiceLevels:[0,0,0,0,0]});
+ assert.equal(sources.length,3);
+ assert.equal(gains.at(-1).events.find(e=>e.kind==='linear').value,0.12);
+});

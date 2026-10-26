@@ -20,6 +20,7 @@ export type SinglePlaybackEnd = "completed" | "cancelled" | "faded" | "interrupt
 export interface SinglePlaybackOptions {
   excludeTarget?: number;
   fullReference?: boolean;
+  voiceLevels?: number[];
 }
 export interface SinglePlayback {
   readonly readyMs: number;
@@ -90,7 +91,15 @@ export class AudioEngine {
   ): SinglePlayback {
     if (!this.context || this.context.state !== "running")
       throw new Error("Audio unavailable. Press Retry audio.");
+    if (options.voiceLevels !== undefined && (!Array.isArray(options.voiceLevels) ||
+        options.voiceLevels.length !== 5 || options.voiceLevels.some(level => !Number.isFinite(level) || level < 0 || level > 2)))
+      throw new Error("Voice levels must contain five values from 0% to 200%.");
     this.stop();
+    const notes = chordNotes(chord).map((note, index) => ({note, level: options.voiceLevels?.[index] ?? 1}));
+    // Reserve the independent target's nominal peak even before M1 Done, so
+    // continuing references never need to reattack or rebalance a live chord.
+    const nominalPeak = (context ? notes.reduce((sum, voice) => sum + voice.level * 0.09, 0) : 0) + 0.24;
+    const headroom = 1 / Math.max(1, nominalPeak / 0.95);
     const ctx = this.context,
       dispatch = ctx.currentTime,
       start = dispatch + 0.04,
@@ -208,7 +217,7 @@ export class AudioEngine {
       const referenceReady = new Promise<boolean>((resolve) => {
         signalReferenceReady = resolve;
       });
-      schedule(target, onset, level * 0.24);
+      schedule(target, onset, level * 0.24 * headroom);
       const checkReferenceReady = () => {
         if (settled || fading) {
           signalReferenceReady?.(false);
@@ -240,8 +249,8 @@ export class AudioEngine {
     };
     try {
       if (context)
-        chordNotes(chord)
-          .filter((note) => {
+        notes
+          .filter(({note, level}) => {
             const excluded = options.fullReference
               ? midi
               : options.excludeTarget;
@@ -249,14 +258,14 @@ export class AudioEngine {
               excluded === undefined ||
               excluded === null ||
               note % 12 !== excluded % 12
-            );
+            ) && level > 0;
           })
-          .forEach((note) => schedule(note, start, volume * 0.09));
+          .forEach(({note, level}) => schedule(note, start, volume * 0.09 * level * headroom));
       if (midi !== null)
         schedule(
           midi,
           start + (options.fullReference ? 0 : 0.08),
-          volume * 0.24,
+          volume * 0.24 * headroom,
         );
     } catch (e) {
       this.stop();
@@ -283,6 +292,7 @@ export class AudioEngine {
     midi: number,
     volume: number,
     continuing?: SinglePlayback | null,
+    voiceLevels?: number[],
   ): SinglePlayback {
     if (!this.context || this.context.state !== "running")
       throw new Error("Audio unavailable. Press Retry audio.");
@@ -290,7 +300,7 @@ export class AudioEngine {
       const reference = this.layerTarget?.(midi, volume);
       if (reference) return reference;
     }
-    return this.playSingle(chord, midi, volume, true, { fullReference: true });
+    return this.playSingle(chord, midi, volume, true, { fullReference: true, voiceLevels });
   }
   stop(): void {
     this.single?.cancel();
