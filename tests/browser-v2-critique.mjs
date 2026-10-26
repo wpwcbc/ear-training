@@ -1,0 +1,96 @@
+import assert from 'node:assert/strict';
+import {mkdir} from 'node:fs/promises';
+const {chromium}=await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
+const browser=await chromium.launch({executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE || '/usr/bin/chromium',headless:true});
+const base=`${process.env.BASE_URL || 'http://127.0.0.1:4173'}/jazz-ear-lab-v2/`;
+const folder=process.env.V2_CRITIQUE_SCREENSHOTS;
+if(folder) await mkdir(folder,{recursive:true});
+try {
+ const page=await browser.newPage({viewport:{width:390,height:844}});
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ const button=name=>page.getByRole('button',{name,exact:true});
+ const active=()=>page.evaluate(()=>document.activeElement?.textContent);
+ const enter=async name=>{await button(name).focus();await page.keyboard.press('Enter');};
+ const capture=async name=>{assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,name+' page overflow');if(folder)await page.screenshot({path:`${folder}/${name}.png`,fullPage:true});};
+ await page.goto(base+'#insights');await page.getByRole('heading',{name:'Insights',exact:true}).waitFor();
+ await button('Guided Singing').click();
+ await page.getByText('No Guided Singing records yet. Start a progression practice.',{exact:true}).waitFor();
+ await button('Practice Guided Singing').click();await page.getByLabel('Mode',{exact:true}).waitFor();
+ assert.equal(await page.getByLabel('Mode',{exact:true}).inputValue(),'singing');
+ await page.getByRole('spinbutton',{name:'Chord 2 beats',exact:true}).waitFor();
+ assert.equal(await button('Remove chord 2').count(),1);assert.equal(await button('Move chord 2 up').count(),1);
+ await enter('Targets');await page.waitForFunction(()=>document.activeElement?.textContent==='Targets');
+ assert.equal(await active(),'Targets');
+ await enter('Practice');await page.waitForFunction(()=>document.activeElement?.textContent==='Practice');
+ for(const [label,value] of [['BPM','300'],['Questions (0 = Unlimited)','1']]){await page.getByLabel(label,{exact:true}).fill(value);await page.getByLabel(label,{exact:true}).dispatchEvent('change');}
+ await button('Start practice').click();
+ await page.getByRole('heading',{name:'Sing this sequence',exact:true}).waitFor();
+ await page.waitForFunction(()=>[...document.querySelectorAll('button')].some(b=>b.textContent==='Done — hear full reference'&&!b.disabled));
+ for(const width of [1440,390,320]){
+  await page.setViewportSize({width,height:width===1440?1000:844});await page.evaluate(()=>scrollTo(0,0));
+  const notes=await page.locator('.progression-target-degree').evaluateAll(nodes=>nodes.map(n=>({top:n.getBoundingClientRect().top,bottom:n.getBoundingClientRect().bottom})));
+  assert.equal(notes.length,6);assert.ok(notes.every(n=>n.top>=0&&n.bottom<= (width===1440?1000:844)),JSON.stringify({width,notes}));
+  await capture('singing-sequence-'+width);
+ }
+ await enter('Done — hear full reference');
+ await page.getByRole('button',{name:'Correct',exact:true}).first().waitFor();
+ await page.waitForFunction(()=>document.activeElement?.textContent==='Correct');
+ await page.keyboard.press('Enter');
+ await page.waitForFunction(()=>document.querySelectorAll('[data-unrated]').length===5);
+ assert.equal(await active(),'Correct');
+ assert.match(await page.locator('#practice-announcement').textContent(),/self-rated correct/);
+ await capture('singing-one-rated-320');
+ await enter('Finish');await button('Overall Insights').waitFor();
+ await button('Overall Insights').click();await page.getByRole('heading',{name:'Insights',exact:true}).waitFor();
+ assert.equal(await page.locator('#practice-announcement').textContent(),'');
+ await button('Guided Singing').click();
+ await page.locator('.assessment-count').filter({hasText:/^1 \/ 1 assessed$/}).waitFor();
+ await page.getByText('Source conditions',{exact:true}).click();
+ const conditions=await page.locator('details').filter({has:page.locator('summary').filter({hasText:/^Source conditions$/})}).innerText();
+ assert.match(conditions,/Dm7 \(4 beats\) → G7 \(4 beats\) → Cmaj7 \(4 beats\)/);
+ assert.match(conditions,/300 BPM/);assert.doesNotMatch(conditions,/\{"mode"|"pools"|"levels"/);
+ assert.equal(await page.getByText('progression-timing-not-recorded · v2-progression-1',{exact:true}).isVisible(),false);
+ await capture('insights-readable-conditions-320');
+ await page.getByText('Sessions',{exact:true}).click();
+ const latest=page.getByRole('link',{name:'View latest matching session',exact:true});
+ const href=await latest.getAttribute('href');assert.match(href,/#progression\/singing\/results\//);
+ await latest.click();await button('Practice again').waitFor();
+ await page.getByText('1 / 1 assessed notes',{exact:true}).waitFor();
+ await page.reload();await page.getByText('1 / 1 assessed notes',{exact:true}).waitFor();
+ await page.getByText('Question review',{exact:true}).click();
+ await page.getByText('Progression 1 · 1 / 1 assessed',{exact:true}).click();
+ await enter('Replay whole reference');
+ await button('Stop reference').waitFor();
+ assert.equal(await page.locator('details[data-disclosure="question-review"]').evaluate(n=>n.open),true);
+ assert.equal(await page.locator('.progression-review-group').evaluate(n=>n.open),true);
+ await page.getByText('Reference playing',{exact:true}).waitFor();
+ assert.match(await page.locator('#practice-announcement').textContent(),/Reference playing/);
+ assert.equal(await active(),'Stop reference');
+ await capture('results-reference-playing-320');
+ await page.keyboard.press('Enter');await button('Stop reference').waitFor({state:'detached'});
+ assert.equal(await active(),'Replay whole reference');
+ assert.equal(await page.locator('.progression-review-group').evaluate(n=>n.open),true);
+ // Natural completion must also preserve the review and return keyboard focus.
+ await enter('Replay whole reference');await button('Stop reference').waitFor();
+ await button('Stop reference').waitFor({state:'detached'});
+ assert.equal(await active(),'Replay whole reference');
+ assert.equal(await page.locator('.progression-review-group').evaluate(n=>n.open),true);
+ await capture('results-reference-complete-320');
+ // A fresh Recognition run checks the submit path independently of self-ratings.
+ await page.goto(base+'#progression/recognition');await page.getByLabel('Mode',{exact:true}).waitFor();
+ await button('Practice').click();
+ for(const [label,value] of [['BPM','300'],['Questions (0 = Unlimited)','1']]){await page.getByLabel(label,{exact:true}).fill(value);await page.getByLabel(label,{exact:true}).dispatchEvent('change');}
+ await button('Start practice').click();
+ await page.waitForFunction(()=>document.querySelectorAll('select').length===6&&![...document.querySelectorAll('select')][0].disabled);
+ for(let i=0;i<6;i++)await page.locator('select').nth(i).selectOption('unknown');
+ await enter('Submit all answers');await button('Finish').waitFor();
+ assert.notEqual(await page.evaluate(()=>document.activeElement?.tagName),'BODY');
+ assert.match(await page.locator('#practice-announcement').textContent(),/Answers checked/);
+ await enter('Finish');await button('Overall Insights').click();
+ await page.getByRole('heading',{name:'Insights',exact:true}).waitFor();await button('Progression Recognition').click();
+ await page.getByText('Sessions',{exact:true}).click();
+ assert.match(await page.getByRole('link',{name:'View latest matching session',exact:true}).getAttribute('href'),/#progression\/recognition\/results\//);
+ await page.getByRole('link',{name:'View latest matching session',exact:true}).click();await page.getByText('0 / 6 assessed notes',{exact:true}).waitFor();
+ assert.deepEqual(errors,[]);
+ console.log('V2 critique fixes passed: complete mobile singing sequence; keyboard tabs, ratings, submit and replay; retained review; readable conditions; matching progression history and reload; module-aware empty state and chord control names.');
+} finally {await browser.close();}

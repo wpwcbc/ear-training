@@ -333,3 +333,11 @@ summary. Answers stay grouped by chord, disclosed mix controls use the shared
 label/range/value rows, and detailed per-note outcomes live in expandable review
 tables with local horizontal scrolling. Desktop/mobile runtime evidence and check
 limits are recorded in `.impeccable/critique/2026-10-26-progression-consistency.md`.
+
+The whole-V2 critique follow-up keeps sung targets in compact chord groups before
+Done; the default phrase is visible together on narrow screens. Progression actions
+restore keyboard position and use the persistent live announcer. Result replay
+retains disclosed note evidence and exposes playback/stop controls. Insights links
+back to matching progression runs and formats stored conditions as musical text,
+with technical versions separately disclosed. See `../V2_CRITIQUE_FIXES.md` for
+runtime evidence, verification coverage and limits.
