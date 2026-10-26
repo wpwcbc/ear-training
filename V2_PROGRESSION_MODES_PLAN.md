@@ -84,3 +84,34 @@ only to the extent explicitly recorded in the confirmed rounds above.
 - A question is the entire progression. After grading it, next question retains
   the progression and generates new target material. Sessions support a fixed
   question count or Unlimited. No automatic progression switching initially.
+
+## Confirmed round 4 (Q14–Q17)
+
+- Recognition joint submission reveals per-position correctness and correct
+  degrees; a whole-progression reference is available. Review replay does not
+  change first grades.
+- Guided singing waits for the initial full accompaniment pass to finish before
+  Done can trigger the full accompaniment-plus-target reference. Per-position
+  self-rating follows reference checking.
+- Each new mode has its own results and contributes per-note accuracy to Overall.
+  Each assessed target position has equal weight; do not add a duplicate
+  whole-progression grade. Keep automatic versus self-rated provenance visible.
+- The user's explicit timing boundary: progression speed does not contribute to
+  Overall, while progression accuracy does. Do not feed any whole-progression
+  timing into the M1/M2 single-note response-time median or invent per-note latency.
+  Whether to display a progression-only completion-time statistic is not needed
+  for the initial accuracy scope and remains deferred rather than an agreed
+  extra metric. Whole-replay assistance attribution was proposed but was not
+  explicitly confirmed by this timing-focused reply; do not silently treat it
+  as settled.
+- Each progression preset owns its per-quality target pools, voicing mix,
+  overall volume, BPM and notes-per-chord count. Freeze settings at Start;
+  Results replay reads the recorded configuration. Both modes retain chord
+  accompaniment; guided singing adds the separate target melody only in reference.
+
+## Discovery status after Q17
+
+The main practice flow, generation, per-note grades and Overall accuracy boundary
+are confirmed. Final consolidated confirmation is pending. Replay-assistance
+attribution still needs an explicit decision if included in initial Insights.
+No implementation, spec conversion or ticket execution has begun in this interview.
