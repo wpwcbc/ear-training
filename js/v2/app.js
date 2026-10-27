@@ -163,7 +163,7 @@ function customize(p) {
 function exerciseTitle(name) {
     const title = el("h2");
     const [context, assessment] = name.split(" · ");
-    title.append(el("span", context + " · ", "exercise-context"), el("span", assessment));
+    title.append(el("span", context, "exercise-context"), el("span", " · ", "sr-only"), el("span", assessment));
     return title;
 }
 function home() {

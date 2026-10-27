@@ -17,57 +17,57 @@ colors:
 typography:
   chord:
     fontFamily: '"Source Sans 3", "Segoe UI", sans-serif'
-    fontSize: "72px"
+    fontSize: "4rem"
     fontWeight: 700
     lineHeight: 1
     letterSpacing: "0"
   target:
     fontFamily: '"Source Sans 3", "Segoe UI", sans-serif'
-    fontSize: "54px"
+    fontSize: "3.375rem"
     fontWeight: 600
     lineHeight: 1.1
     letterSpacing: "0"
   outcome:
     fontFamily: '"Source Sans 3", "Segoe UI", sans-serif'
-    fontSize: "72px"
+    fontSize: "4.5rem"
     fontWeight: 700
     lineHeight: 1
     letterSpacing: "0"
   headline:
     fontFamily: '"Source Sans 3", "Segoe UI", sans-serif'
-    fontSize: "28px"
+    fontSize: "1.75rem"
     fontWeight: 700
     lineHeight: 1.2
     letterSpacing: "0"
   title:
     fontFamily: '"Source Sans 3", "Segoe UI", sans-serif'
-    fontSize: "22px"
+    fontSize: "1.375rem"
     fontWeight: 700
     lineHeight: 1.25
     letterSpacing: "0"
   subheading:
     fontFamily: '"Source Sans 3", "Segoe UI", sans-serif'
-    fontSize: "18px"
+    fontSize: "1.125rem"
     fontWeight: 700
     lineHeight: 1.3
     letterSpacing: "0"
   body:
     fontFamily: '"Source Sans 3", "Segoe UI", sans-serif'
-    fontSize: "16px"
+    fontSize: "1rem"
     fontWeight: 400
-    lineHeight: 1.4
+    lineHeight: 1.5
     letterSpacing: "0"
   label:
     fontFamily: '"Source Sans 3", "Segoe UI", sans-serif'
-    fontSize: "16px"
+    fontSize: "1rem"
     fontWeight: 600
-    lineHeight: 1.4
+    lineHeight: 1.5
     letterSpacing: "0"
   support:
     fontFamily: '"Source Sans 3", "Segoe UI", sans-serif'
-    fontSize: "14px"
+    fontSize: "0.875rem"
     fontWeight: 400
-    lineHeight: 1.4
+    lineHeight: 1.5
     letterSpacing: "0"
 rounded:
   control: "2px"
@@ -357,3 +357,27 @@ the assessment family as the main title. Configuration, practice, Results,
 Insights and history use the complete contextual name from
 `src/v2/exercise-names.ts`. See [the glossary](../GLOSSARY.md) for terminology
 and the compatibility boundary around historical stored IDs.
+
+
+## Typeset refinement — 2026-10-27
+
+Source Sans 3 remains the single family, with its existing real 400/500/600/700
+weights and zero tracking. Purpose-based CSS roles now use rem: 1rem body and
+fields, .875rem support, 1.125rem subheadings, 1.375rem section titles and 1.75rem
+page headings. Compact task bands and musical/data display roles retain their
+existing scale differences; they also follow the root text preference. Ordinary
+body leading is 1.5; heading leading remains 1.2–1.3. Controls use 1.35 and fields
+1.4. Evidence prose is bounded at 72ch rather than stretching across the desk.
+
+Headings balance natural line breaks with emergency word wrapping. Home mode
+contexts remain subordinate; their separator is screen-reader-only when rendered
+on separate lines. Small support text has a .875rem floor. Numeric fields, tempo,
+counts and durations join the existing tabular result figures. Chapter labels stay
+at 1rem on phones; their grid reflows when user text size grows. Degree buttons
+grow vertically with text. Mobile navigation can wrap under enlarged text, while
+normal 320px navigation keeps all three links together. The attached action reserve
+uses rem so enlarged text does not cover the final config field.
+
+The existing TTF assets remain self-hosted with `font-display: swap`; only the
+regular face is preloaded. Fallback remains Segoe UI / sans-serif, with no invented
+metric overrides or additional family. See [runtime evidence and verification](../.impeccable/review/v2-typeset/README.md).
