@@ -78,27 +78,32 @@ try {
  await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,get:()=>true});document.dispatchEvent(new Event('visibilitychange'));});
  await page.getByRole('alert').filter({hasText:'Playback interrupted'}).waitFor();
  await page.evaluate(()=>delete document.hidden);await button('Replay whole progression').click();await button('Stop').click();await button('Practice again').waitFor();
+ await button('Practice again').click();
+ for(const width of [700,701,768]){await page.setViewportSize({width,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'config boundary '+width);}
+ await page.setViewportSize({width:1440,height:1000});await page.evaluate(()=>document.documentElement.style.zoom='2');
+ assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'config at 200% CSS zoom');
+ await page.evaluate(()=>document.documentElement.style.zoom='');
  assert.deepEqual(errors,[]);
  console.log('PASS config state: disclosures/focus, invalid drafts, save/retry, audition, preset isolation and visible custom-preset mode.');
  console.log('PASS progression practice recovery: visible write failure/Retry saving, retained grades and visible interruption/replay.');
  // Existing-storage fixture at the public browser-storage boundary, followed by real UI.
- for(const mode of ['recognition','singing']) {
+ for(const [mode,chordCount,noteCount] of [['recognition',2,1],['singing',2,1],['recognition',32,4],['singing',32,4]]) {
   const context=await browser.newContext({viewport:{width:320,height:844}}),long=await context.newPage();long.setDefaultTimeout(15000);
   await long.goto(base);
-  await long.evaluate(async mode=>{const {defaults,addQualityPools}=await import('/js/v2/progression.js');const c=structuredClone(defaults);c.mode=mode;c.bpm=300;c.count=1;c.notes=4;c.chords=Array.from({length:32},(_,i)=>({symbol:i%2?'F#m7b5':'C7alt',beats:1}));addQualityPools(c);localStorage.setItem('jazzEarLab:v2:progressionPresets',JSON.stringify({[mode]:c}));},mode);
-  await long.goto(base+'#progression/'+mode);await long.getByLabel('Chord 32',{exact:true}).waitFor();
-  await long.getByLabel('Chord 32',{exact:true}).focus();
-  const field=await long.getByLabel('Chord 32',{exact:true}).boundingBox(),launch=await long.getByRole('button',{name:'Start practice',exact:true}).boundingBox();
+  await long.evaluate(async({mode,chordCount,noteCount})=>{const {defaults,addQualityPools}=await import('/js/v2/progression.js');const c=structuredClone(defaults);c.mode=mode;c.bpm=300;c.count=1;c.notes=noteCount;c.chords=Array.from({length:chordCount},(_,i)=>({symbol:i%2?'F#m7b5':'C7alt',beats:1}));addQualityPools(c);localStorage.setItem('jazzEarLab:v2:progressionPresets',JSON.stringify({[mode]:c}));},{mode,chordCount,noteCount});
+  await long.goto(base+'#progression/'+mode);await long.getByLabel('Chord '+chordCount,{exact:true}).waitFor();
+  await long.getByLabel('Chord '+chordCount,{exact:true}).focus();
+  const field=await long.getByLabel('Chord '+chordCount,{exact:true}).boundingBox(),launch=await long.getByRole('button',{name:'Start practice',exact:true}).boundingBox();
   assert.ok(field.y+field.height<=launch.y,'Last chord input must be visible above attached Start');
   await long.getByRole('button',{name:'Start practice',exact:true}).click();
   if(mode==='recognition') {
-   await long.waitForFunction(()=>document.querySelectorAll('select').length===128&&![...document.querySelectorAll('select')][0].disabled);
-   await long.locator('select').nth(127).selectOption('unknown');await long.locator('select').first().selectOption('unknown');
+   await long.waitForFunction(count=>document.querySelectorAll('select').length===count&&![...document.querySelectorAll('select')][0].disabled,chordCount*noteCount);
+   await long.locator('select').nth(chordCount*noteCount-1).selectOption('unknown');if(chordCount*noteCount>2)await long.locator('select').first().selectOption('unknown');
    assert.equal(await long.getByRole('button',{name:'Submit all answers',exact:true}).isDisabled(),true);
-  } else assert.equal(await long.locator('.progression-target-degree').count(),128);
+  } else assert.equal(await long.locator('.progression-target-degree').count(),chordCount*noteCount);
   assert.equal(await long.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
   await long.getByRole('button',{name:'Stop',exact:true}).click();await long.getByRole('button',{name:'Practice again',exact:true}).waitFor();
   await context.close();
  }
- console.log('PASS maximum content: both modes, 32 repeated/altered chords ×4 targets, narrow320, visible final config field, partial answering and Stop.');
+ console.log('PASS range/boundaries: both modes at 2×1 and 32×4, narrow320, 700/701/768px, 200% config zoom, visible final field, partial answering and Stop.');
 } finally {await browser.close();}

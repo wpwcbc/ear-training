@@ -2,7 +2,7 @@
 
 The user approved this seven-ticket breakdown, its blocking edges and feature-local
 Markdown publication on 2026-10-27. Each issue is a separate file with acceptance
-criteria and status `ready-for-agent`. No implementation has started.
+criteria. All seven are now `done`; see the [implementation and verification report](../../V2_LAYOUT_REDESIGN_IMPLEMENTATION.md).
 
 Source: [V2 layout redesign specification](../../V2_LAYOUT_REDESIGN_SPEC.md).
 Design authority: [A practice/answering brief](../../jazz-ear-lab-v2/.impeccable/surfaces/v2-practice-layout.md)
@@ -22,8 +22,8 @@ This ticket approval does not reopen the design decisions or authorize a new wor
 | [06](issues/06-guided-singing-board.md) | Guided Singing: visible phrase and per-position checking | 05 |
 | [07](issues/07-cross-mode-journeys.md) | Integrated four-mode setup-to-evidence journeys | 01, 02, 04, 06 |
 
-Initial frontier: **01, 02, 03, 05**. After 03, 04 becomes eligible; after 05,
-06 becomes eligible. Ticket 07 waits for 01, 02, 04 and 06, which includes 03/05
+The approved initial frontier was **01, 02, 03, 05**. After 03, 04 becomes eligible; after 05,
+06 becomes eligible. Ticket 07 depended on 01, 02, 04 and 06, which includes 03/05
 transitively. `ready-for-agent` means the ticket is specified; its blockers must
 still be completed before implementation begins.
 
@@ -44,8 +44,9 @@ postponing all verification until the end.
 
 This is the approved repository-local tracker **for this feature only**. It does
 not configure a global issue tracker, publish GitHub issues, close/modify a parent
-issue, or mark any implementation complete. No application or specification was
-changed while publishing these tickets.
+issue, or close external implementation issues. Ticket publication originally changed no
+application or specification. Implementation is now complete in this feature
+branch, with acceptance and review recorded in the linked report.
 
 For a future external tracker, run `/setup-matt-pocock-skills` and establish its
 configuration/access before publication. These local Markdown files are the
