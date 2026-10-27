@@ -46,6 +46,9 @@ try {
  await customize('M1 Audiation');await button('Sound').click();
  assert.equal(await page.getByLabel('Volume',{exact:true}).inputValue(),'0.6','M2 edits must not mutate M1');
  await button('Practice').click();assert.equal(await page.getByLabel('Response method (self-assessed)',{exact:true}).count(),1);
+ await page.goto(base+'#home');page.once('dialog',d=>d.accept('Daily'));await button('New preset').click();
+ await page.getByRole('heading',{name:/Customize Daily/}).waitFor();
+ assert.match(await page.getByRole('heading',{level:1}).textContent(),/M1 Audiation/,'Custom preset config must visibly identify its actual mode');
  await customize('Progression Recognition');await button('Practice').click();
  await change('Questions (0 = Unlimited)','');assert.equal(await button('Start practice').isDisabled(),true);
  await change('Questions (0 = Unlimited)','1');await change('BPM','300');
@@ -62,8 +65,22 @@ try {
  assert.equal(await page.getByLabel('Voice 1 (%)',{exact:true}).inputValue(),'150');
  await page.getByLabel('Saved preset',{exact:true}).selectOption('recognition / Layout isolation');await expand('Voicing mix');
  assert.equal(await page.getByLabel('Voice 1 (%)',{exact:true}).inputValue(),'50');
+ await button('Start practice').click();
+ await page.waitForFunction(()=>document.querySelectorAll('select').length===6&&![...document.querySelectorAll('select')][0].disabled);
+ for(let i=0;i<6;i++)await page.locator('select').nth(i).selectOption('unknown');
+ await page.evaluate(()=>{window.realSetItem=Storage.prototype.setItem;Storage.prototype.setItem=function(k,v){if(k==='jazzEarLab:v2:progressionHistory')throw Error('quota');return window.realSetItem.call(this,k,v);};});
+ await button('Submit all answers').click();await page.getByRole('alert').filter({hasText:'Could not save V2 data'}).waitFor();
+ await button('Retry saving').waitFor();
+ await page.evaluate(()=>Storage.prototype.setItem=window.realSetItem);await button('Retry saving').click();
+ await button('Retry saving').waitFor({state:'detached'});await button('Finish').click();await button('Practice again').click();
+ await button('Practice').click();await change('BPM','20');await button('Start practice').click();
+ await page.getByText('Playing',{exact:true}).waitFor();
+ await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,get:()=>true});document.dispatchEvent(new Event('visibilitychange'));});
+ await page.getByRole('alert').filter({hasText:'Playback interrupted'}).waitFor();
+ await page.evaluate(()=>delete document.hidden);await button('Replay whole progression').click();await button('Stop').click();await button('Practice again').waitFor();
  assert.deepEqual(errors,[]);
- console.log('PASS config state: disclosure/focus retention, invalid drafts, last valid saves/retry, unrecorded audition and preset isolation.');
+ console.log('PASS config state: disclosures/focus, invalid drafts, save/retry, audition, preset isolation and visible custom-preset mode.');
+ console.log('PASS progression practice recovery: visible write failure/Retry saving, retained grades and visible interruption/replay.');
  // Existing-storage fixture at the public browser-storage boundary, followed by real UI.
  for(const mode of ['recognition','singing']) {
   const context=await browser.newContext({viewport:{width:320,height:844}}),long=await context.newPage();long.setDefaultTimeout(15000);

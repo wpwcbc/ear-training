@@ -562,8 +562,9 @@ export function mountProgression(
     notes.className = "harmonic-meta";
     const score = host.querySelector<HTMLElement>(":scope > .evidence-summary");
     const provenance = config.mode === "singing" ? [el("p", "Individual self-ratings · no microphone verification")] : [];
+    const recovery = Array.from(host.children).filter(node => node.getAttribute("role") === "alert" || (node.tagName === "BUTTON" && node.textContent === "Retry saving"));
     host.classList.add("harmonic-progression");
-    host.replaceChildren(status, ...provenance, board, notes, footer, ...(score ? [score] : []));
+    host.replaceChildren(...recovery, status, ...provenance, board, notes, footer, ...(score ? [score] : []));
     root.replaceChildren(top, host);
   }
 

@@ -356,7 +356,8 @@ function config() {
   draft = editableConfig(draft);
   const issue = configIssue();
   const page = el("section", "", "config-page"), header = el("header", "", "config-header");
-  const title = heading("Customize " + preset().name);
+  const modeName = draft.exercise === "m1" ? "M1 Audiation" : "M2 Recognition";
+  const title = heading("Customize " + preset().name + (preset().name === modeName ? "" : " — " + modeName));
   header.append(title);
   const editor = el("section", "", "config-editor"), side = el("aside", "", "config-summary");
   editor.setAttribute("aria-label", "Preset settings");
