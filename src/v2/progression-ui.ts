@@ -1,3 +1,4 @@
+import { exerciseNames, progressionModes, progressionName, progressionExercise, type ProgressionMode } from "./exercise-names.js";
 import { configurationChapters, configurationGroup, rememberGroups, practiceSummary, type ConfigurationChapter } from "./configuration.js";
 import { AudioEngine } from "../jazz/audio.js";
 import {
@@ -50,7 +51,7 @@ export function progressionEvidence(): Attempt[] {
         const config = {
           ...structuredClone(builtins[0].config),
           exercise:
-            q.config.mode === "singing" ? ("m1" as const) : ("m2" as const),
+            q.config.mode === progressionModes.degreeAudiation ? ("m1" as const) : ("m2" as const),
           method: "sung" as const,
           roots: [n.chord.root],
           qualities: [n.chord.quality],
@@ -75,10 +76,7 @@ export function progressionEvidence(): Attempt[] {
         return {
           ...a,
           id: n.id,
-          exercise:
-            q.config.mode === "singing"
-              ? "progression-singing"
-              : "progression-recognition",
+          exercise: progressionExercise(q.config.mode),
           timingVersion: "progression-timing-not-recorded",
           progressionContext: JSON.stringify(q.config),
           replayQuestionId: q.id,
@@ -87,7 +85,7 @@ export function progressionEvidence(): Attempt[] {
           firstCorrect: n.correct,
           firstAnswer: n.answer,
           imaginedWrongDegree:
-            q.config.mode === "singing" && n.correct === false
+            q.config.mode === progressionModes.degreeAudiation && n.correct === false
               ? (n.answer ?? undefined)
               : undefined,
           replaysBeforeFirst: n.assisted ? 1 : 0,
@@ -102,7 +100,7 @@ export function progressionSessions() {
   return (retainedRuns ?? read<Run[]>(historyKey, [])).map((run) => ({
     id: run.id,
     startedAt: run.questions[0]?.created ?? "",
-    label: run.config.mode === "singing" ? "Guided Singing" : "Progression Recognition",
+    label: progressionName(run.config.mode),
     count: run.questions.length,
     ended: run.ended,
     href: `#progression/${run.config.mode}/results/${encodeURIComponent(run.id)}`,
@@ -112,14 +110,14 @@ export function progressionConditions(context: string): string {
   try {
     const c = validate(JSON.parse(context) as ProgressionConfig);
     const pools = Object.entries(c.pools).map(([quality, pool]) => `${quality}: ${pool!.join(", ")}`).join("; ");
-    return `${c.mode === "singing" ? "Guided Singing" : "Progression Recognition"} · ${c.chords.map(row => `${row.symbol} (${row.beats} beats)`).join(" → ")} · ${c.bpm} BPM · ${c.notes} ${c.notes === 1 ? "note" : "notes"} per chord · Targets: ${pools} · Voice mix: ${c.levels.map(level => Math.round(level * 100) + "%").join(", ")} · Volume: ${Math.round(c.volume * 100)}% · Progression timing unavailable`;
+    return `${progressionName(c.mode)} · ${c.chords.map(row => `${row.symbol} (${row.beats} beats)`).join(" → ")} · ${c.bpm} BPM · ${c.notes} ${c.notes === 1 ? "note" : "notes"} per chord · Targets: ${pools} · Voice mix: ${c.levels.map(level => Math.round(level * 100) + "%").join(", ")} · Volume: ${Math.round(c.volume * 100)}% · Progression timing unavailable`;
   } catch {
     return "Progression · stored conditions unavailable";
   }
 }
 export function mountProgression(
   root: HTMLElement,
-  initialMode: "recognition" | "singing" = "recognition",
+  initialMode: ProgressionMode = progressionModes.degreeRecognition,
   autoStart = false,
   resultId?: string,
 ) {
@@ -244,13 +242,13 @@ export function mountProgression(
     for (const v of values) {
       const labels: Record<string, string> = {
         unknown: "Don’t know",
-        recognition: "Recognition",
-        singing: "Guided Singing",
+        [progressionModes.degreeRecognition]: exerciseNames["progression-recognition"],
+        [progressionModes.degreeAudiation]: exerciseNames["progression-singing"],
         major: "Major ii–V–I",
         minor: "Minor ii–V–i",
         backdoor: "Backdoor",
       };
-      const option = el("option", labels[v] ?? v);
+      const option = el("option", labels[v] ?? v.replace(/^(singing|recognition)(?= \/ )/, mode => labels[mode]));
       option.value = v;
       input.append(option);
     }
@@ -321,7 +319,7 @@ export function mountProgression(
     try {
       await audio.ready();
       if (closed || op !== token) return;
-      const plan = sequence(q, reference || q.config.mode === "recognition");
+      const plan = sequence(q, reference || q.config.mode === progressionModes.degreeRecognition);
       const playback = audio.playSequence(
         plan.events,
         plan.countIn,
@@ -329,7 +327,7 @@ export function mountProgression(
       );
       if (
         replay &&
-        (!reference || q.config.mode === "recognition" || q.referencePlayed)
+        (!reference || q.config.mode === progressionModes.degreeRecognition || q.referencePlayed)
       ) {
         if (q.submitted || q.done) q.after++;
         else q.before++;
@@ -395,7 +393,7 @@ export function mountProgression(
     outcome.append(
       el(
         "h2",
-        config.mode === "singing"
+        config.mode === progressionModes.degreeAudiation
           ? "Self-rated accuracy"
           : "Recognition accuracy",
       ),
@@ -410,7 +408,7 @@ export function mountProgression(
     const unassessed = el("p", `${m.unassessed} unassessed`);
     unassessed.className = "unassessed";
     outcome.append(percentage, count, unassessed);
-    if (config.mode === "singing")
+    if (config.mode === progressionModes.degreeAudiation)
       outcome.append(el("p", "Self-rated · not pitch-verified"));
     const replay = el("div");
     replay.className = "supporting-metric";
@@ -463,7 +461,7 @@ export function mountProgression(
     const page = el("section"), header = el("header"), layout = el("div"), side = el("aside"), tabs = el("nav");
     page.className = "config-page"; header.className = "config-header"; layout.className = "config-layout"; side.className = "config-summary";
     host.className = "progression-work config-editor";
-    title.textContent = "Customize " + (config.mode === "singing" ? "Guided Singing" : "Progression Recognition");
+    title.textContent = "Customize " + progressionName(config.mode);
     const label = (name: string) => nodes.find(node => node.tagName === "LABEL" && node.querySelector("[aria-label]")?.getAttribute("aria-label") === name)!;
     const action = (name: string) => nodes.find(node => node.tagName === "BUTTON" && node.textContent === name)!;
     const presetControls = el("div"); presetControls.className = "config-preset-controls";
@@ -561,7 +559,7 @@ export function mountProgression(
     const notes = el("p", `${config.bpm} BPM · ${config.notes} ${config.notes === 1 ? "note" : "notes"} per chord`);
     notes.className = "harmonic-meta";
     const score = host.querySelector<HTMLElement>(":scope > .evidence-summary");
-    const provenance = config.mode === "singing" ? [el("p", "Individual self-ratings · no microphone verification")] : [];
+    const provenance = config.mode === progressionModes.degreeAudiation ? [el("p", "Individual self-ratings · no microphone verification")] : [];
     const recovery = Array.from(host.children).filter(node => node.getAttribute("role") === "alert" || (node.tagName === "BUTTON" && node.textContent === "Retry saving"));
     host.classList.add("harmonic-progression");
     host.replaceChildren(...recovery, status, ...provenance, board, notes, footer, ...(score ? [score] : []));
@@ -633,8 +631,8 @@ export function mountProgression(
     if (view === "settings" && priorView === "settings") window.scrollTo(0, scroll);
     const announcement = document.getElementById("practice-announcement");
     const state = message || (view === "practice"
-      ? `${config.mode === "singing" ? "Guided Singing" : "Progression Recognition"}. Question ${activeRun!.questions.length}. ${busy ? "Playing" : question!.submitted ? "Answers checked" : referenceHeard ? "Reference complete. Rate your response" : heard ? config.mode === "singing" ? "Ready to sing or hear full reference" : "Ready to answer" : "Ready"}. ${feedback}`
-      : view === "results" ? `${config.mode === "singing" ? "Guided Singing" : "Progression Recognition"} results. ${busy ? "Reference playing" : "Playback stopped"}` : `Progression settings. ${settingsStep}`);
+      ? `${progressionName(config.mode)}. Question ${activeRun!.questions.length}. ${busy ? "Playing" : question!.submitted ? "Answers checked" : referenceHeard ? "Reference complete. Rate your response" : heard ? config.mode === progressionModes.degreeAudiation ? "Ready to sing or hear full reference" : "Ready to answer" : "Ready"}. ${feedback}`
+      : view === "results" ? `${progressionName(config.mode)} results. ${busy ? "Reference playing" : "Playback stopped"}` : `Progression settings. ${settingsStep}`);
     if (announcement && announcement.textContent !== state) announcement.textContent = state;
   }
   function renderContent() {
@@ -644,8 +642,7 @@ export function mountProgression(
     host.append(
       el(
         "h1",
-        "Progression " +
-          (config.mode === "singing" ? "Guided Singing" : "Recognition"),
+        progressionName(config.mode),
       ),
     );
     if (message) {
@@ -663,7 +660,7 @@ export function mountProgression(
     }
     if (view === "settings") {
       host.append(
-        select("Mode", config.mode, ["recognition", "singing"], (value) => {
+        select("Mode", config.mode, Object.values(progressionModes), (value) => {
           presetId = value;
           configUnsaved = false;
           config = structuredClone(
@@ -1000,7 +997,7 @@ export function mountProgression(
       return;
     }
     const q = question!;
-    const status = el("p", busy ? "Playing" : referenceHeard ? "Reference complete · rate each note" : heard ? config.mode === "singing" ? "Ready to sing" : "Ready to answer" : "Ready");
+    const status = el("p", busy ? "Playing" : referenceHeard ? "Reference complete · rate each note" : heard ? config.mode === progressionModes.degreeAudiation ? "Ready to sing" : "Ready to answer" : "Ready");
     status.dataset.playbackStatus = "";
     status.dataset.control = "playback-status";
     status.className = "playback-status";
@@ -1012,7 +1009,7 @@ export function mountProgression(
       item.dataset.chord = String(i);
       chords.append(item);
     });
-    if (q.config.mode === "recognition") host.append(chords);
+    if (q.config.mode === progressionModes.degreeRecognition) host.append(chords);
     const checked = q.submitted || q.done;
     const playback = el("div");
     playback.className = "actions progression-playback";
@@ -1025,7 +1022,7 @@ export function mountProgression(
       button("Stop", finish),
     );
     host.append(playback);
-    if (q.config.mode === "singing" && !q.done)
+    if (q.config.mode === progressionModes.degreeAudiation && !q.done)
       host.append(
         button(
           "Done — hear full reference",
@@ -1038,7 +1035,7 @@ export function mountProgression(
           busy || !heard,
         ),
       );
-    if (q.config.mode === "recognition") {
+    if (q.config.mode === progressionModes.degreeRecognition) {
       for (const n of q.notes) {
         const label = `${n.occurrence + 1} · ${n.chord.symbol} · note ${n.position + 1}`;
         if (!q.submitted) {
@@ -1147,15 +1144,15 @@ export function mountProgression(
     board.className = "progression-answer-board";
     board.setAttribute(
       "aria-label",
-      q.config.mode === "singing" ? "Guided singing notes" : "Your answers",
+      q.config.mode === progressionModes.degreeAudiation ? "Degree audiation targets" : "Your answers",
     );
     board.append(
       el(
         "h2",
-        q.config.mode === "singing" ? "Sing this sequence" : q.submitted ? "Check your answers" : "Identify each chord degree",
+        q.config.mode === progressionModes.degreeAudiation ? "Sing this sequence" : q.submitted ? "Check your answers" : "Identify each chord degree",
       ),
     );
-    if (q.config.mode === "recognition") {
+    if (q.config.mode === progressionModes.degreeRecognition) {
       const controls = Array.from(host.children).filter(
         (node) =>
           node.tagName === "LABEL" ||

@@ -1,3 +1,4 @@
+import { progressionModes, type ProgressionMode } from "./exercise-names.js";
 import {
   parseChord,
   chordToneDegrees,
@@ -10,7 +11,7 @@ import {
   type Quality,
 } from "../jazz/theory.js";
 export interface ProgressionConfig {
-  mode: "recognition" | "singing";
+  mode: ProgressionMode;
   chords: { symbol: string; beats: number }[];
   bpm: number;
   notes: number;
@@ -48,7 +49,7 @@ export const templates = {
   backdoor: ["Fm7", "Bb7", "Cmaj7"],
 };
 export const defaults: ProgressionConfig = {
-  mode: "recognition",
+  mode: progressionModes.degreeRecognition,
   chords: templates.major.map((symbol) => ({ symbol, beats: 4 })),
   bpm: 80,
   notes: 2,
@@ -64,7 +65,7 @@ export const defaults: ProgressionConfig = {
 export function validate(input: ProgressionConfig): ProgressionConfig {
   const c = structuredClone(input);
   if (
-    !["recognition", "singing"].includes(c.mode) ||
+    !Object.values(progressionModes).includes(c.mode) ||
     !Number.isFinite(c.bpm) ||
     c.bpm < 20 ||
     c.bpm > 300 ||
@@ -161,7 +162,7 @@ export function rate(
   wrong?: string,
 ) {
   const n = q.notes[index];
-  if (q.config.mode !== "singing" || !n) throw Error("Invalid self-rating.");
+  if (q.config.mode !== progressionModes.degreeAudiation || !n) throw Error("Invalid self-rating.");
   if (n.correct !== null) return;
   if (
     !correct &&

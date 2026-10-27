@@ -12,7 +12,7 @@ test('progression positions retain chord occurrence and first grades through rev
  submit(q,q.notes.map(n=>n.degree));assert.equal(q.notes[0].correct,false);
  assert.equal(report([q]).correct,15);
 });
-test('singing unassessed and Unknown remain separate; invalid configuration rejected',()=>{
+test('degree audiation unassessed and Unknown remain separate; invalid configuration rejected',()=>{
  const c={...structuredClone(defaults),mode:'singing'};const q=generate(c,()=>0);
  rate(q,0,false,'unknown');assert.equal(report([q]).assessed,1);assert.equal(report([q]).unassessed,q.notes.length-1);
  assert.throws(()=>validate({...c,notes:5}));assert.throws(()=>validate({...c,pools:{}}));

@@ -1,3 +1,4 @@
+import { exerciseNames } from "./exercise-names.js";
 import {
   qualities,
   degrees,
@@ -47,7 +48,7 @@ const base: Config = {
 export const primaryPresets: Preset[] = [
   {
     id: "m1-general",
-    name: "M1 Audiation",
+    name: exerciseNames.m1,
     config: {
       ...base,
       exercise: "m1",
@@ -57,7 +58,7 @@ export const primaryPresets: Preset[] = [
   },
   {
     id: "m2-general",
-    name: "M2 Recognition",
+    name: exerciseNames.m2,
     config: { ...base, qualities: ["maj7", "m7", "7"], targets: [...roles] },
   },
 ];
@@ -314,7 +315,7 @@ export function answer(
   return correct;
 }
 export function rate(a: Attempt, correct: boolean, wrong?: string): void {
-  if (a.exercise !== "m1") throw new Error("Only M1 supports self-assessment.");
+  if (a.exercise !== "m1") throw new Error("Only single-chord degree audiation supports this self-assessment interface.");
   if (a.firstCorrect !== null) return;
   if (
     !correct &&

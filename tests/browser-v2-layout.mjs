@@ -11,7 +11,7 @@ try {
  const capture=async name=>{if(!screenshots)return;for(const width of [1440,390,320]){await page.setViewportSize({width,height:width===1440?1000:844});await page.evaluate(()=>scrollTo(0,0));assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,name+width+' overflow');await page.screenshot({path:`${screenshots}/${name}-${width}.png`,fullPage:true});}await page.setViewportSize({width:1440,height:1000});};
  const button=name=>page.getByRole('button',{name,exact:true});
  await page.goto(base+'#home');
- await page.getByRole('article',{name:'M2 Recognition',exact:true}).getByRole('button',{name:'Customize',exact:true}).click();
+ await page.getByRole('article',{name:'Single Chord · Degree Recognition',exact:true}).getByRole('button',{name:'Customize',exact:true}).click();
  await button('Sound').waitFor();
  for(const chapter of ['Harmony','Target degrees','Practice','Sound']) assert.equal(await button(chapter).count(),1);
  await page.getByRole('group',{name:/Roots/}).waitFor();await capture('single-config-harmony');
@@ -41,31 +41,31 @@ try {
  await page.getByRole('button',{name:'Stop',exact:true}).waitFor();await button('Stop').click();await button('Practice again').waitFor();
  console.log('PASS progression config: preserved invalid drafts, recovery, Sound chapter and valid launch');
  await page.goto(base+'#home');
- await page.getByRole('article',{name:'M2 Recognition',exact:true}).getByRole('button',{name:'Start',exact:true}).click();
- await page.getByRole('heading',{name:'M2 Recognition',exact:true}).waitFor();
+ await page.getByRole('article',{name:'Single Chord · Degree Recognition',exact:true}).getByRole('button',{name:'Start',exact:true}).click();
+ await page.getByRole('heading',{name:'Single Chord · Degree Recognition',exact:true}).waitFor();
  await page.waitForFunction(()=>document.querySelectorAll('.answers button:not(:disabled)').length>0);
  const positions=await page.evaluate(()=>({chord:document.querySelector('.question h2').getBoundingClientRect().bottom,answers:document.querySelector('.answers').getBoundingClientRect().top}));
  assert.ok(positions.answers>=positions.chord,'M2 known chord must be above its answer board: '+JSON.stringify(positions));
  await capture('m2-practice');await button('Stop').click();
  console.log('PASS M2 harmonic board musical/response order');
- await page.goto(base+'#home');await page.getByRole('article',{name:'M1 Audiation',exact:true}).getByRole('button',{name:'Start',exact:true}).click();
+ await page.goto(base+'#home');await page.getByRole('article',{name:'Single Chord · Degree Audiation',exact:true}).getByRole('button',{name:'Start',exact:true}).click();
  await button('Done').waitFor();
  const m1=await page.evaluate(()=>({target:document.querySelector('.target-degree').getBoundingClientRect().bottom,done:[...document.querySelectorAll('button')].find(b=>b.textContent==='Done').getBoundingClientRect().top}));
  assert.ok(m1.done>=m1.target,'M1 requested degree must lead Done: '+JSON.stringify(m1));
  await capture('m1-practice');await button('Stop').click();
  console.log('PASS M1 harmonic target and checking order');
- await page.goto(base+'#home');await page.getByRole('article',{name:'Progression Recognition',exact:true}).getByRole('button',{name:'Start',exact:true}).click();
+ await page.goto(base+'#home');await page.getByRole('article',{name:'Progression · Degree Recognition',exact:true}).getByRole('button',{name:'Start',exact:true}).click();
  await page.waitForFunction(()=>document.querySelectorAll('select').length===6&&![...document.querySelectorAll('select')][0].disabled);
  const chords=await page.locator('.progression-answer-board legend').evaluateAll(nodes=>nodes.map(n=>({top:n.getBoundingClientRect().top,left:n.getBoundingClientRect().left})));
  assert.equal(chords.length,3);assert.ok(chords[0].left<chords[1].left&&chords[1].left<chords[2].left&&Math.abs(chords[0].top-chords[2].top)<2,'Desktop progression chord columns: '+JSON.stringify(chords));
  await capture('recognition-practice');await button('Stop').click();
  console.log('PASS progression Recognition harmonic columns');
- await page.goto(base+'#home');await page.getByRole('article',{name:'Guided Singing',exact:true}).getByRole('button',{name:'Customize',exact:true}).click();
+ await page.goto(base+'#home');await page.getByRole('article',{name:'Progression · Degree Audiation',exact:true}).getByRole('button',{name:'Customize',exact:true}).click();
  await button('Practice').click();
  for(const [name,value] of [['BPM','300'],['Questions (0 = Unlimited)','1']]){await page.getByLabel(name,{exact:true}).fill(value);await page.getByLabel(name,{exact:true}).dispatchEvent('change');}
  await button('Start practice').click();await page.getByRole('heading',{name:'Sing this sequence',exact:true}).waitFor();
  const sung=await page.locator('.progression-answer-board legend').evaluateAll(nodes=>nodes.map(n=>({top:n.getBoundingClientRect().top,left:n.getBoundingClientRect().left})));
- assert.ok(sung[0].left<sung[1].left&&sung[1].left<sung[2].left,'Guided Singing must use the same harmonic columns: '+JSON.stringify(sung));
+ assert.ok(sung[0].left<sung[1].left&&sung[1].left<sung[2].left,'Progression · Degree Audiation must use the same harmonic columns: '+JSON.stringify(sung));
  await page.setViewportSize({width:390,height:844});
  const targets=await page.locator('.progression-target-degree').evaluateAll(nodes=>nodes.map(n=>n.getBoundingClientRect().bottom));
  assert.equal(targets.length,6);assert.ok(targets.every(y=>y<=844),'Default requested phrase should be visible: '+targets);
@@ -81,5 +81,5 @@ try {
  await capture('singing-rated');await button('Finish').click();
  await page.getByText('0 / 1 assessed notes',{exact:true}).waitFor();
  await page.getByText('5 unassessed',{exact:true}).waitFor();
- console.log('PASS Guided Singing harmonic board and default mobile phrase');
+ console.log('PASS Progression · Degree Audiation harmonic board and default mobile phrase');
 } finally {await browser.close();}

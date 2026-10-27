@@ -19,7 +19,7 @@ const config = structuredClone(builtins[0].config);
 test("V2 primary exercises support general degrees and independent altered/exact pools", () => {
   assert.deepEqual(
     primaryPresets.map((p) => p.name),
-    ["M1 Audiation", "M2 Recognition"],
+    ["Single Chord · Degree Audiation", "Single Chord · Degree Recognition"],
   );
   for (const p of primaryPresets) {
     const c = validate(p.config);

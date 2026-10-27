@@ -4,7 +4,7 @@ const browser=await chromium.launch({executablePath:process.env.PLAYWRIGHT_CHROM
 try{
  const page=await browser.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
  const url='http://127.0.0.1:4173/jazz-ear-lab-v2/';
- await page.goto(url+'#home');await page.getByRole('article',{name:'Progression Recognition',exact:true}).getByRole('button',{name:'Customize',exact:true}).click();
+ await page.goto(url+'#home');await page.getByRole('article',{name:'Progression · Degree Recognition',exact:true}).getByRole('button',{name:'Customize',exact:true}).click();
  await page.getByRole('button',{name:'Practice',exact:true}).click();
  await page.getByLabel('BPM',{exact:true}).fill('300');await page.getByLabel('BPM',{exact:true}).dispatchEvent('change');
  await page.getByLabel('Questions (0 = Unlimited)',{exact:true}).fill('1');await page.getByLabel('Questions (0 = Unlimited)',{exact:true}).dispatchEvent('change');
@@ -77,5 +77,5 @@ try{
   window.AudioContext=function(){return new Proxy(offline,{get(target,key){if(key==='state')return 'running';if(key==='resume')return async()=>{};const value=Reflect.get(target,key,target);return typeof value==='function'?value.bind(target):value;}});};
   try{const engine=new AudioEngine();await engine.ready();engine.playSequence(plan.events,plan.countIn,plan.duration);const buffer=await offline.startRendering();let peak=0;for(const value of buffer.getChannelData(0))peak=Math.max(peak,Math.abs(value));engine.stop();return peak;}finally{window.AudioContext=native;}
  });assert.ok(output>0&&output<1,'boosted four-note progression must render without clipping: '+output);
- console.log('Progression browser passed: whole replay retains arbitrary-order answers, first grades, singing completion/reference, partial ratings and Overall1/7 with no speed sample.');
+ console.log('Progression browser passed: whole replay retains arbitrary-order answers, first grades, degree audiation completion/reference, partial ratings and Overall1/7 with no speed sample.');
 }finally{await browser.close();}

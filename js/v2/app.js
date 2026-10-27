@@ -1,3 +1,4 @@
+import { exerciseNames, progressionModes, progressionName } from "./exercise-names.js";
 import { configurationChapters, configurationGroup, rememberGroups, practiceSummary } from "./configuration.js";
 import { mountProgression, progressionEvidence, progressionSessions, progressionConditions } from "./progression-ui.js";
 import { AudioEngine } from "../jazz/audio.js";
@@ -130,7 +131,13 @@ function load() {
                 throw new Error("Invalid saved session.");
         }
         presets = [
-            ...builtins.map((b) => structuredClone(saved.find((p) => p.id === b.id) ?? b)),
+            ...builtins.map((b) => {
+                const p = structuredClone(saved.find((p) => p.id === b.id) ?? b);
+                if ((p.id === "m1-general" && p.name === "M1 Audiation") ||
+                    (p.id === "m2-general" && p.name === "M2 Recognition"))
+                    p.name = b.name;
+                return p;
+            }),
             ...saved.filter((p) => !builtins.some((b) => b.id === p.id)),
         ];
         activeId = read(keys.last, presets[0].id);
@@ -144,7 +151,7 @@ function load() {
     }
 }
 function describe(c) {
-    return `${c.exercise.toUpperCase()} / ${c.roots.join(", ")} / ${c.qualities.join(", ")} / ${c.qualities.map(q => q + ": " + targetsFor(c, q).join(", ")).join("; ")} / mix ${(c.voiceLevels ?? [1, 1, 1, 1, 1]).map(v => Math.round(v * 100) + "%").join(", ")} / context ${c.context ? "on" : "off"} / ${c.count || "Unlimited"} questions${c.exercise === "m1" ? " / " + c.method : ""}`;
+    return `${exerciseNames[c.exercise]} / ${c.roots.join(", ")} / ${c.qualities.join(", ")} / ${c.qualities.map(q => q + ": " + targetsFor(c, q).join(", ")).join("; ")} / mix ${(c.voiceLevels ?? [1, 1, 1, 1, 1]).map(v => Math.round(v * 100) + "%").join(", ")} / context ${c.context ? "on" : "off"} / ${c.count || "Unlimited"} questions${c.exercise === "m1" ? " / " + c.method : ""}`;
 }
 function customize(p) {
     activeId = p.id;
@@ -153,6 +160,12 @@ function customize(p) {
     if (location.hash === "#configure")
         render();
 }
+function exerciseTitle(name) {
+    const title = el("h2");
+    const [context, assessment] = name.split(" · ");
+    title.append(el("span", context, "exercise-context"), el("span", " · ", "sr-only"), el("span", assessment));
+    return title;
+}
 function home() {
     heading("Practice");
     const grid = el("div", "", "exercises");
@@ -160,15 +173,16 @@ function home() {
     for (const definition of primaryPresets) {
         const p = presets.find((p) => p.id === definition.id);
         const card = el("article", "", "exercise");
-        const title = el("h2", definition.name);
+        const title = exerciseTitle(definition.name);
         title.id = definition.id;
         card.dataset.presetId = p.id;
         card.setAttribute("aria-labelledby", title.id);
         card.append(title, actions(button("Start", () => start(p), false), button("Customize", () => customize(p))));
         grid.append(card);
     }
-    for (const [mode, name] of [["recognition", "Progression Recognition"], ["singing", "Guided Singing"]]) {
-        const card = el("article", "", "exercise"), title = el("h2", name);
+    for (const mode of Object.values(progressionModes)) {
+        const name = progressionName(mode);
+        const card = el("article", "", "exercise"), title = exerciseTitle(name);
         title.id = "progression-" + mode;
         card.setAttribute("aria-labelledby", title.id);
         card.append(title, actions(button("Start", () => location.hash = "progression/" + mode + "/start", false), button("Customize", () => location.hash = "progression/" + mode)));
@@ -210,7 +224,7 @@ function home() {
 function select(label, value, options, update) {
     const l = el("label", label), s = el("select");
     options.forEach((v) => {
-        const o = el("option", v === "all" ? "All" : v === "imagined-sung" ? "Imagined / sung" : v === "played" ? "Instrumental playing" : v === "All selected roots" ? "All roots" : v === "All selected qualities" ? "All qualities" : v);
+        const o = el("option", v === "m1" || v === "m2" ? exerciseNames[v] : v === "all" ? "All" : v === "imagined-sung" ? "Imagined / sung" : v === "played" ? "Instrumental playing" : v === "All selected roots" ? "All roots" : v === "All selected qualities" ? "All qualities" : v);
         o.value = v;
         s.append(o);
     });
@@ -292,7 +306,7 @@ function config() {
     draft = editableConfig(draft);
     const issue = configIssue();
     const page = el("section", "", "config-page"), header = el("header", "", "config-header");
-    const modeName = draft.exercise === "m1" ? "M1 Audiation" : "M2 Recognition";
+    const modeName = exerciseNames[draft.exercise];
     const title = heading("Customize " + preset().name + (preset().name === modeName ? "" : " — " + modeName));
     header.append(title);
     const editor = el("section", "", "config-editor"), side = el("aside", "", "config-summary");
@@ -575,7 +589,7 @@ function renderPractice() {
     host.replaceChildren();
     const c = session.config, a = current;
     const top = el("div", "", "session-top");
-    top.append(el("h1", c.exercise === "m1" ? "M1 Audiation" : "M2 Recognition"), button("Stop", finish));
+    top.append(el("h1", exerciseNames[c.exercise]), button("Stop", finish));
     host.append(top);
     const count = el("p", `Question ${session.attempts.length}${c.count ? " / " + c.count : " / Unlimited"}`, "session-count");
     top.insertBefore(count, top.lastElementChild);
@@ -766,7 +780,7 @@ function results(id) {
         }), button("Presets", () => location.hash = "home")));
         return block;
     };
-    host.append(el("p", `${s.config.exercise === "m1" ? "M1 Audiation / Self-rated " + s.config.method : "M2 Recognition / First answers"} · ${s.attempts.length} ${s.attempts.length === 1 ? "record" : "records"}`, "results-context"), disclosure("Session conditions", el("p", describe(s.config))), overview());
+    host.append(el("p", `${exerciseNames[s.config.exercise]} / ${s.config.exercise === "m1" ? "Self-rated " + s.config.method : "First answers"} · ${s.attempts.length} ${s.attempts.length === 1 ? "record" : "records"}`, "results-context"), disclosure("Session conditions", el("p", describe(s.config))), overview());
     const review = disclosure("Question review");
     review.className = "question-review";
     for (const a of s.attempts) {
@@ -814,7 +828,7 @@ function customizeFocus(items, key) {
         config.roots = [rootFilter];
     let focus = presets.find((p) => !builtins.some((b) => b.id === p.id) && JSON.stringify(p.config) === JSON.stringify(config));
     if (!focus) {
-        focus = { id: crypto.randomUUID(), name: `Focus: ${config.exercise.toUpperCase()} ${key}${rootFilter ? " / " + rootFilter : ""}`, config };
+        focus = { id: crypto.randomUUID(), name: `Focus: ${exerciseNames[config.exercise]} ${key}${rootFilter ? " / " + rootFilter : ""}`, config };
         presets.push(focus);
     }
     persist();
@@ -824,7 +838,7 @@ function insights() {
     heading("Insights");
     const all = [...sessions.flatMap(s => s.attempts), ...progressionEvidence()], scope = el("section", "", "insight-scope");
     const nav = actions();
-    for (const [value, label] of [["overall", "Overall"], ["m1", "M1 Audiation"], ["m2", "M2 Recognition"], ["progression-recognition", "Progression Recognition"], ["progression-singing", "Guided Singing"]])
+    for (const [value, label] of [["overall", "Overall"], ...Object.entries(exerciseNames)])
         nav.append(button(label, () => { insightModule = value; production = "all"; rootFilter = ""; qualityFilter = ""; render(); }, insightModule !== value));
     scope.append(nav);
     if (insightModule === "m1")
@@ -832,8 +846,8 @@ function insights() {
     let rows = insightRows(all, insightModule, production);
     host.append(scope);
     if (!rows.length) {
-        const progressionMode = insightModule === "progression-singing" ? "singing" : insightModule === "progression-recognition" ? "recognition" : null;
-        const label = progressionMode === "singing" ? "Guided Singing" : "Progression Recognition";
+        const progressionMode = insightModule === "progression-singing" ? progressionModes.degreeAudiation : insightModule === "progression-recognition" ? progressionModes.degreeRecognition : null;
+        const label = progressionMode ? progressionName(progressionMode) : "";
         host.append(el("p", progressionMode ? `No ${label} records yet. Start a progression practice.` : "No matching V2 records. Choose an exercise to start practicing."), button(progressionMode ? `Practice ${label}` : "Practice", () => location.hash = progressionMode ? `progression/${progressionMode}` : "home"));
         return;
     }
@@ -843,7 +857,7 @@ function insights() {
     const versions = [...new Set(rows.map(a => `${a.timingVersion} · ${a.target.generatorVersion}`))];
     scope.append(disclosure("Source conditions", ...conditions.map(text => el("p", text)), disclosure("Technical versions", ...versions.map(text => el("p", text)))));
     const historyEntries = [
-        ...sessions.map(s => ({ id: s.id, startedAt: s.startedAt, label: s.config.exercise.toUpperCase(), count: s.attempts.length, unit: "records", ended: Boolean(s.endedAt), href: "#results/" + s.id })),
+        ...sessions.map(s => ({ id: s.id, startedAt: s.startedAt, label: exerciseNames[s.config.exercise], count: s.attempts.length, unit: "records", ended: Boolean(s.endedAt), href: "#results/" + s.id })),
         ...progressionSessions().map(s => ({ ...s, unit: s.count === 1 ? "progression" : "progressions" })),
     ].sort((a, b) => b.startedAt.localeCompare(a.startedAt));
     const filters = el("div", "", "insight-filters");
@@ -967,7 +981,7 @@ function render() {
     host.replaceChildren();
     if (route === "progression" || route.startsWith("progression/")) {
         try {
-            disposeProgression = mountProgression(host, route.split("/")[1] === "singing" ? "singing" : "recognition", route.endsWith("/start"), route.split("/")[2] === "results" ? decodeURIComponent(route.split("/")[3] ?? "") : undefined);
+            disposeProgression = mountProgression(host, route.split("/")[1] === progressionModes.degreeAudiation ? progressionModes.degreeAudiation : progressionModes.degreeRecognition, route.endsWith("/start"), route.split("/")[2] === "results" ? decodeURIComponent(route.split("/")[3] ?? "") : undefined);
         }
         catch (e) {
             report(e);

@@ -1,3 +1,4 @@
+import { exerciseNames } from "./exercise-names.js";
 import { qualities, degrees, parseChord, targetPc, inRange, recognitionDegrees, chordToneDegrees, chordNotes, } from "../jazz/theory.js";
 export { qualities, degrees };
 export const roots = "C C# D Eb E F F# G Ab A Bb B".split(" ");
@@ -17,7 +18,7 @@ const base = {
 export const primaryPresets = [
     {
         id: "m1-general",
-        name: "M1 Audiation",
+        name: exerciseNames.m1,
         config: {
             ...base,
             exercise: "m1",
@@ -27,7 +28,7 @@ export const primaryPresets = [
     },
     {
         id: "m2-general",
-        name: "M2 Recognition",
+        name: exerciseNames.m2,
         config: { ...base, qualities: ["maj7", "m7", "7"], targets: [...roles] },
     },
 ];
@@ -225,7 +226,7 @@ export function answer(a, chosen, elapsed) {
 }
 export function rate(a, correct, wrong) {
     if (a.exercise !== "m1")
-        throw new Error("Only M1 supports self-assessment.");
+        throw new Error("Only single-chord degree audiation supports this self-assessment interface.");
     if (a.firstCorrect !== null)
         return;
     if (!correct &&

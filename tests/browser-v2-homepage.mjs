@@ -97,8 +97,8 @@ async function spyAudio() {
 try {
   await page.goto(url);
   assert.deepEqual(await page.locator(".exercises h2").allTextContents(), [
-    "M1 Audiation",
-    "M2 Recognition",
+    "Single Chord · Degree Audiation",
+    "Single Chord · Degree Recognition",
   ]);
   for (const id of ["m1-general", "m2-general"]) {
     assert.deepEqual(await entry(id).getByRole("button").allTextContents(), [
