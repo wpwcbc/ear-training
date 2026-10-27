@@ -1,3 +1,4 @@
+import { progressionModes } from "./exercise-names.js";
 import { parseChord, chordToneDegrees, chordNotes, targetPc, inRange, degrees, } from "../jazz/theory.js";
 export const templates = {
     major: ["Dm7", "G7", "Cmaj7"],
@@ -5,7 +6,7 @@ export const templates = {
     backdoor: ["Fm7", "Bb7", "Cmaj7"],
 };
 export const defaults = {
-    mode: "recognition",
+    mode: progressionModes.degreeRecognition,
     chords: templates.major.map((symbol) => ({ symbol, beats: 4 })),
     bpm: 80,
     notes: 2,
@@ -20,7 +21,7 @@ export const defaults = {
 };
 export function validate(input) {
     const c = structuredClone(input);
-    if (!["recognition", "singing"].includes(c.mode) ||
+    if (!Object.values(progressionModes).includes(c.mode) ||
         !Number.isFinite(c.bpm) ||
         c.bpm < 20 ||
         c.bpm > 300 ||
@@ -97,7 +98,7 @@ export function submit(q, answers) {
 }
 export function rate(q, index, correct, wrong) {
     const n = q.notes[index];
-    if (q.config.mode !== "singing" || !n)
+    if (q.config.mode !== progressionModes.degreeAudiation || !n)
         throw Error("Invalid self-rating.");
     if (n.correct !== null)
         return;

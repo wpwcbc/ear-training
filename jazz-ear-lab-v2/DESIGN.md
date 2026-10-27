@@ -346,3 +346,14 @@ runtime evidence, verification coverage and limits.
 ## 2026-10-27 layout delivery
 
 The approved [layout specification](../V2_LAYOUT_REDESIGN_SPEC.md) supersedes older Split Desk configuration/practice composition notes above and in historical extensions below. It retains the Signal Route identity, model, audio scheduling and first-evidence contracts. Authority: [A practice brief](.impeccable/surfaces/v2-practice-layout.md) and [C+B configuration brief](.impeccable/surfaces/v2-config-layout.md). See the [implementation and verification report](../V2_LAYOUT_REDESIGN_IMPLEMENTATION.md) for runtime captures, acceptance coverage, independent reviews and remaining validation limits. The earlier Evidence Boundary describes the prior documentation pass; the new report records this implementation's browser verification.
+
+
+## Exercise names
+
+The two assessment families are **Degree Audiation** (self-rated) and
+**Degree Recognition** (system-graded); each has **Single Chord** and
+**Progression** contexts. Home entries show the context as secondary text and
+the assessment family as the main title. Configuration, practice, Results,
+Insights and history use the complete contextual name from
+`src/v2/exercise-names.ts`. See [the glossary](../GLOSSARY.md) for terminology
+and the compatibility boundary around historical stored IDs.

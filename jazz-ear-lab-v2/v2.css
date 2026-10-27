@@ -94,6 +94,7 @@ details > p { max-width: 72ch; color: var(--muted); }
 .exercises { display: grid; gap: 12px; }
 .exercise { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 20px; border: 1px solid var(--rule); border-radius: 2px; padding: 18px 20px; }
 .exercise h2 { font-size: 22px; margin: 0; }
+.exercise-context { display: block; font-size: 16px; font-weight: 400; color: var(--muted); margin-bottom: 4px; }
 .exercise .actions, .preset-row .actions { margin: 0; flex-wrap: nowrap; gap: 10px; }
 .exercise button { min-width: 108px; }
 .saved-presets { margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--rule); }

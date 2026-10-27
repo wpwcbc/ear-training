@@ -13,9 +13,9 @@ try {
  const enter=async name=>{await button(name).focus();await page.keyboard.press('Enter');};
  const capture=async name=>{assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,name+' page overflow');if(folder)await page.screenshot({path:`${folder}/${name}.png`,fullPage:true});};
  await page.goto(base+'#insights');await page.getByRole('heading',{name:'Insights',exact:true}).waitFor();
- await button('Guided Singing').click();
- await page.getByText('No Guided Singing records yet. Start a progression practice.',{exact:true}).waitFor();
- await button('Practice Guided Singing').click();await page.getByLabel('Mode',{exact:true}).waitFor();
+ await button('Progression · Degree Audiation').click();
+ await page.getByText('No Progression · Degree Audiation records yet. Start a progression practice.',{exact:true}).waitFor();
+ await button('Practice Progression · Degree Audiation').click();await page.getByLabel('Mode',{exact:true}).waitFor();
  assert.equal(await page.getByLabel('Mode',{exact:true}).inputValue(),'singing');
  await page.getByRole('spinbutton',{name:'Chord 2 beats',exact:true}).waitFor();
  assert.equal(await button('Remove chord 2').count(),1);assert.equal(await button('Move chord 2 up').count(),1);
@@ -43,7 +43,7 @@ try {
  await enter('Finish');await button('Overall Insights').waitFor();
  await button('Overall Insights').click();await page.getByRole('heading',{name:'Insights',exact:true}).waitFor();
  assert.equal(await page.locator('#practice-announcement').textContent(),'');
- await button('Guided Singing').click();
+ await button('Progression · Degree Audiation').click();
  await page.locator('.assessment-count').filter({hasText:/^1 \/ 1 assessed$/}).waitFor();
  await page.getByText('Source conditions',{exact:true}).click();
  const conditions=await page.locator('details').filter({has:page.locator('summary').filter({hasText:/^Source conditions$/})}).innerText();
@@ -87,10 +87,10 @@ try {
  assert.notEqual(await page.evaluate(()=>document.activeElement?.tagName),'BODY');
  assert.match(await page.locator('#practice-announcement').textContent(),/Answers checked/);
  await enter('Finish');await button('Overall Insights').click();
- await page.getByRole('heading',{name:'Insights',exact:true}).waitFor();await button('Progression Recognition').click();
+ await page.getByRole('heading',{name:'Insights',exact:true}).waitFor();await button('Progression · Degree Recognition').click();
  await page.getByText('Sessions',{exact:true}).click();
  assert.match(await page.getByRole('link',{name:'View latest matching session',exact:true}).getAttribute('href'),/#progression\/recognition\/results\//);
  await page.getByRole('link',{name:'View latest matching session',exact:true}).click();await page.getByText('0 / 6 assessed notes',{exact:true}).waitFor();
  assert.deepEqual(errors,[]);
- console.log('V2 critique fixes passed: complete mobile singing sequence; keyboard tabs, ratings, submit and replay; retained review; readable conditions; matching progression history and reload; module-aware empty state and chord control names.');
+ console.log('V2 critique fixes passed: complete mobile degree audiation sequence; keyboard tabs, ratings, submit and replay; retained review; readable conditions; matching progression history and reload; module-aware empty state and chord control names.');
 } finally {await browser.close();}
