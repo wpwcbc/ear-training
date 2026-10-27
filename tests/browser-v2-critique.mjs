@@ -19,8 +19,8 @@ try {
  assert.equal(await page.getByLabel('Mode',{exact:true}).inputValue(),'singing');
  await page.getByRole('spinbutton',{name:'Chord 2 beats',exact:true}).waitFor();
  assert.equal(await button('Remove chord 2').count(),1);assert.equal(await button('Move chord 2 up').count(),1);
- await enter('Targets');await page.waitForFunction(()=>document.activeElement?.textContent==='Targets');
- assert.equal(await active(),'Targets');
+ await enter('Target degrees');await page.waitForFunction(()=>document.activeElement?.textContent==='Target degrees');
+ assert.equal(await active(),'Target degrees');
  await enter('Practice');await page.waitForFunction(()=>document.activeElement?.textContent==='Practice');
  for(const [label,value] of [['BPM','300'],['Questions (0 = Unlimited)','1']]){await page.getByLabel(label,{exact:true}).fill(value);await page.getByLabel(label,{exact:true}).dispatchEvent('change');}
  await button('Start practice').click();

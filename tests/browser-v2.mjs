@@ -449,7 +449,7 @@ try {
     .locator('[data-preset-id="recognition-guides"]')
     .getByRole("button", { name: "Customize", exact: true })
     .click();
-  for (const name of ["Practice", "Targets", "Harmony"]) {
+  for (const name of ["Practice", "Target degrees", "Harmony"]) {
     await page.getByRole("button", { name, exact: true }).click();
     assert.equal(
       await page
@@ -486,6 +486,7 @@ try {
       .count(),
     1,
   );
+  await page.getByText("Preset actions", { exact: true }).click();
   page.once("dialog", (d) => d.accept());
   await page
     .getByRole("button", { name: "Restore Default", exact: true })
@@ -527,6 +528,7 @@ try {
   page.once("dialog", (d) => d.accept("My V2 preset"));
   await page.getByRole("button", { name: "New preset", exact: true }).click();
   await page.waitForURL(/#configure$/);
+  await page.getByText("Preset actions", { exact: true }).click();
   page.once("dialog", (d) => d.accept("Renamed V2 preset"));
   await page.getByRole("button", { name: "Rename", exact: true }).click();
   assert.match(await page.locator("h1").textContent(), /Renamed V2 preset/);
@@ -539,7 +541,7 @@ try {
     await page.locator("main").textContent(),
     /Renamed V2 preset/,
   );
-  for (const name of ["Harmony", "Targets", "Practice"]) {
+  for (const name of ["Harmony", "Target degrees", "Practice"]) {
     await page.goto(url);
     await page
       .locator('[data-preset-id="recognition-guides"]')

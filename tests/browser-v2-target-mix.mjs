@@ -5,7 +5,7 @@ try {
  const page=await browser.newPage();
  await page.goto('http://127.0.0.1:4173/jazz-ear-lab-v2/');
  await page.locator('[data-preset-id="recognition-guides"]').getByRole('button',{name:'Customize',exact:true}).click();
- await page.getByRole('button',{name:'Targets',exact:true}).click();
+ await page.getByRole('button',{name:'Sound',exact:true}).click();await page.locator('summary').filter({hasText:/^Voicing mix/}).click();
  await page.getByLabel('Voice 1 volume',{exact:true}).fill('150');
  await page.getByLabel('Voice 1 volume',{exact:true}).dispatchEvent('change');
  await page.getByRole('button',{name:'Audition C7',exact:true}).click();
@@ -30,7 +30,7 @@ try {
  await page.screenshot({path:'/tmp/v2-insights-mobile.png',fullPage:true});
  await page.setViewportSize({width:1440,height:1000});await page.screenshot({path:'/tmp/v2-insights-desktop.png',fullPage:true});
  await page.getByRole('button',{name:'Customize focus',exact:true}).first().click();
- await page.getByRole('button',{name:'Targets',exact:true}).click();
+ await page.getByRole('button',{name:'Target degrees',exact:true}).click();
  const group=page.getByRole('group',{name:'7',exact:true});
  await group.getByLabel('9',{exact:true}).check();
  const focus=await page.evaluate(()=>JSON.parse(localStorage.getItem('jazzEarLab:v2:presets')).find(p=>p.name.startsWith('Focus:')));

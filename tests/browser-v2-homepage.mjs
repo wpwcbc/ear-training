@@ -138,7 +138,7 @@ try {
     await step("Harmony");
     await pool("Roots", ["F#", "Bb"]);
     assert.deepEqual(await config(id), { ...original, roots: ["F#", "Bb"] });
-    await step("Targets");
+    await step("Target degrees");
     await page.getByLabel("Degree selection").selectOption("exact");
     await pool("Target degrees", ["b9", "#11", "b13", "#5"]);
     const targetConfig = await config(id);
@@ -255,6 +255,7 @@ try {
     await entry(id)
       .getByRole("button", { name: "Customize", exact: true })
       .click();
+    await page.getByText("Preset actions", { exact: true }).click();
     page.once("dialog", (d) => d.accept());
     await page
       .getByRole("button", { name: "Restore Default", exact: true })

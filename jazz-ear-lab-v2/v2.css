@@ -254,10 +254,6 @@ th { background: var(--quiet); }
 .insight-scope > .actions, .insight-scope > p { grid-column: 1 / -1; }
 /* Progression uses the same configuration, session and results components as M1/M2. */
 .progression-work { min-width: 0; }
-.progression-config-section > label { display: grid; gap: 8px; margin: 16px 0; max-width: 560px; }
-.progression-config-section .actions > label { display: grid; gap: 8px; min-width: 0; }
-.progression-config-section input { max-width: 100%; }
-.progression-config-section > button { margin: 8px 8px 16px 0; }
 .progression-work [data-chord] { display: inline-block; padding: 12px 16px; border: 1px solid var(--control); }
 .progression-playback { align-items: stretch; }
 .progression-playback button { width: 100%; }
@@ -269,12 +265,8 @@ th { background: var(--quiet); }
 .progression-review-group { padding: 12px 16px; border-bottom: 1px solid var(--rule); }
 .progression-answer-board > section { padding: 16px 0; border-bottom: 1px solid var(--rule); }
 .progression-work .voice-control { display: grid; }
-.progression-config-section > details { margin: 16px 0; }
 .progression-work[data-view="results"] .evidence-summary { margin-top: 0; }
 @media(max-width:700px) {
- .progression-config-section .actions > label { flex: 1 1 140px; }
- .progression-config-section .actions input { width: 100%; }
- .progression-work[data-view="settings"] { padding-bottom: 140px; }
  .progression-note-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
 }
 @media (max-width: 359px) {
@@ -282,28 +274,122 @@ th { background: var(--quiet); }
   .exercise .actions { justify-content: flex-end; }
 }
 .progression-target-degree { font-size: 36px; font-weight: 600; line-height: 1.1; margin: 8px 0 20px; }
-/* Keep the whole sung phrase readable before its checking controls. */
-.progression-singing .progression-answer-board { margin-top: 16px; }
-.progression-singing .progression-chord-group { margin: 0 0 12px; padding: 0 0 12px; }
-.progression-singing .progression-note-grid { margin-top: 8px; }
-.progression-singing .progression-note-grid > section { min-width: 0; }
-.progression-singing .progression-note-grid h3 { font-size: 14px; font-weight: 400; color: var(--muted); margin-bottom: 4px; }
-.progression-singing .progression-target-degree { margin: 0; }
-.progression-singing .progression-note-grid .actions { gap: 8px; margin: 12px 0 8px; }
-.progression-singing .progression-note-grid .actions > * { min-width: 0; max-width: 100%; }
-.progression-singing .progression-note-grid .actions > label { display: grid; gap: 8px; }
-.progression-singing .progression-note-grid .actions button { flex: 1 1 100px; }
-.progression-singing .progression-note-grid p:not(.progression-target-degree) { font-size: 14px; margin-bottom: 0; }
-.progression-singing .done-action { margin-top: 12px; }
+/* Approved C+B configuration: independent chapters, native inline disclosures. */
+.config-header { display: flex; flex-wrap: wrap; gap: 12px 24px; justify-content: space-between; align-items: start; margin-bottom: 28px; }
+.config-header h1 { font-size: 28px; margin-bottom: 0; }
+.config-layout { display: grid; grid-template-columns: minmax(0, 3fr) minmax(250px, 1fr); gap: 32px; }
+.config-editor, .config-summary { min-width: 0; }
+.config-summary { padding-left: 24px; border-left: 1px solid var(--rule); }
+.config-summary h2 { font-size: 22px; }
+.config-summary h3 { margin-top: 20px; margin-bottom: 8px; font-size: 16px; }
+.config-summary p { font-size: 15px; margin-bottom: 6px; }
+.config-summary > details { margin-top: 16px; border-top: 1px solid var(--rule); }
+.config-summary > details button { margin: 4px 8px 4px 0; }
+.config-summary #config-overview { padding: 0; border: 0; margin: 0; }
+.config-tabs { grid-template-columns: repeat(4,minmax(0,1fr)); }
+.config-tabs button { font-size: 16px; padding: 12px 4px; }
+.config-tabs button[aria-current="page"] { border-bottom-color: var(--signal); background: var(--quiet); font-weight: 600; }
+.config-group { margin-bottom: 16px; border: 1px solid var(--rule); border-radius: 2px; }
+.config-group > summary { display: list-item; padding: 16px; font-weight: 600; }
+.config-selected { float: right; max-width: 65%; color: var(--muted); font-size: 15px; font-weight: 400; }
+.config-group > summary::after { content: ""; display: block; clear: both; }
+.config-group-body { padding: 4px 16px 16px; }
+.config-group-body > label, .config-group-body > .actions > label { display: grid; gap: 8px; margin: 12px 0; }
+.config-group-body .voice-control { display: grid; grid-template-columns: 130px minmax(60px,1fr) 48px; gap: 12px; }
+.config-group-body .check-row { display: flex; align-items: center; gap: 12px; min-height: 44px; }
+.config-group-body fieldset { border: 0; padding-bottom: 0; margin-bottom: 12px; }
+.config-group-body fieldset > legend { font-size: 16px; }
+.config-group-body > .actions { margin: 8px 0; }
+.config-field-error { color: var(--danger); font-size: 15px; margin: 12px 0; }
+[aria-invalid="true"]:is(input,select) { border-color: var(--danger); }
+.config-launch { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--rule); }
+.config-launch button { width: 100%; }
+.config-launch .notice { margin-top: 8px; font-size: 14px; }
 @media(max-width:700px) {
- .progression-singing { gap: 12px; padding-top: 12px; }
- .progression-singing .question { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 4px 12px; align-items: center; }
- .progression-singing .question .chord-label { grid-column: 1; font-size: 14px; }
- .progression-singing .question h2 { grid-column: 1; font-size: 32px; margin: 0; }
- .progression-singing .question > p:not(.chord-label) { grid-column: 1 / -1; grid-row: 3; font-size: 14px; margin: 4px 0 0; }
- .progression-singing .question .progression-playback { grid-column: 2; grid-row: 1 / 3; margin: 0; }
- .progression-singing .question .actions button { font-size: 16px; min-width: 0; padding: 8px; }
- .progression-singing .progression-answer-board { margin-top: 12px; }
- .progression-singing .progression-answer-board > h2 { font-size: 20px; margin-bottom: 12px; }
- .progression-singing legend { font-size: 18px; }
+ .config-header { margin-bottom: 20px; }
+ .config-header h1 { font-size: 24px; }
+ .config-layout { grid-template-columns: minmax(0,1fr); gap: 20px; }
+ .config-summary { padding: 16px 0 0; border-left: 0; border-top: 1px solid var(--rule); }
+ .config-page { padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
+ .config-launch { position: fixed; bottom: 0; left: 0; right: 0; z-index: 4; background: var(--paper); padding: 12px 16px calc(8px + env(safe-area-inset-bottom)); margin: 0; }
+ .config-launch .notice { margin-bottom: 0; }
+ .config-tabs button { font-size: 14px; }
+ .config-group > summary { padding: 12px; }
+ .config-selected { max-width: 60%; font-size: 14px; }
+ .config-group-body { padding: 0 12px 12px; }
+ .config-group-body .voice-control { grid-template-columns: 90px minmax(60px,1fr) 40px; gap: 8px; }
 }
+.config-preset-controls, .config-fields { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
+.config-preset-controls > label, .config-fields > label { display: grid; gap: 8px; flex: 1 1 160px; min-width: 0; }
+.config-preset-controls { max-width: 720px; }
+.config-fields { margin-bottom: 12px; }
+.chord-editor-row { display: grid; grid-template-columns: minmax(0,2fr) minmax(80px,1fr) auto auto; align-items: end; gap: 12px; margin: 12px 0; }
+.chord-editor-row label { display: grid; gap: 8px; min-width: 0; }
+.config-editor > details { margin-top: 16px; }
+@media(max-width:700px) {
+ .chord-editor-row { grid-template-columns: minmax(0,1fr) minmax(0,1fr); padding-bottom: 12px; border-bottom: 1px solid var(--rule); }
+ .chord-editor-row > button { justify-self: end; }
+ .config-preset-controls { width: 100%; }
+ .config-preset-controls > label { flex-basis: 110px; }
+}
+/* Approved A: music and responses share a bounded harmonic board. */
+.harmonic-workspace.single-chord { display: grid; grid-template-columns: minmax(0,1fr); gap: 12px; max-width: 960px; margin: 0 auto; padding-top: 32px; }
+.single-chord .question { text-align: center; }
+.single-chord .question h2 { font-size: 64px; margin: 8px 0 12px; }
+.single-chord .question .actions { justify-content: center; }
+.single-chord .question .question-prompt { font-size: 22px; }
+.single-chord .answers { margin-top: 12px; }
+.single-chord .response-area { padding: 16px 0; }
+.single-chord .feedback-line { justify-content: center; }
+.single-chord .response-area > .actions { justify-content: center; }
+@media(max-width:700px) {
+ .harmonic-workspace.single-chord { padding-top: 20px; gap: 8px; }
+ .single-chord .question h2 { font-size: 48px; }
+ .single-chord .response-area { padding-top: 8px; }
+}
+.harmonic-progression { padding: 24px 0 0; }
+.harmonic-progression .progression-answer-board { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 24px; margin-top: 20px; }
+.harmonic-progression .progression-answer-board > h2 { grid-column: 1 / -1; font-size: 26px; margin-bottom: 4px; }
+.harmonic-progression .progression-chord-group { border: 0; border-right: 1px solid var(--rule); padding: 0 24px 12px 0; margin: 0; }
+.harmonic-progression .progression-chord-group:nth-of-type(3n) { border-right: 0; padding-right: 0; }
+.harmonic-progression .progression-chord-group legend { display: block; width: 100%; font-size: 32px; line-height: 1.2; padding: 0 0 16px; }
+.harmonic-progression [data-chord] { border: 0; }
+.chord-duration { display: block; font-size: 16px; font-weight: 400; margin-top: 8px; color: var(--muted); }
+.harmonic-progression .progression-note-grid { grid-template-columns: minmax(0,1fr); gap: 24px; margin: 0; }
+.harmonic-progression .progression-note-grid select { font-size: 20px; }
+.harmonic-progression .progression-note-grid h3 { font-size: 16px; color: var(--muted); font-weight: 400; }
+.harmonic-progression .progression-note-grid section { min-width: 0; }
+.harmonic-progression .progression-note-grid p { margin-bottom: 8px; }
+.harmonic-meta { color: var(--muted); font-size: 14px; margin: 20px 0 12px; }
+.harmonic-actions { display: flex; justify-content: space-between; align-items: stretch; gap: 16px; flex-wrap: wrap; border-top: 1px solid var(--rule); padding-top: 20px; }
+.harmonic-actions .progression-playback { margin: 0; flex: 0 1 360px; }
+.harmonic-actions > button { min-width: 220px; }
+.harmonic-actions .done-action { width: auto; margin: 0; font-size: 20px; }
+@media(max-width:700px) {
+ .harmonic-progression { padding-top: 16px; }
+ .harmonic-progression .progression-answer-board { grid-template-columns: minmax(0,1fr); gap: 16px; margin-top: 16px; }
+ .harmonic-progression .progression-answer-board > h2 { font-size: 22px; margin-bottom: 0; }
+ .harmonic-progression .progression-chord-group, .harmonic-progression .progression-chord-group:nth-of-type(3n) { border: 0; border-bottom: 1px solid var(--rule); padding: 0 0 16px; }
+ .harmonic-progression .progression-chord-group legend { font-size: 24px; padding-bottom: 12px; }
+ .chord-duration { display: inline; margin-left: 12px; font-size: 14px; }
+ .harmonic-progression .progression-note-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
+ .harmonic-actions { padding-top: 12px; gap: 12px; }
+ .harmonic-actions > button, .harmonic-actions .progression-playback { width: 100%; flex: 1 1 100%; }
+}
+.practice-summary > summary { font-size: 20px; font-weight: 700; }
+.practice-summary > .config-group-body { padding: 0; }
+.config-summary > .practice-summary { margin: 0; border: 0; }
+.config-mobile-overview { display: none; }
+@media(min-width:701px) { .practice-summary > summary { display: none; } }
+@media(max-width:700px) {
+ .practice-summary h2 { display: none; }
+ .config-mobile-overview { display: block; width: 100%; color: var(--muted); font-size: 14px; margin: 0; }
+ .config-summary { padding-top: 0; }
+ html:has(.config-page) { scroll-padding-bottom: 120px; }
+ .config-page :is(input,select,button,summary) { scroll-margin-block: 100px 120px; }
+ .single-chord .response-area > :is(#feedback,.playback-status) { text-align: center; }
+}
+.harmonic-progression .progression-note-grid .actions { gap: 8px; margin: 12px 0 8px; }
+.harmonic-progression .progression-note-grid .actions > * { min-width: 0; max-width: 100%; }
+.harmonic-progression .progression-note-grid .actions > label { display: grid; gap: 8px; width: 100%; }
+.harmonic-progression .progression-note-grid .actions button { flex: 1 1 100px; }
