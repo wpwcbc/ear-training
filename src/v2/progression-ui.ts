@@ -1,9 +1,9 @@
+import { configurationChapters, configurationGroup, rememberGroups, practiceSummary, type ConfigurationChapter } from "./configuration.js";
 import { AudioEngine } from "../jazz/audio.js";
 import {
   parseChord,
   pitchClass,
   degrees,
-  chordToneDegrees,
 } from "../jazz/theory.js";
 import {
   read,
@@ -138,8 +138,8 @@ export function mountProgression(
     frame = 0;
   const presets = read<Record<string, ProgressionConfig>>(presetKey, {}),
     runs = retainedRuns ?? read<Run[]>(historyKey, []);
-  let mixOpen = false,
-    settingsStep = "Harmony";
+  const configGroups = new Map<string, boolean>();
+  let configUnsaved = false, settingsStep: ConfigurationChapter = "Harmony";
   const buttonCounts = new Map<string, number>();
   let ratingFocus = false, feedback = "";
   let config = structuredClone(
@@ -205,10 +205,9 @@ export function mountProgression(
   ) => {
     const label = el("label", text),
       input = el("input");
-    input.dataset.control = String(control++);
+    input.dataset.control = "field:" + text;
     input.setAttribute("aria-label", text);
     input.type = type;
-    input.value = value;
     if (type === "range") {
       label.className = "voice-control";
       input.min = "0";
@@ -218,30 +217,14 @@ export function mountProgression(
       input.oninput = () => (output.textContent = input.value + "%");
       label.append(output);
     }
+    input.value = value;
     input.onchange = () => {
       try {
-        change(input.value);
-        if (view === "settings") {
-          const valid = validate(config);
-          write(presetKey, { ...presets, [presetId]: valid });
-          presets[presetId] = valid;
-        }
+        change(type === "number" && input.value === "" ? "NaN" : input.value);
+        if (view === "settings") persistConfig();
         message = "";
-      } catch (e) {
-        message = String((e as Error).message);
-      }
-      if (type === "number" || type === "range") {
-        let status = host.querySelector<HTMLElement>(
-          "#progression-save-status",
-        );
-        if (!status) {
-          status = el("p");
-          status.id = "progression-save-status";
-          host.prepend(status);
-        }
-        status.textContent = message || "Changes saved to this preset.";
-        status.setAttribute("role", message ? "alert" : "status");
-      } else render();
+      } catch (e) { message = (e as Error).message; }
+      render();
     };
     if (type === "range")
       label.insertBefore(input, label.querySelector("output"));
@@ -256,7 +239,7 @@ export function mountProgression(
   ) => {
     const label = el("label", text),
       input = el("select");
-    input.dataset.control = String(control++);
+    input.dataset.control = "field:" + text;
     input.setAttribute("aria-label", text);
     for (const v of values) {
       const labels: Record<string, string> = {
@@ -286,8 +269,10 @@ export function mountProgression(
   };
   function persistConfig() {
     const valid = validate(config);
+    configUnsaved = true;
     write(presetKey, { ...presets, [presetId]: valid });
     presets[presetId] = valid;
+    configUnsaved = false;
   }
   function startPractice() {
     const valid = validate(config);
@@ -450,103 +435,153 @@ export function mountProgression(
     section.append(outcome, body);
     return section;
   }
-  function organizeSettings() {
-    const panels = new Map<string, HTMLElement>();
-    for (const name of ["Harmony", "Targets", "Practice"]) {
-      const panel = el("section");
-      panel.className = "progression-config-section";
-      panel.hidden = settingsStep !== name;
-      panel.id = "progression-settings-" + name;
-      panels.set(name, panel);
+  function configIssue(): { chapter: ConfigurationChapter; group: string; message: string; field?: string } | null {
+    try { validate(config); return null; } catch (e) {
+      const message = (e as Error).message;
+      if (config.chords.length < 2 || config.chords.length > 32) return { chapter: "Harmony", group: "chords", message };
+      for (let i = 0; i < config.chords.length; i++) {
+        const row = config.chords[i];
+        try { parseChord(row.symbol); } catch { return { chapter: "Harmony", group: "chords", field: `Chord ${i + 1}`, message }; }
+        if (!Number.isInteger(row.beats) || row.beats < 1 || row.beats > 16)
+          return { chapter: "Harmony", group: "chords", field: `Chord ${i + 1} beats`, message };
+      }
+      if (!Number.isFinite(config.bpm) || config.bpm < 20 || config.bpm > 300)
+        return { chapter: "Practice", group: "tempo", field: "BPM", message };
+      if (!Number.isInteger(config.notes) || config.notes < 1 || config.notes > 4)
+        return { chapter: "Practice", group: "tempo", field: "Notes per chord", message };
+      if (!Number.isInteger(config.count) || config.count < 0 || config.count > 200)
+        return { chapter: "Practice", group: "length", field: "Questions (0 = Unlimited)", message };
+      for (const row of config.chords) {
+        const quality = parseChord(row.symbol).quality;
+        if (!config.pools[quality]?.length) return { chapter: "Target degrees", group: "pool:" + quality, message };
+      }
+      return { chapter: "Sound", group: !Number.isFinite(config.volume) || config.volume < 0 || config.volume > 1 ? "volume" : "mix", message };
     }
-    const tabs = el("nav");
-    tabs.className = "steps";
-    tabs.setAttribute("aria-label", "Configuration steps");
-    for (const name of panels.keys()) {
-      const tab = button(name, () => {
-        settingsStep = name;
-        render();
-      });
-      tab.setAttribute(
-        "aria-current",
-        name === settingsStep ? "step" : "false",
-      );
+  }
+  function organizeSettings(title: HTMLElement) {
+    const issue = configIssue(), nodes = Array.from(host.children) as HTMLElement[];
+    const page = el("section"), header = el("header"), layout = el("div"), side = el("aside"), tabs = el("nav");
+    page.className = "config-page"; header.className = "config-header"; layout.className = "config-layout"; side.className = "config-summary";
+    host.className = "progression-work config-editor";
+    title.textContent = "Customize " + (config.mode === "singing" ? "Guided Singing" : "Progression Recognition");
+    const label = (name: string) => nodes.find(node => node.tagName === "LABEL" && node.querySelector("[aria-label]")?.getAttribute("aria-label") === name)!;
+    const action = (name: string) => nodes.find(node => node.tagName === "BUTTON" && node.textContent === name)!;
+    const presetControls = el("div"); presetControls.className = "config-preset-controls";
+    presetControls.append(label("Mode"), label("Saved preset"), action("Save as new preset"));
+    header.append(title, presetControls);
+    tabs.className = "steps config-tabs"; tabs.setAttribute("aria-label", "Configuration chapters");
+    for (const name of configurationChapters) {
+      const tab = button(name, () => { settingsStep = name; render(); });
+      if (settingsStep === name) tab.setAttribute("aria-current", "page");
       tabs.append(tab);
     }
-    const footer = el("div");
-    footer.className = "actions config-actions";
-    const history = el("details");
-    history.append(el("summary", "Past progression sessions"));
-    const status: HTMLElement[] = [];
-    let group = "Harmony";
-    for (const node of Array.from(host.children) as HTMLElement[]) {
-      if (node.tagName === "H1") continue;
-      if (node.tagName === "H2" && node.textContent === "Practice settings")
-        group = "Practice";
-      if (node.tagName === "H2" && node.textContent === "Target pools")
-        group = "Targets";
-      if (
-        node.getAttribute("role") === "alert" ||
-        node.id === "progression-save-status" ||
-        (node.tagName === "BUTTON" && node.textContent === "Retry saving")
-      ) {
-        status.push(node);
-        continue;
+    const content: HTMLElement[] = [tabs];
+    const group = (key: string, name: string, selected: string, children: HTMLElement[], open = false) => {
+      const id = presetId + ":" + key;
+      if (issue?.group === key) configGroups.set(id, true);
+      const node = configurationGroup(configGroups, id, name, selected, children, open);
+      if (issue?.group === key) {
+        const error = el("p", issue.message + " Last valid saved preset unchanged.");
+        error.className = "config-field-error"; error.id = "progression-validation"; error.setAttribute("role", "alert");
+        node.lastElementChild!.prepend(error);
+        node.querySelectorAll("input,select,fieldset").forEach(field => {
+          if (issue.field && field.getAttribute("aria-label") !== issue.field) return;
+          field.setAttribute("aria-invalid", "true"); field.setAttribute("aria-describedby", error.id);
+        });
       }
-      if (node.tagName === "BUTTON" && node.textContent === "Start practice") {
-        footer.append(node);
-        continue;
-      }
-      if (
-        node.tagName === "BUTTON" &&
-        node.textContent?.startsWith("Results ·")
-      ) {
-        history.append(node);
-        continue;
-      }
-      if (
-        node.tagName === "DETAILS" &&
-        node.querySelector("summary")?.textContent === "Voicing mix & volume"
-      )
-        panels.get("Targets")!.append(node);
-      else panels.get(group)!.append(node);
+      return node;
+    };
+    if (message && message !== issue?.message) {
+      const notice = el("p", message); notice.setAttribute("role", "alert"); content.push(notice);
+      if (dirty) content.push(button("Retry saving", () => { save(); message = ""; render(); }));
     }
-    host.replaceChildren(tabs, ...status, ...panels.values(), footer);
-    if (history.children.length > 1) host.append(history);
+    if (issue && issue.chapter !== settingsStep) content.push(el("p", issue.message), button("Review invalid settings: " + issue.chapter, () => {
+      settingsStep = issue.chapter; render(); root.querySelector<HTMLElement>("input[aria-invalid='true'],select[aria-invalid='true']")?.focus();
+    }));
+    if (settingsStep === "Harmony") {
+      const template = el("div"); template.className = "config-fields"; template.append(label("Template"), label("Transpose"));
+      const chords = nodes.filter(node => node.classList.contains("actions") && Array.from(node.querySelectorAll("input[aria-label]")).some(field => /^Chord \d+$/.test(field.getAttribute("aria-label")!)));
+      chords.forEach((row, i) => {
+        row.className = "chord-editor-row"; row.setAttribute("role", "group"); row.setAttribute("aria-label", "Chord " + (i + 1) + " settings");
+        row.querySelectorAll("button").forEach(b => { b.setAttribute("aria-label", b.textContent!); b.textContent = b.textContent?.startsWith("Move") ? "Up" : "Remove"; });
+      });
+      content.push(group("template", "Template and transpose", config.chords.map(row => row.symbol).join(" → "), [template], true),
+        group("chords", "Chord sequence", `${config.chords.length} chords · ${config.chords.map(row => row.beats).join(" / ")} beats`, [...chords, action("Add chord")], true));
+    }
+    if (settingsStep === "Target degrees") {
+      content.push(el("p", "Choose the degrees to practise against each chord quality."));
+      nodes.filter(node => node.tagName === "FIELDSET").forEach((pool, i) => {
+        const quality = pool.querySelector("legend")!.textContent!;
+        content.push(group("pool:" + quality, quality, config.pools[quality as keyof typeof config.pools]?.join(", ") || "None selected", [pool], i === 0));
+      });
+    }
+    if (settingsStep === "Practice") {
+      const fields = nodes.find(node => node.classList.contains("actions") && node.querySelector("input[aria-label='BPM']"))!;
+      const labels = Array.from(fields.children) as HTMLElement[];
+      const tempo = el("div"); tempo.className = "config-fields"; tempo.append(labels[0], labels[1]);
+      content.push(group("tempo", "Tempo and notes", `${config.bpm} BPM · ${config.notes} notes per chord`, [tempo, el("p", "One-bar count-in · targets evenly spaced within each chord")], true),
+        group("length", "Session length", config.count === 0 ? "Unlimited" : `${config.count} questions`, [labels[2]], true));
+    }
+    if (settingsStep === "Sound") {
+      const mix = nodes.find(node => node.tagName === "DETAILS" && node.querySelector("summary")?.textContent === "Voicing mix & volume")!;
+      const levels = Array.from(mix.querySelectorAll<HTMLElement>("label"));
+      content.push(group("volume", "Overall volume", Math.round(config.volume * 100) + "%", [levels.pop()!], true),
+        group("mix", "Voicing mix", config.levels.map(v => Math.round(v * 100) + "%").join(", "), [el("p", "Original voices, low to high. Accompaniment only; 0% mutes, 100% is standard, 200% is double nominal gain."), ...levels]));
+    }
+    side.append(el("h2", "This practice"), el("h3", "Progression"), el("p", config.chords.map(row => `${row.symbol} (${row.beats} beats)`).join(" → ")), el("h3", "Target degrees"));
+    const used = new Set(config.chords.flatMap(row => { try { return [parseChord(row.symbol).quality]; } catch { return []; } }));
+    for (const quality of used) side.append(el("p", `${quality}: ${config.pools[quality]?.join(", ") || "None selected"}`));
+    side.append(el("h3", "Practice"), el("p", `${config.bpm} BPM · ${config.notes} notes per chord · ${config.count === 0 ? "Unlimited" : config.count + " questions"}`),
+      el("h3", "Sound"), el("p", `Voice mix: ${config.levels.map(v => Math.round(v * 100) + "%").join(", ")}`), el("p", `Volume: ${Math.round(config.volume * 100)}%`));
+    const summaryContent = Array.from(side.children) as HTMLElement[];
+    side.replaceChildren(practiceSummary(configGroups, presetId + ":overview", summaryContent));
+    const compact = el("p", `${config.chords.map(row => row.symbol).join(" → ")} · ${config.bpm} BPM · ${config.notes} notes/chord · ${config.count === 0 ? "Unlimited" : config.count + " questions"}`);
+    compact.className = "config-mobile-overview"; header.append(compact);
+    const launch = el("div"); launch.className = "config-launch";
+    const start = action("Start practice") as HTMLButtonElement; start.disabled = Boolean(issue);
+    const status = el("p", issue ? "Invalid settings. Review the highlighted group." : configUnsaved ? `Not saved to ${presetId}. Retry saving.` : `Saved preset: ${presetId}`);
+    status.id = "progression-save-status"; status.className = "notice";
+    status.dataset.state = issue ? "invalid" : configUnsaved ? "unsaved" : "saved"; status.setAttribute("role", "status");
+    launch.append(start, status); side.append(launch);
+    if (configUnsaved) side.append(button("Retry saving preset", () => { persistConfig(); message = ""; render(); }));
+    const history = el("details"); history.append(el("summary", "Past progression sessions"));
+    nodes.filter(node => node.tagName === "BUTTON" && node.textContent?.startsWith("Results ·")).forEach(node => history.append(node));
+    if (history.children.length > 1) side.append(history);
+    host.replaceChildren(...content); layout.append(host, side); page.append(header, layout);
+    return page;
   }
+
+  function presentHarmonicBoard(top: HTMLElement) {
+    const board = host.querySelector<HTMLElement>(".progression-answer-board")!;
+    const status = host.querySelector<HTMLElement>("[data-playback-status]")!;
+    const playback = host.querySelector<HTMLElement>(".progression-playback")!;
+    const footer = el("div"); footer.className = "harmonic-actions";
+    const primary = Array.from(host.querySelectorAll("button")).filter(b => ["Submit all answers", "Done — hear full reference", "Next question", "Finish"].includes(b.textContent!));
+    footer.append(playback, ...primary);
+    const notes = el("p", `${config.bpm} BPM · ${config.notes} ${config.notes === 1 ? "note" : "notes"} per chord`);
+    notes.className = "harmonic-meta";
+    const score = host.querySelector<HTMLElement>(":scope > .evidence-summary");
+    const provenance = config.mode === "singing" ? [el("p", "Individual self-ratings · no microphone verification")] : [];
+    const recovery = Array.from(host.children).filter(node => node.getAttribute("role") === "alert" || (node.tagName === "BUTTON" && node.textContent === "Retry saving"));
+    host.classList.add("harmonic-progression");
+    host.replaceChildren(...recovery, status, ...provenance, board, notes, footer, ...(score ? [score] : []));
+    root.replaceChildren(top, host);
+  }
+
   function render() {
     const focused = document.activeElement as HTMLElement | null;
     const key = focused?.dataset.control;
     const priorView = host.dataset.view;
+    rememberGroups(root, configGroups);
+    const scroll = window.scrollY;
     const openDetails = new Set(Array.from(root.querySelectorAll<HTMLDetailsElement>("details[data-disclosure]")).filter(node => node.open).map(node => node.dataset.disclosure));
     renderContent();
     host.dataset.view = view;
     const title = host.querySelector("h1")!;
     if (view === "settings") {
-      organizeSettings();
-      host.classList.remove("response-area");
-      host.classList.add("config-work");
-      const aside = el("aside");
-      aside.className = "config-anchor";
-      aside.append(
-        title,
-        el(
-          "p",
-          config.mode === "singing"
-            ? "Guided Singing · self-assessed"
-            : "Progression Recognition",
-        ),
-        el(
-          "p",
-          `${config.chords.length} chords · ${config.notes} ${config.notes === 1 ? "note" : "notes"} per chord`,
-        ),
-      );
-      const split = el("div");
-      split.className = "split-view configuration";
-      split.append(aside, host);
-      root.replaceChildren(split);
+      root.replaceChildren(organizeSettings(title));
     } else if (view === "practice") {
-      host.classList.remove("config-work");
+      host.classList.remove("config-work", "config-editor", "harmonic-progression");
       host.classList.add("response-area");
       const top = el("div");
       top.className = "session-top";
@@ -559,30 +594,9 @@ export function mountProgression(
         (b) => b.textContent === "Stop",
       )!;
       top.append(title, count, stop);
-      const anchor = el("section");
-      anchor.className = "question";
-      const caption = el("p", "Progression");
-      caption.className = "chord-label";
-      const musical = el("h2", `${question!.config.chords.length} chords`);
-      musical.dataset.activeChord = "";
-      anchor.append(
-        caption,
-        musical,
-        el(
-          "p",
-          config.mode === "singing"
-            ? "Sing the displayed degrees."
-            : "Listen, then fill every note in any order.",
-        ),
-      );
-      const playback = host.querySelector(".progression-playback");
-      if (playback) anchor.append(playback);
-      const workspace = el("div");
-      workspace.className = "practice-workspace" + (config.mode === "singing" ? " progression-singing" : "");
-      workspace.append(anchor, host);
-      root.replaceChildren(top, workspace);
+      presentHarmonicBoard(top);
     } else {
-      host.classList.remove("config-work", "response-area");
+      host.classList.remove("config-work", "config-editor", "response-area", "harmonic-progression");
       title.className = "page-band";
       const overview = host.querySelector(".evidence-summary")!;
       const actions = el("div");
@@ -616,15 +630,14 @@ export function mountProgression(
       target.focus({ preventScroll: true });
       if (moveToRating) target.scrollIntoView({ block: "nearest" });
     }
+    if (view === "settings" && priorView === "settings") window.scrollTo(0, scroll);
     const announcement = document.getElementById("practice-announcement");
     const state = message || (view === "practice"
       ? `${config.mode === "singing" ? "Guided Singing" : "Progression Recognition"}. Question ${activeRun!.questions.length}. ${busy ? "Playing" : question!.submitted ? "Answers checked" : referenceHeard ? "Reference complete. Rate your response" : heard ? config.mode === "singing" ? "Ready to sing or hear full reference" : "Ready to answer" : "Ready"}. ${feedback}`
       : view === "results" ? `${config.mode === "singing" ? "Guided Singing" : "Progression Recognition"} results. ${busy ? "Reference playing" : "Playback stopped"}` : `Progression settings. ${settingsStep}`);
     if (announcement && announcement.textContent !== state) announcement.textContent = state;
   }
-  let control = 0;
   function renderContent() {
-    control = 0;
     buttonCounts.clear();
     if (closed) return;
     host.replaceChildren();
@@ -652,6 +665,7 @@ export function mountProgression(
       host.append(
         select("Mode", config.mode, ["recognition", "singing"], (value) => {
           presetId = value;
+          configUnsaved = false;
           config = structuredClone(
             presets[value] ?? { ...defaults, mode: value },
           );
@@ -664,6 +678,7 @@ export function mountProgression(
           [...new Set([presetId, ...Object.keys(presets)])],
           (value) => {
             presetId = value;
+            configUnsaved = false;
             config = structuredClone(presets[value] ?? defaults);
           },
         ),
@@ -836,7 +851,7 @@ export function mountProgression(
         for (const degree of degrees) {
           const label = el("label"),
             check = el("input");
-          check.dataset.control = String(control++);
+          check.dataset.control = `pool:${quality}:${degree}`;
           check.type = "checkbox";
           check.checked = config.pools[quality]?.includes(degree) ?? false;
           check.onchange = () => {
@@ -858,10 +873,6 @@ export function mountProgression(
         host.append(group);
       }
       const mix = el("details");
-      mix.open = mixOpen;
-      mix.ontoggle = () => {
-        if (mix.isConnected) mixOpen = mix.open;
-      };
       mix.append(el("summary", "Voicing mix & volume"));
       for (let i = 0; i < 5; i++)
         mix.append(
@@ -1037,15 +1048,15 @@ export function mountProgression(
             ["", "unknown", ...optionsFor(n.chord, n.degree)],
             (value) => (answers[q.notes.indexOf(n)] = value),
           );
+          control.firstChild!.textContent = `Note ${n.position + 1}`;
           control.querySelector("select")!.disabled = busy || !heard;
           host.append(control);
-        } else
-          host.append(
-            el(
-              "p",
-              `${label} · ${n.degree} → ${n.answer === "unknown" ? "Don’t know" : n.answer} · ${n.correct ? "Correct" : "Incorrect"}`,
-            ),
-          );
+        } else {
+          const outcome = el("section");
+          outcome.dataset.noteOutcome = ""; outcome.setAttribute("aria-label", label);
+          outcome.append(el("h3", `Note ${n.position + 1}`), el("p", "Your answer: " + (n.answer === "unknown" ? "Don’t know" : n.answer)), el("p", "Correct degree: " + n.degree), el("strong", n.correct ? "Correct" : "Incorrect"));
+          host.append(outcome);
+        }
       }
       if (!q.submitted)
         host.append(
@@ -1141,19 +1152,22 @@ export function mountProgression(
     board.append(
       el(
         "h2",
-        q.config.mode === "singing" ? "Sing this sequence" : "Your answers",
+        q.config.mode === "singing" ? "Sing this sequence" : q.submitted ? "Check your answers" : "Identify each chord degree",
       ),
     );
     if (q.config.mode === "recognition") {
       const controls = Array.from(host.children).filter(
         (node) =>
           node.tagName === "LABEL" ||
-          (node.tagName === "P" && node.textContent?.includes(" · note ")),
+          node.hasAttribute("data-note-outcome"),
       );
       q.config.chords.forEach((chord, occurrence) => {
         const group = el("fieldset");
         group.className = "progression-chord-group";
-        group.append(el("legend", `${occurrence + 1} · ${chord.symbol}`));
+        const legend = el("legend", `${occurrence + 1} · ${chord.symbol}`);
+        legend.dataset.chord = String(occurrence);
+        const duration = el("span", `${chord.beats} beats`); duration.className = "chord-duration";
+        legend.append(duration); group.append(legend);
         const grid = el("div");
         grid.className = "progression-note-grid";
         for (let i = 0; i < q.config.notes; i++) {
@@ -1168,10 +1182,12 @@ export function mountProgression(
       q.config.chords.forEach((chord, occurrence) => {
         const group = el("fieldset");
         group.className = "progression-chord-group";
-        group.append(el("legend", `${occurrence + 1} · ${chord.symbol} · ${chord.beats} beats`));
+        const legend = el("legend", `${occurrence + 1} · ${chord.symbol}`);
+        legend.dataset.chord = String(occurrence);
+        const duration = el("span", `${chord.beats} beats`); duration.className = "chord-duration";
+        legend.append(duration); group.append(legend);
         const grid = el("div");
         grid.className = "progression-note-grid";
-        grid.style.gridTemplateColumns = `repeat(${q.config.notes}, minmax(0, 1fr))`;
         for (const row of rows.slice(occurrence * q.config.notes, (occurrence + 1) * q.config.notes)) grid.append(row);
         group.append(grid);
         board.append(group);

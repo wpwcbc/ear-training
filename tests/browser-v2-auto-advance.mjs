@@ -132,6 +132,7 @@ try {
     await page.evaluate(() => localStorage.getItem("jazzEarLab:v2:sessions")),
     history,
   );
+  await page.getByText("Preset actions", { exact: true }).click();
   page.once("dialog", (d) => d.accept());
   await page
     .getByRole("button", { name: "Restore Default", exact: true })

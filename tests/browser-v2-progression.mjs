@@ -51,11 +51,12 @@ try{
  await page.waitForFunction(()=>[...document.querySelectorAll('button')].some(b=>b.textContent==='Done — hear full reference'&&!b.disabled));assert.ok(Date.now()-silentStart>=1200,'silent count-in and progression finish before Done');
  await page.getByRole('button',{name:'Stop',exact:true}).click();await page.getByRole('button',{name:'Practice again',exact:true}).click();
  page.once('dialog',d=>d.accept('Keyboard mix test'));await page.getByRole('button',{name:'Save as new preset',exact:true}).click();
- await page.getByRole('button',{name:'Targets',exact:true}).click();
- await page.getByText('Voicing mix & volume',{exact:true}).click();
+ await page.getByRole('button',{name:'Sound',exact:true}).click();
+ await page.locator('summary').filter({hasText:/^Voicing mix/}).click();
  const level=page.getByLabel('Voice 1 (%)',{exact:true});await level.focus();await level.evaluate(input=>{input.value='100';input.dispatchEvent(new Event('input'));input.dispatchEvent(new Event('change'));});
- assert.equal(await page.getByText('Voicing mix & volume',{exact:true}).evaluate(s=>s.parentElement.open),true);
+ assert.equal(await page.locator('summary').filter({hasText:/^Voicing mix/}).evaluate(s=>s.parentElement.open),true);
  assert.equal(await page.evaluate(()=>document.activeElement.getAttribute('aria-label')),'Voice 1 (%)');
+ await page.getByRole('button',{name:'Target degrees',exact:true}).click();await page.locator('summary').filter({hasText:/^7/}).click();
  const pool=page.getByRole('group',{name:'7',exact:true}).getByLabel('9',{exact:true});await pool.click();assert.equal(await pool.evaluate(n=>n===document.activeElement),true);
  const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('jazzEarLab:v2:progressionPresets')));assert.equal(saved.singing.levels[0],0);assert.equal(saved['singing / Keyboard mix test'].levels[0],1);
 
