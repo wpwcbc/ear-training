@@ -1,10 +1,9 @@
 # Progression keys and Play by Ear — tickets
 
-Status: approved breakdown, published as six repository-local implementation
-tickets on 2026-10-29 (Asia/Hong_Kong). Each ticket is ready-for-agent; all remain
-unimplemented. The user confirmed the granularity, blocking edges and local
-publication. This approval does not start implementation. The parent specification
-remains unchanged.
+Status: all six approved repository-local tickets are **done** (2026-10-29,
+Asia/Hong_Kong). The user confirmed the breakdown and then invoked implement.
+See [delivery, acceptance and independent review](../../V2_KEYS_AND_PLAY_BY_EAR_IMPLEMENTATION.md).
+The parent specification remains unchanged; implementation does not imply deployment.
 
 Source: [V2 Progression Keys and Play by Ear specification](../../V2_KEYS_AND_PLAY_BY_EAR_SPEC.md).
 Vocabulary: [feature glossary](../../CONTEXT.md) and [general glossary](../../GLOSSARY.md).
@@ -22,9 +21,9 @@ ready-for-agent status; implementation readiness is tracked by the separate tick
 | [05](issues/05-instrumental-insights.md) | Module-specific correct-question delay summaries, note-grain Overall accuracy and unchanged old response-time metrics | 04 |
 | [06](issues/06-integrated-history-journeys.md) | Unified matching history/frozen replay and complete saved/recovered six-mode journeys | 05 |
 
-Initial frontier: **01 and 03**. After 01, 02 is available. After 02 and 03,
-04 is available; then 05 and 06. These are dependencies, not an instruction to
-spawn implementation agents in parallel.
+The approved initial frontier was **01 and 03**, followed by02 once01 completed,
+04 after02/03, then05 and06. All six are now complete. These edges describe
+prerequisites, not an instruction to spawn implementation agents in parallel.
 
 ## Why these blocking edges
 
@@ -56,13 +55,14 @@ failure checks; final integration is not a substitute for them.
 
 Across these tickets, all 64 stories and all 16 acceptance examples are assigned,
 including the approved defaults. Shared-file overlap is a coordination concern,
-not a reason for extra blockers. No application or parent-spec changes are made.
+not a reason for extra blockers. Original ticket publication changed no application
+or parent specification; subsequent implementation is recorded in the delivery report.
 
 ## Approval and publication boundary
 
 The user confirmed the six-ticket proposal without merges, splits or edge changes.
 Each approved ticket is published as one file in the feature-local issues collection,
-with ready-for-agent status and textual blocking edges, following this repository's
+originally with ready-for-agent status and textual blocking edges, following this repository's
 existing Markdown convention. A blocked ticket becomes eligible only after all its
 blockers are done; ready-for-agent is not a claim that its blockers are complete.
 Global tracker/triage setup is still absent; formal GitHub issue publication requires

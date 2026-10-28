@@ -47,6 +47,12 @@ try{
  await page.getByRole('checkbox',{name:'Incorrect',exact:true}).check();await button('Stop').click();
  await page.getByText('0 / 0 assessed notes',{exact:true}).waitFor();await page.getByText('1 unassessed',{exact:true}).waitFor();
  console.log('PASS unsubmitted error draft is not a grade.');
+ await setup('play');await button('Remove chord 3').click();await button('Practice').click();
+ const noteCount=page.getByLabel('Notes per chord',{exact:true});await noteCount.fill('1');await noteCount.dispatchEvent('change');
+ await button('Start practice').click();assert.equal(await page.getByText('Target hidden',{exact:true}).count(),2);await ready();
+ await button('Done — hear full reference').click();await button('All correct').waitFor();await button('All correct').click();
+ await page.getByText('2 / 2 assessed notes',{exact:true}).waitFor();await page.getByText(/s median · n=1/).waitFor();await button('Finish').click();
+ console.log('PASS minimum2×1 instrumental progression: full automatic cycle, 2/2 note accuracy and one timing sample.');
  await setup('play',true);await page.getByLabel('Chord 32',{exact:true}).focus();
  const field=await page.getByLabel('Chord 32',{exact:true}).boundingBox(),launch=await button('Start practice').boundingBox();assert.ok(field.y+field.height<=launch.y);
  await button('Start practice').click();await page.getByRole('region',{name:'Instrumental reproduction board',exact:true}).waitFor();
