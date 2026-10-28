@@ -1,6 +1,9 @@
 # V2 progression keys and instrumental modes — interview
 
 Status: interview closed, ready for specification (2026-10-29, Asia/Hong_Kong).
+Specification: [V2 Progression Keys and Play by Ear](V2_KEYS_AND_PLAY_BY_EAR_SPEC.md),
+published as a repository-local ready-for-agent document.
+
 No further user decisions are needed at this stage. This is a requirements/design
 record, not application implementation authorization. Explicit user decisions and
 agent-selected defaults are distinguished below; the numbered rounds remain a
