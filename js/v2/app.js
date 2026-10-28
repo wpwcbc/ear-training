@@ -981,7 +981,7 @@ function render() {
     host.replaceChildren();
     if (route === "progression" || route.startsWith("progression/")) {
         try {
-            disposeProgression = mountProgression(host, route.split("/")[1] === progressionModes.degreeAudiation ? progressionModes.degreeAudiation : progressionModes.degreeRecognition, route.endsWith("/start"), route.split("/")[2] === "results" ? decodeURIComponent(route.split("/")[3] ?? "") : undefined);
+            disposeProgression = mountProgression(host, Object.values(progressionModes).find(mode => mode === route.split("/")[1]) ?? progressionModes.degreeRecognition, route.endsWith("/start"), route.split("/")[2] === "results" ? decodeURIComponent(route.split("/")[3] ?? "") : undefined);
         }
         catch (e) {
             report(e);

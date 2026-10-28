@@ -17,3 +17,13 @@ test('random keys cover the selected pool without replay consumption or boundary
  assert.throws(()=>progression.validate({...progression.defaults,keyMode:'random',keyPool:[]}));
  const single=progression.questionStream({...progression.defaults,keyMode:'random',keyPool:['Eb']});assert.equal(single().practiceKey,'Eb');assert.equal(single().practiceKey,'Eb');
 });
+test('Play by Ear freezes post-backing delay and commits explicit self-ratings once',()=>{
+ const q=progression.generate({...structuredClone(progression.defaults),mode:'play-single',roots:['C'],qualities:['maj7'],notes:1,chords:[{symbol:'Cmaj7',beats:4}]},()=>0);
+ assert.throws(()=>progression.finishPerformance(q,1000));
+ progression.performanceComplete(q,1000);progression.finishPerformance(q,3400);
+ assert.equal(q.completionDelayMs,2400);assert.equal(q.done,true);
+ progression.finishPerformance(q,9000);assert.equal(q.completionDelayMs,2400);
+ assert.throws(()=>progression.assessPerformance(q,{}));
+ q.referencePlayed=true;progression.assessPerformance(q,{});assert.equal(progression.report([q]).correct,1);
+ progression.assessPerformance(q,{[q.notes[0].id]:'unknown'});assert.equal(progression.report([q]).correct,1);
+});

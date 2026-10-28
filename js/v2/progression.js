@@ -1,5 +1,6 @@
-import { progressionModes } from "./exercise-names.js";
-import { parseChord, pitchClass, chordToneDegrees, chordNotes, targetPc, inRange, degrees, } from "../jazz/theory.js";
+import { stream, builtins } from "./model.js";
+import { progressionModes, isPlayByEar } from "./exercise-names.js";
+import { parseChord, pitchClass, chordToneDegrees, chordNotes, targetPc, inRange, qualities, degrees, } from "../jazz/theory.js";
 export const practiceKeys = "C C# D Eb E F F# G Ab A Bb B".split(" ");
 export const templates = {
     major: ["Dm7", "G7", "Cmaj7"],
@@ -41,13 +42,16 @@ export function validate(input) {
         c.volume < 0 ||
         c.volume > 1)
         throw Error("Choose BPM 20–300, 1–4 notes/chord, 0–200 questions and valid volume.");
-    if (!Array.isArray(c.chords) || c.chords.length < 2 || c.chords.length > 32)
+    const single = c.mode === progressionModes.singlePlayByEar;
+    if (single && (!c.roots?.length || c.roots.some(r => !practiceKeys.includes(r)) || !c.qualities?.length || c.qualities.some(q => !qualities.includes(q)) || c.notes !== 1))
+        throw Error("Choose roots, chord qualities and one target for single-chord practice.");
+    if (!Array.isArray(c.chords) || c.chords.length < (single ? 1 : 2) || c.chords.length > (single ? 1 : 32))
         throw Error("Choose 2–32 chord occurrences.");
     if (!Array.isArray(c.levels) ||
         c.levels.length !== 5 ||
         c.levels.some((x) => !Number.isFinite(x) || x < 0 || x > 2))
         throw Error("Voice levels must be 0–200%.");
-    for (const row of c.chords) {
+    for (const row of single ? c.qualities.map(q => ({ symbol: "C" + q, beats: 4 })) : c.chords) {
         const chord = parseChord(row.symbol);
         if (!Number.isInteger(row.beats) || row.beats < 1 || row.beats > 16)
             throw Error("Each chord needs 1–16 beats.");
@@ -64,8 +68,12 @@ export function generate(input, random = Math.random, drawnKey) {
     const source = validate(input), config = structuredClone(source), key = drawnKey ?? source.key, id = crypto.randomUUID();
     if (!practiceKeys.includes(key))
         throw Error("Unsupported practice key.");
-    const offset = pitchClass(key);
-    config.chords = source.chords.map(row => { const chord = parseChord(row.symbol); return { ...row, symbol: practiceKeys[(pitchClass(chord.root) + offset) % 12] + chord.quality }; });
+    if (source.mode === progressionModes.singlePlayByEar) {
+        const root = source.roots[Math.floor(random() * source.roots.length)], quality = source.qualities[Math.floor(random() * source.qualities.length)];
+        config.chords = [{ symbol: root + quality, beats: 4 }];
+    }
+    const offset = source.mode === progressionModes.singlePlayByEar ? 0 : pitchClass(key);
+    config.chords = config.chords.map(row => { const chord = parseChord(row.symbol); return { ...row, symbol: practiceKeys[(pitchClass(chord.root) + offset) % 12] + chord.quality }; });
     return {
         id,
         config, source, practiceKey: key,
@@ -96,6 +104,7 @@ export function generate(input, random = Math.random, drawnKey) {
 /** One frozen session: only requesting a new question consumes a key draw. */
 export function questionStream(input, random = Math.random) {
     const source = validate(input);
+    const singleNext = source.mode === progressionModes.singlePlayByEar ? stream({ ...builtins[0].config, exercise: "m2", roots: source.roots, qualities: source.qualities, targetMode: "exact", targetPools: source.pools, targets: [...new Set(Object.values(source.pools).flat())] }, crypto.randomUUID()) : null;
     let bag = [], last = "";
     return () => {
         let key = source.key;
@@ -112,7 +121,14 @@ export function questionStream(input, random = Math.random) {
             key = bag.shift();
             last = key;
         }
-        return generate(source, random, key);
+        const question = generate(source, random, key);
+        if (singleNext) {
+            const target = singleNext();
+            question.config.chords = [{ symbol: target.chord.symbol, beats: 4 }];
+            Object.assign(question.notes[0], { chord: target.chord, degree: target.degree, midi: target.midi });
+            delete question.practiceKey;
+        }
+        return question;
     };
 }
 export function submit(q, answers) {
@@ -187,8 +203,44 @@ export function sequence(q, melody) {
 }
 export function addQualityPools(c) {
     var _a, _b;
-    for (const row of c.chords) {
+    for (const row of c.mode === progressionModes.singlePlayByEar ? (c.qualities ?? []).map(q => ({ symbol: "C" + q })) : c.chords) {
         const chord = parseChord(row.symbol);
         (_a = c.pools)[_b = chord.quality] ?? (_a[_b] = chordToneDegrees(chord));
     }
+}
+export function defaultConfig(mode) {
+    const config = { ...structuredClone(defaults), mode };
+    if (mode === progressionModes.singlePlayByEar)
+        Object.assign(config, { chords: [{ symbol: "Cmaj7", beats: 4 }], notes: 1, roots: [...practiceKeys], qualities: ["maj7", "m7", "7"] });
+    return config;
+}
+export function performanceComplete(q, now) {
+    if (!isPlayByEar(q.config.mode) || q.done || !Number.isFinite(now))
+        throw Error("Invalid performance completion.");
+    q.performanceEndedAt = now;
+}
+export function finishPerformance(q, now) {
+    if (q.done)
+        return;
+    if (!isPlayByEar(q.config.mode) || q.performanceEndedAt === undefined || !Number.isFinite(now) || now < q.performanceEndedAt)
+        throw Error("Wait for accompaniment completion.");
+    q.completionDelayMs = now - q.performanceEndedAt;
+    q.done = true;
+}
+export function assessPerformance(q, errors) {
+    if (q.submitted)
+        return;
+    if (!isPlayByEar(q.config.mode) || !q.done || !q.referencePlayed)
+        throw Error("Hear the full reference before self-assessment.");
+    for (const [id, wrong] of Object.entries(errors)) {
+        const note = q.notes.find(n => n.id === id);
+        if (!note || wrong === note.degree || (wrong !== "unknown" && !degrees.includes(wrong)))
+            throw Error("Choose a different degree or Unknown.");
+    }
+    for (const note of q.notes) {
+        note.correct = !(note.id in errors);
+        note.answer = note.correct ? note.degree : errors[note.id];
+        note.assisted = q.before > 0;
+    }
+    q.submitted = true;
 }

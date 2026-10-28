@@ -1038,7 +1038,7 @@ function render() {
     audio.stop();
   }
   host.replaceChildren();
-  if (route === "progression" || route.startsWith("progression/")) { try {disposeProgression=mountProgression(host,route.split("/")[1]===progressionModes.degreeAudiation?progressionModes.degreeAudiation:progressionModes.degreeRecognition,route.endsWith("/start"),route.split("/")[2] === "results" ? decodeURIComponent(route.split("/")[3] ?? "") : undefined);} catch(e){report(e);} }
+  if (route === "progression" || route.startsWith("progression/")) { try {disposeProgression=mountProgression(host,Object.values(progressionModes).find(mode => mode === route.split("/")[1]) ?? progressionModes.degreeRecognition,route.endsWith("/start"),route.split("/")[2] === "results" ? decodeURIComponent(route.split("/")[3] ?? "") : undefined);} catch(e){report(e);} }
   else if (route === "practice" && session) renderPractice();
   else if (route === "configure") config();
   else if (route === "insights") insights();

@@ -16,6 +16,14 @@ try{
  for(let i=0;i<12;i++)await keys.nth(i).uncheck();assert.equal(await button('Start practice').isDisabled(),true);
  await button('All').click();assert.equal(await keys.filter({checked:true}).count(),12);assert.equal(await button('Start practice').isEnabled(),true);
  assert.equal(await page.getByLabel('Chord 1',{exact:true}).inputValue(),'Dm7');
+ await page.goto(base+'#home');await page.getByRole('article',{name:'Single Chord · Play by Ear',exact:true}).getByRole('button',{name:'Customize',exact:true}).click();
+ await button('Practice').click();await change('BPM','300');await change('Questions (0 = Unlimited)','1');
+ await button('Start practice').click();
+ assert.equal(await page.locator('.progression-target-degree').count(),0);
+ assert.equal(await button('Done — hear full reference').isDisabled(),true);
+ await page.waitForFunction(()=>[...document.querySelectorAll('button')].some(b=>b.textContent==='Done — hear full reference'&&!b.disabled));
+ await button('Done — hear full reference').click();await button('All correct').waitFor();await button('All correct').click();await button('Finish').click();
+ await page.getByText('1 / 1 assessed notes',{exact:true}).waitFor();await page.getByText(/Post-accompaniment completion delay/).first().waitFor();
  assert.deepEqual(errors,[]);
  console.log('PASS fixed/random keys: unchanged C source, actual Eb harmony, All and empty-pool validation.');
 }finally{await browser.close();}
