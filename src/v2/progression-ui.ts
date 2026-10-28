@@ -16,9 +16,11 @@ import {
 } from "./model.js";
 import {
   defaults,
+  practiceKeys,
   templates,
   validate,
   generate,
+  questionStream,
   submit,
   rate,
   report,
@@ -134,6 +136,7 @@ export function mountProgression(
     question: ProgressionQuestion | null = null,
     answers: string[] = [],
     frame = 0;
+  let newQuestion: (() => ProgressionQuestion) | null = null;
   const presets = read<Record<string, ProgressionConfig>>(presetKey, {}),
     runs = retainedRuns ?? read<Run[]>(historyKey, []);
   const configGroups = new Map<string, boolean>();
@@ -241,7 +244,7 @@ export function mountProgression(
     input.setAttribute("aria-label", text);
     for (const v of values) {
       const labels: Record<string, string> = {
-        unknown: "Don’t know",
+        unknown: "Don’t know", fixed: "Fixed key", random: "Random key",
         [progressionModes.degreeRecognition]: exerciseNames["progression-recognition"],
         [progressionModes.degreeAudiation]: exerciseNames["progression-singing"],
         major: "Major ii–V–I",
@@ -280,12 +283,13 @@ export function mountProgression(
       questions: [],
       ended: false,
     };
+    newQuestion = questionStream(valid);
     runs.push(activeRun);
     next();
   }
   function next() {
     stopAudio();
-    question = generate(activeRun!.config);
+    question = newQuestion!();
     const seen = new Set(
       runs.flatMap((run) =>
         run.questions.flatMap((q) =>
@@ -436,6 +440,7 @@ export function mountProgression(
   function configIssue(): { chapter: ConfigurationChapter; group: string; message: string; field?: string } | null {
     try { validate(config); return null; } catch (e) {
       const message = (e as Error).message;
+      if (/practice key|random key/.test(message)) return { chapter: "Harmony", group: "keys", message };
       if (config.chords.length < 2 || config.chords.length > 32) return { chapter: "Harmony", group: "chords", message };
       for (let i = 0; i < config.chords.length; i++) {
         const row = config.chords[i];
@@ -497,13 +502,28 @@ export function mountProgression(
       settingsStep = issue.chapter; render(); root.querySelector<HTMLElement>("input[aria-invalid='true'],select[aria-invalid='true']")?.focus();
     }));
     if (settingsStep === "Harmony") {
-      const template = el("div"); template.className = "config-fields"; template.append(label("Template"), label("Transpose"));
+      const template = el("div"); template.className = "config-fields"; template.append(label("Template"));
+      const keyControls = el("div"); keyControls.className = "config-fields";
+      keyControls.append(select("Key mode", config.keyMode ?? "fixed", ["fixed", "random"], value => { config.keyMode = value as "fixed" | "random"; config.keyPool ??= [...practiceKeys]; persistConfig(); }));
+      if (config.keyMode !== "random") keyControls.append(label("Practice key"));
+      else {
+        const pool = el("fieldset"); pool.append(el("legend", "Random keys"));
+        const choices = el("div"); choices.className = "pool";
+        for (const key of practiceKeys) {
+          const item = el("label"), check = el("input"); check.type = "checkbox"; check.dataset.control = "key:" + key;
+          check.checked = (config.keyPool ?? practiceKeys).includes(key);
+          check.onchange = () => { const values = new Set(config.keyPool ?? practiceKeys); check.checked ? values.add(key) : values.delete(key); config.keyPool = [...values]; try { persistConfig(); message = ""; } catch(e) { message = (e as Error).message; } render(); };
+          item.append(check, el("span", key)); choices.append(item);
+        }
+        pool.append(choices, button("All", () => { config.keyPool = [...practiceKeys]; persistConfig(); render(); })); keyControls.append(pool);
+      }
+      content.push(group("keys", "Practice key", config.keyMode === "random" ? "Random: " + (config.keyPool ?? practiceKeys).join(", ") : "Fixed " + (config.key ?? "C"), [keyControls], true));
       const chords = nodes.filter(node => node.classList.contains("actions") && Array.from(node.querySelectorAll("input[aria-label]")).some(field => /^Chord \d+$/.test(field.getAttribute("aria-label")!)));
       chords.forEach((row, i) => {
         row.className = "chord-editor-row"; row.setAttribute("role", "group"); row.setAttribute("aria-label", "Chord " + (i + 1) + " settings");
         row.querySelectorAll("button").forEach(b => { b.setAttribute("aria-label", b.textContent!); b.textContent = b.textContent?.startsWith("Move") ? "Up" : "Remove"; });
       });
-      content.push(group("template", "Template and transpose", config.chords.map(row => row.symbol).join(" → "), [template], true),
+      content.push(group("template", "Template and key", config.chords.map(row => row.symbol).join(" → "), [template], true),
         group("chords", "Chord sequence", `${config.chords.length} chords · ${config.chords.map(row => row.beats).join(" / ")} beats`, [...chords, action("Add chord")], true));
     }
     if (settingsStep === "Target degrees") {
@@ -526,7 +546,7 @@ export function mountProgression(
       content.push(group("volume", "Overall volume", Math.round(config.volume * 100) + "%", [levels.pop()!], true),
         group("mix", "Voicing mix", config.levels.map(v => Math.round(v * 100) + "%").join(", "), [el("p", "Original voices, low to high. Accompaniment only; 0% mutes, 100% is standard, 200% is double nominal gain."), ...levels]));
     }
-    side.append(el("h2", "This practice"), el("h3", "Progression"), el("p", config.chords.map(row => `${row.symbol} (${row.beats} beats)`).join(" → ")), el("h3", "Target degrees"));
+    side.append(el("p", "Practice key: " + (config.keyMode === "random" ? "Random · " + (config.keyPool ?? practiceKeys).join(", ") : config.key ?? "C")), el("h2", "This practice"), el("h3", "Progression"), el("p", config.chords.map(row => `${row.symbol} (${row.beats} beats)`).join(" → ")), el("h3", "Target degrees"));
     const used = new Set(config.chords.flatMap(row => { try { return [parseChord(row.symbol).quality]; } catch { return []; } }));
     for (const quality of used) side.append(el("p", `${quality}: ${config.pools[quality]?.join(", ") || "None selected"}`));
     side.append(el("h3", "Practice"), el("p", `${config.bpm} BPM · ${config.notes} notes per chord · ${config.count === 0 ? "Unlimited" : config.count + " questions"}`),
@@ -708,54 +728,7 @@ export function mountProgression(
           },
         ),
       );
-      host.append(
-        select(
-          "Transpose",
-          "0",
-          [
-            "0",
-            "-2",
-            "-1",
-            "1",
-            "2",
-            "3",
-            "4",
-            "5",
-            "6",
-            "7",
-            "8",
-            "9",
-            "10",
-            "11",
-          ],
-          (value) => {
-            const names = [
-              "C",
-              "C#",
-              "D",
-              "Eb",
-              "E",
-              "F",
-              "F#",
-              "G",
-              "Ab",
-              "A",
-              "Bb",
-              "B",
-            ];
-            config.chords = config.chords.map((row) => {
-              const chord = parseChord(row.symbol);
-              return {
-                ...row,
-                symbol:
-                  names[(pitchClass(chord.root) + Number(value) + 12) % 12] +
-                  chord.quality,
-              };
-            });
-            persistConfig();
-          },
-        ),
-      );
+      host.append(select("Practice key", config.key ?? "C", practiceKeys, value => { config.key = value; persistConfig(); }));
       config.chords.forEach((row, i) => {
         const group = el("div");
         group.className = "actions";
@@ -916,6 +889,7 @@ export function mountProgression(
         item.className = "progression-review-group";
         item.dataset.disclosure = q.id;
         const m = report([q]);
+        item.append(el("p", "Practice key: " + (q.practiceKey ?? "Stored original")));
         item.append(
           el(
             "summary",
@@ -1001,7 +975,7 @@ export function mountProgression(
     status.dataset.playbackStatus = "";
     status.dataset.control = "playback-status";
     status.className = "playback-status";
-    host.append(status);
+    host.append(status, el("p", "Practice key: " + (q.practiceKey ?? "Stored original")));
     const chords = el("div");
     chords.className = "actions";
     q.config.chords.forEach((row, i) => {

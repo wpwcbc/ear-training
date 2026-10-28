@@ -1,5 +1,6 @@
 import { progressionModes } from "./exercise-names.js";
-import { parseChord, chordToneDegrees, chordNotes, targetPc, inRange, degrees, } from "../jazz/theory.js";
+import { parseChord, pitchClass, chordToneDegrees, chordNotes, targetPc, inRange, degrees, } from "../jazz/theory.js";
+export const practiceKeys = "C C# D Eb E F F# G Ab A Bb B".split(" ");
 export const templates = {
     major: ["Dm7", "G7", "Cmaj7"],
     minor: ["Dm7b5", "G7", "Cm7"],
@@ -21,6 +22,11 @@ export const defaults = {
 };
 export function validate(input) {
     const c = structuredClone(input);
+    c.keyMode ?? (c.keyMode = "fixed");
+    c.key ?? (c.key = "C");
+    c.keyPool ?? (c.keyPool = [...practiceKeys]);
+    if (!["fixed", "random"].includes(c.keyMode) || !practiceKeys.includes(c.key) || !Array.isArray(c.keyPool) || c.keyPool.some(k => !practiceKeys.includes(k)) || new Set(c.keyPool).size !== c.keyPool.length || (c.keyMode === "random" && !c.keyPool.length))
+        throw Error("Choose a valid practice key and at least one random key.");
     if (!Object.values(progressionModes).includes(c.mode) ||
         !Number.isFinite(c.bpm) ||
         c.bpm < 20 ||
@@ -54,11 +60,15 @@ export function validate(input) {
     }
     return c;
 }
-export function generate(input, random = Math.random) {
-    const config = validate(input), id = crypto.randomUUID();
+export function generate(input, random = Math.random, drawnKey) {
+    const source = validate(input), config = structuredClone(source), key = drawnKey ?? source.key, id = crypto.randomUUID();
+    if (!practiceKeys.includes(key))
+        throw Error("Unsupported practice key.");
+    const offset = pitchClass(key);
+    config.chords = source.chords.map(row => { const chord = parseChord(row.symbol); return { ...row, symbol: practiceKeys[(pitchClass(chord.root) + offset) % 12] + chord.quality }; });
     return {
         id,
-        config,
+        config, source, practiceKey: key,
         created: new Date().toISOString(),
         submitted: false,
         done: false,
@@ -81,6 +91,28 @@ export function generate(input, random = Math.random) {
                 };
             });
         }),
+    };
+}
+/** One frozen session: only requesting a new question consumes a key draw. */
+export function questionStream(input, random = Math.random) {
+    const source = validate(input);
+    let bag = [], last = "";
+    return () => {
+        let key = source.key;
+        if (source.keyMode === "random") {
+            if (!bag.length) {
+                bag = [...source.keyPool];
+                for (let i = bag.length - 1; i > 0; i--) {
+                    const j = Math.floor(random() * (i + 1));
+                    [bag[i], bag[j]] = [bag[j], bag[i]];
+                }
+                if (bag.length > 1 && bag[0] === last)
+                    [bag[0], bag[1]] = [bag[1], bag[0]];
+            }
+            key = bag.shift();
+            last = key;
+        }
+        return generate(source, random, key);
     };
 }
 export function submit(q, answers) {

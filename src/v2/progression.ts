@@ -1,6 +1,7 @@
 import { progressionModes, type ProgressionMode } from "./exercise-names.js";
 import {
   parseChord,
+  pitchClass,
   chordToneDegrees,
   chordNotes,
   targetPc,
@@ -12,6 +13,9 @@ import {
 } from "../jazz/theory.js";
 export interface ProgressionConfig {
   mode: ProgressionMode;
+  keyMode?: "fixed" | "random";
+  key?: string;
+  keyPool?: string[];
   chords: { symbol: string; beats: number }[];
   bpm: number;
   notes: number;
@@ -35,6 +39,8 @@ export interface NoteOutcome {
 export interface ProgressionQuestion {
   id: string;
   config: ProgressionConfig;
+  source?: ProgressionConfig;
+  practiceKey?: string;
   notes: NoteOutcome[];
   submitted: boolean;
   done: boolean;
@@ -43,6 +49,7 @@ export interface ProgressionQuestion {
   after: number;
   created: string;
 }
+export const practiceKeys = "C C# D Eb E F F# G Ab A Bb B".split(" ");
 export const templates = {
   major: ["Dm7", "G7", "Cmaj7"],
   minor: ["Dm7b5", "G7", "Cm7"],
@@ -64,6 +71,9 @@ export const defaults: ProgressionConfig = {
 };
 export function validate(input: ProgressionConfig): ProgressionConfig {
   const c = structuredClone(input);
+  c.keyMode ??= "fixed"; c.key ??= "C"; c.keyPool ??= [...practiceKeys];
+  if (!["fixed", "random"].includes(c.keyMode) || !practiceKeys.includes(c.key) || !Array.isArray(c.keyPool) || c.keyPool.some(k => !practiceKeys.includes(k)) || new Set(c.keyPool).size !== c.keyPool.length || (c.keyMode === "random" && !c.keyPool.length))
+    throw Error("Choose a valid practice key and at least one random key.");
   if (
     !Object.values(progressionModes).includes(c.mode) ||
     !Number.isFinite(c.bpm) ||
@@ -110,12 +120,16 @@ export function validate(input: ProgressionConfig): ProgressionConfig {
 export function generate(
   input: ProgressionConfig,
   random = Math.random,
+  drawnKey?: string,
 ): ProgressionQuestion {
-  const config = validate(input),
-    id = crypto.randomUUID();
+  const source = validate(input), config = structuredClone(source),
+    key = drawnKey ?? source.key!, id = crypto.randomUUID();
+  if (!practiceKeys.includes(key)) throw Error("Unsupported practice key.");
+  const offset = pitchClass(key);
+  config.chords = source.chords.map(row => { const chord = parseChord(row.symbol); return { ...row, symbol: practiceKeys[(pitchClass(chord.root) + offset) % 12] + chord.quality }; });
   return {
     id,
-    config,
+    config, source, practiceKey: key,
     created: new Date().toISOString(),
     submitted: false,
     done: false,
@@ -139,6 +153,23 @@ export function generate(
         };
       });
     }),
+  };
+}
+/** One frozen session: only requesting a new question consumes a key draw. */
+export function questionStream(input: ProgressionConfig, random = Math.random) {
+  const source = validate(input);
+  let bag: string[] = [], last = "";
+  return () => {
+    let key = source.key!;
+    if (source.keyMode === "random") {
+      if (!bag.length) {
+        bag = [...source.keyPool!];
+        for (let i = bag.length - 1; i > 0; i--) { const j = Math.floor(random() * (i + 1)); [bag[i], bag[j]] = [bag[j], bag[i]]; }
+        if (bag.length > 1 && bag[0] === last) [bag[0], bag[1]] = [bag[1], bag[0]];
+      }
+      key = bag.shift()!; last = key;
+    }
+    return generate(source, random, key);
   };
 }
 export function submit(q: ProgressionQuestion, answers: string[]) {

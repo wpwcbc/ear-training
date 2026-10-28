@@ -1,9 +1,9 @@
 import { exerciseNames, progressionModes, progressionName, progressionExercise } from "./exercise-names.js";
 import { configurationChapters, configurationGroup, rememberGroups, practiceSummary } from "./configuration.js";
 import { AudioEngine } from "../jazz/audio.js";
-import { parseChord, pitchClass, degrees, } from "../jazz/theory.js";
+import { parseChord, degrees, } from "../jazz/theory.js";
 import { read, write, optionsFor, attempt, builtins, } from "./model.js";
-import { defaults, templates, validate, generate, submit, rate, report, sequence, addQualityPools, } from "./progression.js";
+import { defaults, practiceKeys, templates, validate, questionStream, submit, rate, report, sequence, addQualityPools, } from "./progression.js";
 const presetKey = "jazzEarLab:v2:progressionPresets", historyKey = "jazzEarLab:v2:progressionHistory";
 let retainedRuns = null;
 if (typeof window !== "undefined")
@@ -80,6 +80,7 @@ export function mountProgression(root, initialMode = progressionModes.degreeReco
     host.className = "progression-work";
     const audio = new AudioEngine();
     let token = 0, closed = false, busy = false, heard = false, referenceHeard = false, view = "settings", activeRun = null, question = null, answers = [], frame = 0;
+    let newQuestion = null;
     const presets = read(presetKey, {}), runs = retainedRuns ?? read(historyKey, []);
     const configGroups = new Map();
     let configUnsaved = false, settingsStep = "Harmony";
@@ -176,7 +177,7 @@ export function mountProgression(root, initialMode = progressionModes.degreeReco
         input.setAttribute("aria-label", text);
         for (const v of values) {
             const labels = {
-                unknown: "Don’t know",
+                unknown: "Don’t know", fixed: "Fixed key", random: "Random key",
                 [progressionModes.degreeRecognition]: exerciseNames["progression-recognition"],
                 [progressionModes.degreeAudiation]: exerciseNames["progression-singing"],
                 major: "Major ii–V–I",
@@ -216,12 +217,13 @@ export function mountProgression(root, initialMode = progressionModes.degreeReco
             questions: [],
             ended: false,
         };
+        newQuestion = questionStream(valid);
         runs.push(activeRun);
         next();
     }
     function next() {
         stopAudio();
-        question = generate(activeRun.config);
+        question = newQuestion();
         const seen = new Set(runs.flatMap((run) => run.questions.flatMap((q) => q.notes.map((n) => n.chord.symbol + ":" + n.midi))));
         for (const note of question.notes) {
             const key = note.chord.symbol + ":" + note.midi;
@@ -345,6 +347,8 @@ export function mountProgression(root, initialMode = progressionModes.degreeReco
         }
         catch (e) {
             const message = e.message;
+            if (/practice key|random key/.test(message))
+                return { chapter: "Harmony", group: "keys", message };
             if (config.chords.length < 2 || config.chords.length > 32)
                 return { chapter: "Harmony", group: "chords", message };
             for (let i = 0; i < config.chords.length; i++) {
@@ -432,7 +436,36 @@ export function mountProgression(root, initialMode = progressionModes.degreeReco
         if (settingsStep === "Harmony") {
             const template = el("div");
             template.className = "config-fields";
-            template.append(label("Template"), label("Transpose"));
+            template.append(label("Template"));
+            const keyControls = el("div");
+            keyControls.className = "config-fields";
+            keyControls.append(select("Key mode", config.keyMode ?? "fixed", ["fixed", "random"], value => { config.keyMode = value; config.keyPool ?? (config.keyPool = [...practiceKeys]); persistConfig(); }));
+            if (config.keyMode !== "random")
+                keyControls.append(label("Practice key"));
+            else {
+                const pool = el("fieldset");
+                pool.append(el("legend", "Random keys"));
+                const choices = el("div");
+                choices.className = "pool";
+                for (const key of practiceKeys) {
+                    const item = el("label"), check = el("input");
+                    check.type = "checkbox";
+                    check.dataset.control = "key:" + key;
+                    check.checked = (config.keyPool ?? practiceKeys).includes(key);
+                    check.onchange = () => { const values = new Set(config.keyPool ?? practiceKeys); check.checked ? values.add(key) : values.delete(key); config.keyPool = [...values]; try {
+                        persistConfig();
+                        message = "";
+                    }
+                    catch (e) {
+                        message = e.message;
+                    } render(); };
+                    item.append(check, el("span", key));
+                    choices.append(item);
+                }
+                pool.append(choices, button("All", () => { config.keyPool = [...practiceKeys]; persistConfig(); render(); }));
+                keyControls.append(pool);
+            }
+            content.push(group("keys", "Practice key", config.keyMode === "random" ? "Random: " + (config.keyPool ?? practiceKeys).join(", ") : "Fixed " + (config.key ?? "C"), [keyControls], true));
             const chords = nodes.filter(node => node.classList.contains("actions") && Array.from(node.querySelectorAll("input[aria-label]")).some(field => /^Chord \d+$/.test(field.getAttribute("aria-label"))));
             chords.forEach((row, i) => {
                 row.className = "chord-editor-row";
@@ -440,7 +473,7 @@ export function mountProgression(root, initialMode = progressionModes.degreeReco
                 row.setAttribute("aria-label", "Chord " + (i + 1) + " settings");
                 row.querySelectorAll("button").forEach(b => { b.setAttribute("aria-label", b.textContent); b.textContent = b.textContent?.startsWith("Move") ? "Up" : "Remove"; });
             });
-            content.push(group("template", "Template and transpose", config.chords.map(row => row.symbol).join(" → "), [template], true), group("chords", "Chord sequence", `${config.chords.length} chords · ${config.chords.map(row => row.beats).join(" / ")} beats`, [...chords, action("Add chord")], true));
+            content.push(group("template", "Template and key", config.chords.map(row => row.symbol).join(" → "), [template], true), group("chords", "Chord sequence", `${config.chords.length} chords · ${config.chords.map(row => row.beats).join(" / ")} beats`, [...chords, action("Add chord")], true));
         }
         if (settingsStep === "Target degrees") {
             content.push(el("p", "Choose the degrees to practise against each chord quality."));
@@ -462,7 +495,7 @@ export function mountProgression(root, initialMode = progressionModes.degreeReco
             const levels = Array.from(mix.querySelectorAll("label"));
             content.push(group("volume", "Overall volume", Math.round(config.volume * 100) + "%", [levels.pop()], true), group("mix", "Voicing mix", config.levels.map(v => Math.round(v * 100) + "%").join(", "), [el("p", "Original voices, low to high. Accompaniment only; 0% mutes, 100% is standard, 200% is double nominal gain."), ...levels]));
         }
-        side.append(el("h2", "This practice"), el("h3", "Progression"), el("p", config.chords.map(row => `${row.symbol} (${row.beats} beats)`).join(" → ")), el("h3", "Target degrees"));
+        side.append(el("p", "Practice key: " + (config.keyMode === "random" ? "Random · " + (config.keyPool ?? practiceKeys).join(", ") : config.key ?? "C")), el("h2", "This practice"), el("h3", "Progression"), el("p", config.chords.map(row => `${row.symbol} (${row.beats} beats)`).join(" → ")), el("h3", "Target degrees"));
         const used = new Set(config.chords.flatMap(row => { try {
             return [parseChord(row.symbol).quality];
         }
@@ -632,46 +665,7 @@ export function mountProgression(root, initialMode = progressionModes.degreeReco
                     persistConfig();
                 }
             }));
-            host.append(select("Transpose", "0", [
-                "0",
-                "-2",
-                "-1",
-                "1",
-                "2",
-                "3",
-                "4",
-                "5",
-                "6",
-                "7",
-                "8",
-                "9",
-                "10",
-                "11",
-            ], (value) => {
-                const names = [
-                    "C",
-                    "C#",
-                    "D",
-                    "Eb",
-                    "E",
-                    "F",
-                    "F#",
-                    "G",
-                    "Ab",
-                    "A",
-                    "Bb",
-                    "B",
-                ];
-                config.chords = config.chords.map((row) => {
-                    const chord = parseChord(row.symbol);
-                    return {
-                        ...row,
-                        symbol: names[(pitchClass(chord.root) + Number(value) + 12) % 12] +
-                            chord.quality,
-                    };
-                });
-                persistConfig();
-            }));
+            host.append(select("Practice key", config.key ?? "C", practiceKeys, value => { config.key = value; persistConfig(); }));
             config.chords.forEach((row, i) => {
                 const group = el("div");
                 group.className = "actions";
@@ -775,6 +769,7 @@ export function mountProgression(root, initialMode = progressionModes.degreeReco
                 item.className = "progression-review-group";
                 item.dataset.disclosure = q.id;
                 const m = report([q]);
+                item.append(el("p", "Practice key: " + (q.practiceKey ?? "Stored original")));
                 item.append(el("summary", `Progression ${run.questions.indexOf(q) + 1} · ${m.correct} / ${m.assessed} assessed`), el("p", `${q.before} pre-check replay events · ${q.after} review events`));
                 const table = el("table"), head = el("tr");
                 for (const name of [
@@ -847,7 +842,7 @@ export function mountProgression(root, initialMode = progressionModes.degreeReco
         status.dataset.playbackStatus = "";
         status.dataset.control = "playback-status";
         status.className = "playback-status";
-        host.append(status);
+        host.append(status, el("p", "Practice key: " + (q.practiceKey ?? "Stored original")));
         const chords = el("div");
         chords.className = "actions";
         q.config.chords.forEach((row, i) => {
