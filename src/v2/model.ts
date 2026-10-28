@@ -243,7 +243,7 @@ export interface Attempt {
   id: string;
   sessionId: string;
   questionId: string;
-  exercise: Config["exercise"] | "progression-recognition" | "progression-singing";
+  exercise: keyof typeof exerciseNames;
   gradingSource: "self" | "automatic";
   responseMethod: string;
   configurationSnapshot: Config;
@@ -394,7 +394,7 @@ export function uniqueAttempts(rows: Attempt[]): Attempt[] {
 }
 export function insightRows(input: Attempt[], module: "overall" | Attempt["exercise"] = "overall", production = "all"): Attempt[] {
   return uniqueAttempts(input).filter(a => {
-    if (!["m1", "m2", "progression-recognition", "progression-singing"].includes(a.exercise)) return false;
+    if (!Object.keys(exerciseNames).includes(a.exercise)) return false;
     if (module !== "overall" && a.exercise !== module) return false;
     if (module !== "m1" || production === "all") return true;
     return production === "imagined-sung"

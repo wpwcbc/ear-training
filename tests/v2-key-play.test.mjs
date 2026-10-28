@@ -27,3 +27,11 @@ test('Play by Ear freezes post-backing delay and commits explicit self-ratings o
  q.referencePlayed=true;progression.assessPerformance(q,{});assert.equal(progression.report([q]).correct,1);
  progression.assessPerformance(q,{[q.notes[0].id]:'unknown'});assert.equal(progression.report([q]).correct,1);
 });
+test('completion-delay summaries use correct unassisted whole questions, never notes',()=>{
+ const questions=[1000,3000,5000].map(delay=>{const q=progression.generate({...structuredClone(progression.defaults),mode:'play'});progression.performanceComplete(q,100);progression.finishPerformance(q,100+delay);q.referencePlayed=true;progression.assessPerformance(q,{});return q;});
+ const assisted=structuredClone(questions[0]);assisted.id='assisted';assisted.before=1;
+ const wrong=structuredClone(questions[0]);wrong.id='wrong';wrong.notes[0].correct=false;
+ const interrupted=structuredClone(questions[0]);interrupted.id='interrupted';interrupted.interrupted=true;
+ const report=progression.completionTiming([...questions,assisted,wrong,interrupted]);
+ assert.equal(report.groups[0].n,3);assert.equal(report.groups[0].median,3000);assert.equal(report.excluded,3);
+});

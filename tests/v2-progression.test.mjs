@@ -25,7 +25,7 @@ test('report adapter keeps replay events separate from assisted notes and exclud
  const store=JSON.stringify([{id:'run',config:defaults,questions:[q],ended:true}]);
  const original=globalThis.localStorage;
  globalThis.localStorage={getItem:key=>key==='jazzEarLab:v2:progressionHistory'?store:null};
- try {const rows=progressionEvidence(),m=metrics(insightRows(rows));assert.equal(m.n,6);assert.equal(m.replayed,6);assert.equal(m.before,2);assert.equal(m.after,3);assert.equal(metrics(rows.filter(n=>n.target.chord.quality==='7')).before,2);assert.equal(m.timed,0);assert.equal(rows[0].progressionContext,JSON.stringify(q.config));}
+ try {const rows=progressionEvidence(),m=metrics(insightRows(rows));assert.equal(m.n,6);assert.equal(m.replayed,6);assert.equal(m.before,2);assert.equal(m.after,3);assert.equal(metrics(rows.filter(n=>n.target.chord.quality==='7')).before,2);assert.equal(m.timed,0);assert.deepEqual(JSON.parse(rows[0].progressionContext).chords,q.config.chords);assert.deepEqual(JSON.parse(rows[0].progressionContext).sourceChords,q.source.chords);}
  finally{if(original===undefined)delete globalThis.localStorage;else globalThis.localStorage=original;}
 });
 

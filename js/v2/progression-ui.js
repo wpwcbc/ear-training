@@ -3,7 +3,7 @@ import { configurationChapters, configurationGroup, rememberGroups, practiceSumm
 import { AudioEngine } from "../jazz/audio.js";
 import { parseChord, qualities, degrees, } from "../jazz/theory.js";
 import { read, write, optionsFor, attempt, builtins, } from "./model.js";
-import { defaults, defaultConfig, performanceComplete, finishPerformance, assessPerformance, practiceKeys, templates, validate, questionStream, submit, rate, report, sequence, addQualityPools, } from "./progression.js";
+import { defaults, defaultConfig, performanceComplete, finishPerformance, assessPerformance, completionTiming, practiceKeys, templates, validate, questionStream, submit, rate, report, sequence, addQualityPools, } from "./progression.js";
 const presetKey = "jazzEarLab:v2:progressionPresets", historyKey = "jazzEarLab:v2:progressionHistory";
 let retainedRuns = null;
 if (typeof window !== "undefined")
@@ -18,8 +18,8 @@ export function progressionEvidence() {
     return runs.flatMap((run) => run.questions.flatMap((q) => q.notes.map((n) => {
         const config = {
             ...structuredClone(builtins[0].config),
-            exercise: q.config.mode === progressionModes.degreeAudiation ? "m1" : "m2",
-            method: "sung",
+            exercise: (q.config.mode === progressionModes.degreeAudiation || isPlayByEar(q.config.mode)) ? "m1" : "m2",
+            method: isPlayByEar(q.config.mode) ? "played" : "sung",
             roots: [n.chord.root],
             qualities: [n.chord.quality],
             targets: q.config.pools[n.chord.quality] ?? [n.degree],
@@ -33,20 +33,20 @@ export function progressionEvidence() {
             degree: n.degree,
             midi: n.midi,
             options: optionsFor(n.chord, n.degree),
-            generatorVersion: "v2-progression-1",
+            generatorVersion: q.generatorVersion ?? "v2-progression-1",
         }, run.id, n.exposure ?? "previously-seen");
         return {
             ...a,
             id: n.id,
             exercise: progressionExercise(q.config.mode),
-            timingVersion: "progression-timing-not-recorded",
-            progressionContext: JSON.stringify(q.config),
+            timingVersion: isPlayByEar(q.config.mode) ? q.completionTimingVersion ?? "v2-play-after-backing-1" : "progression-timing-not-recorded",
+            progressionContext: JSON.stringify(q.source ? { ...q.config, sourceChords: q.source.chords, practiceKey: q.practiceKey } : q.config),
             replayQuestionId: q.id,
             replayEventsBefore: q.before,
             replayEventsAfter: q.after,
             firstCorrect: n.correct,
             firstAnswer: n.answer,
-            imaginedWrongDegree: q.config.mode === progressionModes.degreeAudiation && n.correct === false
+            imaginedWrongDegree: (q.config.mode === progressionModes.degreeAudiation || isPlayByEar(q.config.mode)) && n.correct === false
                 ? (n.answer ?? undefined)
                 : undefined,
             replaysBeforeFirst: n.assisted ? 1 : 0,
@@ -61,15 +61,45 @@ export function progressionSessions() {
         startedAt: run.questions[0]?.created ?? "",
         label: progressionName(run.config.mode),
         count: run.questions.length,
+        unit: run.config.mode === progressionModes.singlePlayByEar ? (run.questions.length === 1 ? "question" : "questions") : (run.questions.length === 1 ? "progression" : "progressions"),
         ended: run.ended,
         href: `#progression/${run.config.mode}/results/${encodeURIComponent(run.id)}`,
     }));
 }
+export function instrumentalQuestions(exercise) {
+    return (retainedRuns ?? read(historyKey, [])).flatMap(run => run.questions).filter(q => isPlayByEar(q.config.mode) && (!exercise || progressionExercise(q.config.mode) === exercise));
+}
+export function completionSummary(questions) {
+    const report = completionTiming(questions), section = document.createElement("section");
+    section.className = "completion-summary";
+    const title = document.createElement("h2");
+    title.textContent = "Post-accompaniment completion delay";
+    section.append(title);
+    const note = document.createElement("p");
+    note.textContent = "Whole-question timing · all-correct, unassisted attempts only · includes button interaction · separate from Overall response time.";
+    section.append(note);
+    if (!report.groups.length) {
+        const p = document.createElement("p");
+        p.textContent = "Unavailable · n=0 eligible questions";
+        section.append(p);
+    }
+    for (const group of report.groups) {
+        const p = document.createElement("p"), value = document.createElement("strong");
+        value.textContent = `${(group.median / 1000).toFixed(2)}s median · n=${group.n}`;
+        p.append(value, document.createTextNode(" · " + group.label));
+        section.append(p);
+    }
+    const excluded = document.createElement("p");
+    excluded.textContent = `${report.excluded} excluded: incomplete, incorrect, unavailable, replay-assisted or interrupted questions.`;
+    section.append(excluded);
+    return section;
+}
 export function progressionConditions(context) {
     try {
-        const c = validate(JSON.parse(context));
+        const stored = JSON.parse(context);
+        const c = validate(stored);
         const pools = Object.entries(c.pools).map(([quality, pool]) => `${quality}: ${pool.join(", ")}`).join("; ");
-        return `${progressionName(c.mode)} · ${c.chords.map(row => `${row.symbol} (${row.beats} beats)`).join(" → ")} · ${c.bpm} BPM · ${c.notes} ${c.notes === 1 ? "note" : "notes"} per chord · Targets: ${pools} · Voice mix: ${c.levels.map(level => Math.round(level * 100) + "%").join(", ")} · Volume: ${Math.round(c.volume * 100)}% · Progression timing unavailable`;
+        return `${progressionName(c.mode)} · ${c.chords.map(row => `${row.symbol} (${row.beats} beats)`).join(" → ")} · ${c.bpm} BPM · ${c.notes} ${c.notes === 1 ? "note" : "notes"} per chord · Targets: ${pools} · Voice mix: ${c.levels.map(level => Math.round(level * 100) + "%").join(", ")} · Volume: ${Math.round(c.volume * 100)}% · ${isPlayByEar(c.mode) ? "Instrumental playing · Self-assessed · Separate post-accompaniment delay" : "Progression timing unavailable"}${stored.practiceKey ? " · Practice key: " + stored.practiceKey : ""}${stored.sourceChords ? " · C source: " + stored.sourceChords.map(row => row.symbol).join(" → ") : ""}`;
     }
     catch {
         return "Progression · stored conditions unavailable";
@@ -187,7 +217,8 @@ export function mountProgression(root, initialMode = progressionModes.degreeReco
                 minor: "Minor ii–V–i",
                 backdoor: "Backdoor",
             };
-            const option = el("option", labels[v] ?? v.replace(/^(singing|recognition)(?= \/ )/, mode => labels[mode]));
+            const mode = Object.values(progressionModes).find(mode => v === mode || v.startsWith(mode + " / "));
+            const option = el("option", labels[v] ?? (mode ? progressionName(mode) + v.slice(mode.length) : v));
             option.value = v;
             input.append(option);
         }
@@ -355,16 +386,16 @@ export function mountProgression(root, initialMode = progressionModes.degreeReco
         replay.append(el("p", "Replay-assisted notes"), el("strong", `${m.assisted} / ${m.assessed}`));
         const total = el("div");
         total.className = "supporting-metric";
-        total.append(el("p", "Progressions"), el("strong", String(questions.length)));
+        total.append(el("p", config.mode === progressionModes.singlePlayByEar ? "Questions" : "Progressions"), el("strong", String(questions.length)));
         support.append(replay, total);
         if (isPlayByEar(config.mode)) {
             const delay = el("div");
             delay.className = "supporting-metric";
             delay.append(el("p", "Post-accompaniment completion delay"));
-            for (const q of questions)
+            for (const q of questions.length === 1 ? questions : [])
                 delay.append(el("p", `${q.completionDelayMs === undefined ? "Unavailable" : (q.completionDelayMs / 1000).toFixed(2) + "s"} · ${q.interrupted ? "Interrupted/recovered" : q.before ? "Replay-assisted" : "Unassisted"}`));
             delay.append(el("p", "Whole-question delay includes button interaction. It is separate from Overall response time."));
-            support.append(delay);
+            support.append(delay, completionSummary(questions));
         }
         body.append(support, el("p", "Each assessed note contributes once to Overall accuracy. Progression speed is excluded from Overall timing."));
         section.append(outcome, body);
@@ -582,7 +613,7 @@ export function mountProgression(root, initialMode = progressionModes.degreeReco
         launch.className = "config-launch";
         const start = action("Start practice");
         start.disabled = Boolean(issue);
-        const status = el("p", issue ? "Invalid settings. Review the highlighted group." : configUnsaved ? `Not saved to ${presetId}. Retry saving.` : `Saved preset: ${presetId}`);
+        const status = el("p", issue ? "Invalid settings. Review the highlighted group." : configUnsaved ? `Not saved to ${presetId}. Retry saving.` : `Saved preset: ${Object.values(progressionModes).includes(presetId) ? progressionName(presetId) : presetId}`);
         status.id = "progression-save-status";
         status.className = "notice";
         status.dataset.state = issue ? "invalid" : configUnsaved ? "unsaved" : "saved";
@@ -592,7 +623,7 @@ export function mountProgression(root, initialMode = progressionModes.degreeReco
         if (configUnsaved)
             side.append(button("Retry saving preset", () => { persistConfig(); message = ""; render(); }));
         const history = el("details");
-        history.append(el("summary", "Past progression sessions"));
+        history.append(el("summary", "Past sessions"));
         nodes.filter(node => node.tagName === "BUTTON" && node.textContent?.startsWith("Results ·")).forEach(node => history.append(node));
         if (history.children.length > 1)
             side.append(history);
@@ -838,8 +869,8 @@ export function mountProgression(root, initialMode = progressionModes.degreeReco
                 item.className = "progression-review-group";
                 item.dataset.disclosure = q.id;
                 const m = report([q]);
-                item.append(el("p", "Practice key: " + (q.practiceKey ?? "Stored original")));
-                item.append(el("summary", `Progression ${run.questions.indexOf(q) + 1} · ${m.correct} / ${m.assessed} assessed`), el("p", `${q.before} pre-check replay events · ${q.after} review events`));
+                item.append(el("p", q.config.mode === progressionModes.singlePlayByEar ? "Chord: " + q.config.chords[0].symbol : "Practice key: " + (q.practiceKey ?? "Stored original")));
+                item.append(el("summary", `${run.config.mode === progressionModes.singlePlayByEar ? "Question" : "Progression"} ${run.questions.indexOf(q) + 1} · ${m.correct} / ${m.assessed} assessed`), el("p", `${q.before} pre-check replay events · ${q.after} review events`));
                 const table = el("table"), head = el("tr");
                 for (const name of [
                     "Chord / note",
@@ -1100,7 +1131,7 @@ export function mountProgression(root, initialMode = progressionModes.degreeReco
         if (!q.done)
             host.append(button("Done — hear full reference", () => { finishPerformance(q, performance.now()); save(); return play(true, false); }, busy || !heard || q.performanceEndedAt === undefined));
         const board = el("section");
-        board.className = "progression-answer-board";
+        board.className = "progression-answer-board instrumental-board";
         board.setAttribute("aria-label", "Instrumental reproduction board");
         board.append(el("h2", q.done && referenceHeard ? "Check your playing" : "Listen, then play by ear"));
         q.config.chords.forEach((chord, occurrence) => {
@@ -1140,7 +1171,7 @@ export function mountProgression(root, initialMode = progressionModes.degreeReco
                     }
                 }
                 else
-                    row.append(el("p", "Target hidden · listen and imitate"));
+                    row.append(el("p", "Target hidden"));
                 grid.append(row);
             });
             group.append(grid);

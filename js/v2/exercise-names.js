@@ -27,3 +27,4 @@ export function progressionName(mode) {
     return exerciseNames[progressionExercise(mode)];
 }
 export function isPlayByEar(mode) { return mode === progressionModes.playByEar || mode === progressionModes.singlePlayByEar; }
+export function modeForExercise(exercise) { return Object.values(progressionModes).find(mode => progressionExercise(mode) === exercise); }

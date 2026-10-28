@@ -43,7 +43,7 @@ export function validate(input) {
         c.volume > 1)
         throw Error("Choose BPM 20–300, 1–4 notes/chord, 0–200 questions and valid volume.");
     const single = c.mode === progressionModes.singlePlayByEar;
-    if (single && (!c.roots?.length || c.roots.some(r => !practiceKeys.includes(r)) || !c.qualities?.length || c.qualities.some(q => !qualities.includes(q)) || c.notes !== 1))
+    if (single && (!c.roots?.length || c.roots.some(r => !practiceKeys.includes(r)) || new Set(c.roots).size !== c.roots.length || !c.qualities?.length || c.qualities.some(q => !qualities.includes(q)) || new Set(c.qualities).size !== c.qualities.length || c.notes !== 1))
         throw Error("Choose roots, chord qualities and one target for single-chord practice.");
     if (!Array.isArray(c.chords) || c.chords.length < (single ? 1 : 2) || c.chords.length > (single ? 1 : 32))
         throw Error("Choose 2–32 chord occurrences.");
@@ -76,7 +76,7 @@ export function generate(input, random = Math.random, drawnKey) {
     config.chords = config.chords.map(row => { const chord = parseChord(row.symbol); return { ...row, symbol: practiceKeys[(pitchClass(chord.root) + offset) % 12] + chord.quality }; });
     return {
         id,
-        config, source, practiceKey: key,
+        config, source, practiceKey: key, generatorVersion: "v2-keyed-progression-1",
         created: new Date().toISOString(),
         submitted: false,
         done: false,
@@ -225,6 +225,7 @@ export function finishPerformance(q, now) {
     if (!isPlayByEar(q.config.mode) || q.performanceEndedAt === undefined || !Number.isFinite(now) || now < q.performanceEndedAt)
         throw Error("Wait for accompaniment completion.");
     q.completionDelayMs = now - q.performanceEndedAt;
+    q.completionTimingVersion = "v2-play-after-backing-1";
     q.done = true;
 }
 export function assessPerformance(q, errors) {
@@ -243,4 +244,24 @@ export function assessPerformance(q, errors) {
         note.assisted = q.before > 0;
     }
     q.submitted = true;
+}
+/** Eligible whole-question timing, kept outside note-level response metrics. */
+export function completionTiming(input) {
+    const groups = new Map();
+    let excluded = 0;
+    for (const q of new Map(input.map(q => [q.id, q])).values()) {
+        if (!isPlayByEar(q.config.mode))
+            continue;
+        if (!q.submitted || !q.notes.length || q.notes.some(n => n.correct !== true) || q.before > 0 || q.interrupted || q.completionDelayMs === undefined || !Number.isFinite(q.completionDelayMs) || q.completionDelayMs < 0) {
+            excluded++;
+            continue;
+        }
+        const c = q.source ?? q.config;
+        const key = JSON.stringify([c.mode, q.completionTimingVersion ?? "unversioned", q.generatorVersion ?? "v2-progression-1", c.bpm, c.notes, c.mode === progressionModes.singlePlayByEar ? null : c.chords, c.roots?.slice().sort(), c.qualities?.slice().sort(), Object.entries(c.pools).sort(([a], [b]) => a.localeCompare(b)).map(([quality, pool]) => [quality, pool?.slice().sort()]), c.levels, c.volume, c.keyMode ?? "fixed", c.key ?? "C", c.keyMode === "random" ? c.keyPool?.slice().sort() : null]);
+        const harmony = c.mode === progressionModes.singlePlayByEar ? `${c.roots?.join(", ")} · ${c.qualities?.join(", ")}` : c.chords.map(r => `${r.symbol} (${r.beats} beats)`).join(" → ");
+        const group = groups.get(key) ?? { label: `${c.bpm} BPM · ${c.notes} notes/chord · ${harmony} · ${c.keyMode === "random" ? "Mixed keys: " + c.keyPool?.join(", ") : "Key " + (c.key ?? "C")}`, values: [] };
+        group.values.push(q.completionDelayMs);
+        groups.set(key, group);
+    }
+    return { groups: [...groups.values()].map(g => { g.values.sort((a, b) => a - b); const n = g.values.length; return { label: g.label, n, median: (g.values[Math.floor(n / 2)] + g.values[Math.floor((n - 1) / 2)]) / 2 }; }), excluded };
 }
