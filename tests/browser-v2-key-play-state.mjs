@@ -15,11 +15,25 @@ try{
    localStorage.setItem('jazzEarLab:v2:progressionPresets',JSON.stringify({[mode]:c}));},{mode,large});
   await page.goto(base+'#progression/'+mode);await button('Start practice').waitFor();
  };
+ await page.goto(base+'#progression/play-single');await button('Target degrees').click();
+ const disclosure=page.locator('summary').filter({hasText:/^m7/});if(!await disclosure.evaluate(n=>n.parentElement.open))await disclosure.click();
+ const pool=page.getByRole('group',{name:'m7',exact:true}).getByRole('checkbox');
+ for(let i=0;i<await pool.count();i++)if(await pool.nth(i).isChecked())await pool.nth(i).uncheck();
+ assert.equal(await button('Start practice').isDisabled(),true);await button('Practice').click();await button('Review invalid settings: Target degrees').click();
+ await page.getByRole('group',{name:'m7',exact:true}).waitFor();console.log('PASS invalid single-chord m7 pool routes to Target degrees rather than Sound.');
  await setup('play-single');await button('Start practice').click();await ready();
  await button('Replay demonstration').click();assert.equal(await button('Done — hear full reference').isDisabled(),true);await ready();
  await button('Done — hear full reference').click();await button('All correct').waitFor();await button('All correct').click();
  await page.getByText('Unavailable · n=0 eligible questions',{exact:true}).waitFor();await page.locator('p').filter({hasText:/^\d.*s · Replay-assisted$/}).waitFor();
  await button('Finish').click();console.log('PASS whole-cycle replay: retained task, gated Done and excluded assisted timing.');
+ await setup('play-single');await button('Start practice').click();
+ await page.evaluate(()=>{window.originalSetItem=Storage.prototype.setItem;Storage.prototype.setItem=function(k,v){if(k==='jazzEarLab:v2:progressionHistory')throw Error('quota');return window.originalSetItem.call(this,k,v);};});
+ await ready();await page.getByRole('alert').filter({hasText:'Could not save V2 data'}).waitFor();
+ await page.evaluate(()=>Storage.prototype.setItem=window.originalSetItem);await button('Retry saving').click();
+ await button('Done — hear full reference').click();await button('All correct').waitFor();await button('All correct').click();
+ await page.getByText(/s median · n=1/).waitFor();await page.locator('p').filter({hasText:/^\d.*s · Unassisted$/}).waitFor();await button('Finish').click();
+ console.log('PASS quota at healthy backing completion does not invalidate unassisted timing.');
+
  await setup('play-single');await button('Start practice').click();await ready();
  await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,get:()=>true});document.dispatchEvent(new Event('visibilitychange'));});
  await page.getByRole('alert').filter({hasText:'Playback interrupted'}).waitFor();assert.equal(await button('Done — hear full reference').isDisabled(),true);

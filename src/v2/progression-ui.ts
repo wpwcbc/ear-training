@@ -81,7 +81,7 @@ export function progressionEvidence(): Attempt[] {
           id: n.id,
           exercise: progressionExercise(q.config.mode),
           timingVersion: isPlayByEar(q.config.mode) ? q.completionTimingVersion ?? "v2-play-after-backing-1" : "progression-timing-not-recorded",
-          progressionContext: JSON.stringify(q.source ? {...q.config, sourceChords:q.source.chords, practiceKey:q.practiceKey} : q.config),
+          progressionContext: JSON.stringify(q.source && q.config.mode !== progressionModes.singlePlayByEar ? {...q.config, sourceChords:q.source.chords, practiceKey:q.practiceKey} : q.config),
           replayQuestionId: q.id,
           replayEventsBefore: q.before,
           replayEventsAfter: q.after,
@@ -180,6 +180,7 @@ export function mountProgression(
     write(historyKey, runs);
     dirty = false;
     retainedRuns = null;
+    if (message.startsWith("Could not save V2 data")) message = "";
   };
   const stopAudio = () => {
     token++;
@@ -295,6 +296,7 @@ export function mountProgression(
     write(presetKey, { ...presets, [presetId]: valid });
     presets[presetId] = valid;
     configUnsaved = false;
+    if (!dirty) message = "";
   }
   function startPractice() {
     const valid = validate(config);
@@ -339,8 +341,9 @@ export function mountProgression(
     const op = token,
       q = question!;
     busy = true;
-    message = "";
+    if (!dirty) message = "";
     render();
+    const savePlaybackProgress = () => { try { save(); } catch (e) { message = (e as Error).message; } };
     try {
       await audio.ready();
       if (closed || op !== token) return;
@@ -348,7 +351,7 @@ export function mountProgression(
       if (instrumental && !reference) { delete q.performanceEndedAt; heard = false; referenceHeard = false; }
       if (replay && (!reference || q.config.mode === progressionModes.degreeRecognition || q.referencePlayed)) {
         if (q.submitted || q.done) q.after++; else q.before++;
-        save();
+        savePlaybackProgress();
       }
       const passes = instrumental && !reference ? [true, false] : [reference || q.config.mode === progressionModes.degreeRecognition];
       for (const melody of passes) {
@@ -377,8 +380,8 @@ export function mountProgression(
         if (instrumental && !reference && !melody) performanceComplete(q, performance.now() - Math.max(0, audio.position - plan.duration) * 1000);
       }
       busy = false; phase = "";
-      if (reference) { referenceHeard = true; q.referencePlayed = true; save(); }
-      else { heard = true; save(); }
+      if (reference) { referenceHeard = true; q.referencePlayed = true; savePlaybackProgress(); }
+      else { heard = true; savePlaybackProgress(); }
       render();
     } catch (e) {
       if (op === token && !closed) {
@@ -475,8 +478,7 @@ export function mountProgression(
         return { chapter: "Practice", group: "tempo", field: "Notes per chord", message };
       if (!Number.isInteger(config.count) || config.count < 0 || config.count > 200)
         return { chapter: "Practice", group: "length", field: "Questions (0 = Unlimited)", message };
-      for (const row of config.chords) {
-        const quality = parseChord(row.symbol).quality;
+      for (const quality of config.mode === progressionModes.singlePlayByEar ? config.qualities! : config.chords.map(row => parseChord(row.symbol).quality)) {
         if (!config.pools[quality]?.length) return { chapter: "Target degrees", group: "pool:" + quality, message };
       }
       return { chapter: "Sound", group: !Number.isFinite(config.volume) || config.volume < 0 || config.volume > 1 ? "volume" : "mix", message };
@@ -543,7 +545,7 @@ export function mountProgression(
       keyControls.append(select("Key mode", config.keyMode ?? "fixed", ["fixed", "random"], value => { config.keyMode = value as "fixed" | "random"; config.keyPool ??= [...practiceKeys]; persistConfig(); }));
       if (config.keyMode !== "random") keyControls.append(label("Practice key"));
       else {
-        const pool = el("fieldset"); pool.append(el("legend", "Random keys"));
+        const pool = el("fieldset"); pool.className = "key-pool"; pool.append(el("legend", "Random keys"));
         const choices = el("div"); choices.className = "pool";
         for (const key of practiceKeys) {
           const item = el("label"), check = el("input"); check.type = "checkbox"; check.dataset.control = "key:" + key;
@@ -904,7 +906,7 @@ export function mountProgression(
       for (const run of runs.slice().reverse())
         host.append(
           button(
-            `Results · ${run.config.mode} · ${run.questions.length} questions`,
+            `Results · ${progressionName(run.config.mode)} · ${run.questions.length} ${run.questions.length === 1 ? "question" : "questions"}`,
             () => {
               activeRun = run;
               config = structuredClone(run.config);

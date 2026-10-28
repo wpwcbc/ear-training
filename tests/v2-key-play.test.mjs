@@ -35,3 +35,11 @@ test('completion-delay summaries use correct unassisted whole questions, never n
  const report=progression.completionTiming([...questions,assisted,wrong,interrupted]);
  assert.equal(report.groups[0].n,3);assert.equal(report.groups[0].median,3000);assert.equal(report.excluded,3);
 });
+test('zero-offset legacy practice preserves literal chord spelling',()=>{
+ const c={...structuredClone(progression.defaults),chords:[{symbol:'Dbmaj7',beats:4},{symbol:'C',beats:4}],pools:{...progression.defaults.pools,maj:['1']}};
+ const q=progression.generate(c,()=>0);assert.deepEqual(q.config.chords.map(c=>c.symbol),['Dbmaj7','C']);
+});
+test('standalone random generation never chooses a key outside its eligible pool',()=>{
+ const q=progression.generate({...structuredClone(progression.defaults),keyMode:'random',keyPool:['Eb']},()=>0);
+ assert.equal(q.practiceKey,'Eb');assert.deepEqual(q.config.chords.map(c=>c.symbol),['Fm7','Bb7','Ebmaj7']);
+});

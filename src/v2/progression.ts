@@ -133,11 +133,11 @@ export function generate(
   drawnKey?: string,
 ): ProgressionQuestion {
   const source = validate(input), config = structuredClone(source),
-    key = drawnKey ?? source.key!, id = crypto.randomUUID();
-  if (!practiceKeys.includes(key)) throw Error("Unsupported practice key.");
+    key = drawnKey ?? (source.keyMode === "random" ? source.keyPool![Math.floor(random() * source.keyPool!.length)] : source.key!), id = crypto.randomUUID();
+  if (!practiceKeys.includes(key) || (source.keyMode === "random" && !source.keyPool!.includes(key))) throw Error("Unsupported practice key.");
   if (source.mode === progressionModes.singlePlayByEar) { const root = source.roots![Math.floor(random() * source.roots!.length)], quality = source.qualities![Math.floor(random() * source.qualities!.length)]; config.chords = [{symbol: root + quality, beats: 4}]; }
   const offset = source.mode === progressionModes.singlePlayByEar ? 0 : pitchClass(key);
-  config.chords = config.chords.map(row => { const chord = parseChord(row.symbol); return { ...row, symbol: practiceKeys[(pitchClass(chord.root) + offset) % 12] + chord.quality }; });
+  config.chords = config.chords.map(row => { const chord = parseChord(row.symbol); return offset === 0 ? {...row} : { ...row, symbol: practiceKeys[(pitchClass(chord.root) + offset) % 12] + chord.quality }; });
   return {
     id,
     config, source, practiceKey: key, generatorVersion: "v2-keyed-progression-1",

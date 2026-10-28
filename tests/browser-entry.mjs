@@ -23,7 +23,7 @@ try {
   await page.goto(base);
   await page.locator('a.tool-card[href="jazz-ear-lab-v2/"]').click();
   await page
-    .getByRole("article", { name: "M2 Recognition", exact: true })
+    .getByRole("article", { name: "Single Chord · Degree Recognition", exact: true })
     .getByRole("button", { name: "Start", exact: true })
     .waitFor();
   await page.getByRole("link", { name: "Legacy", exact: true }).click();
@@ -37,7 +37,7 @@ try {
   await page.locator('.app-navigation [data-route="home"]').click();
   await page.waitForURL(/jazz-ear-lab-v2\/#home$/);
   await page
-    .getByRole("article", { name: "M1 Audiation", exact: true })
+    .getByRole("article", { name: "Single Chord · Degree Audiation", exact: true })
     .getByRole("button", { name: "Start", exact: true })
     .waitFor();
   console.log(

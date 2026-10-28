@@ -17,7 +17,7 @@ try{
  await page.getByLabel('Key mode',{exact:true}).selectOption('random');
  const keys=page.getByRole('group',{name:'Random keys',exact:true}).getByRole('checkbox');
  for(let i=0;i<12;i++)await keys.nth(i).uncheck();assert.equal(await button('Start practice').isDisabled(),true);await capture('empty-key-pool');
- await button('All').click();await capture('random-key-config');assert.equal(await keys.filter({checked:true}).count(),12);assert.equal(await button('Start practice').isEnabled(),true);
+ await button('All').click();await capture('random-key-config');assert.equal(await keys.filter({checked:true}).count(),12);assert.equal(await button('Start practice').isEnabled(),true);assert.equal(await page.getByRole('alert').count(),0);
  assert.equal(await page.getByLabel('Chord 1',{exact:true}).inputValue(),'Dm7');
  await page.goto(base+'#home');await page.getByRole('article',{name:'Single Chord · Play by Ear',exact:true}).getByRole('button',{name:'Customize',exact:true}).click();
  await button('Practice').click();await change('BPM','300');await change('Questions (0 = Unlimited)','1');

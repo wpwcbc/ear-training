@@ -22,8 +22,8 @@ try{
  await page.getByRole('button',{name:'Overall Insights',exact:true}).click();await page.waitForURL(/#insights$/);await page.getByRole('heading',{name:'Insights',exact:true}).waitFor();
  await page.evaluate(()=>location.hash='progression');await page.getByRole('button',{name:'Retry saving',exact:true}).waitFor();
  await page.evaluate(()=>Storage.prototype.setItem=window.originalSetItem);await page.getByRole('button',{name:'Retry saving',exact:true}).click();
- await page.getByText('Past progression sessions',{exact:true}).click();
- await page.getByRole('button',{name:'Results · recognition · 1 questions',exact:true}).click();
+ await page.getByText('Past sessions',{exact:true}).click();
+ await page.getByRole('button',{name:'Results · Progression · Degree Recognition · 1 question',exact:true}).click();
  await page.getByText('0 / 6 assessed notes',{exact:true}).waitFor();
  const history=await page.evaluate(()=>JSON.parse(localStorage.getItem('jazzEarLab:v2:progressionHistory')));
  assert.equal(history[0].questions[0].before,1);assert.ok(history[0].questions[0].notes.every(n=>n.assisted));
