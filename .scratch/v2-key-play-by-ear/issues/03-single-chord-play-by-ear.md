@@ -4,7 +4,7 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** draft — awaiting breakdown approval; not published as ready-for-agent
+**Status:** ready-for-agent
 
 - [ ] Add the canonical Single Chord · Play by Ear entry without replacing existing entries or reclassifying old played-method Audiation. Reuse applicable root/quality/degree-pool, voice mix, volume and session controls, with BPM 20–300.
 - [ ] Use one chord and one target. Show known harmony but hide target degrees and degree-answer inputs during demonstration and performance. Demonstrate sound before imitation; do not reuse shown-degree M1 as the task.

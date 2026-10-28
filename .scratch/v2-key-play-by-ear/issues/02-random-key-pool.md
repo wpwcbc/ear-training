@@ -4,7 +4,7 @@
 
 **Blocked by:** 01 — C-source progression and fixed practice keys
 
-**Status:** draft — awaiting breakdown approval; not published as ready-for-agent
+**Status:** ready-for-agent
 
 - [ ] Provide Fixed/Random with twelve distinct pitch-class choices and All. Initially select all twelve when Random is first chosen; preserve subsequent pool edits and retain the pool while temporarily using Fixed.
 - [ ] A singleton pool is valid. An empty pool disables Start with a correction route, retaining the invalid draft and last valid saved preset; do not silently substitute C or All.

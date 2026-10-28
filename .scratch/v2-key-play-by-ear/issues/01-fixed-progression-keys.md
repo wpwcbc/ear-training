@@ -4,7 +4,7 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** draft — awaiting breakdown approval; not published as ready-for-agent
+**Status:** ready-for-agent
 
 - [ ] Keep editable source chords separate from actual sounding chords; replace cumulative destructive transposition with one fixed-key policy in Harmony and its summaries. Do not guess tonality or reject supported borrowed/minor harmony.
 - [ ] Demonstrate Dm7–G7–Cmaj7 at Eb as Fm7–Bb7–Ebmaj7, then return to the unchanged source. Repeated key changes do not accumulate offsets. Preserve qualities, suffixes, chord order, durations and chord-relative target pools/degrees.

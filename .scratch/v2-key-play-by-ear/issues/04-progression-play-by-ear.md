@@ -4,7 +4,7 @@
 
 **Blocked by:** 02 — Random-key pool, All and balanced question draws; 03 — Single Chord Play by Ear: listen, play, check and record
 
-**Status:** draft — awaiting breakdown approval; not published as ready-for-agent
+**Status:** ready-for-agent
 
 - [ ] Add Progression · Play by Ear with the working source/fixed/random key policy, templates/custom chords, per-quality pools, configured BPM/durations, 1–4 targets per chord, mix and fixed/Unlimited session controls.
 - [ ] Reuse the proven automatic Play by Ear phase/timing contract from 03 and the complete key-selection contract from 02. Keep existing progression Recognition/Audiation behavior and evidence intact while adding this task.

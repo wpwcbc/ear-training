@@ -4,7 +4,7 @@
 
 **Blocked by:** 04 — Progression Play by Ear: reproduce and self-assess the whole phrase
 
-**Status:** draft — awaiting breakdown approval; not published as ready-for-agent
+**Status:** ready-for-agent
 
 - [ ] Expose both new modules consistently in Insights, Results conditions and production provenance. Keep instrumental self-assessment separate from system grades, existing sung progression and old played-method Audiation.
 - [ ] Count each committed target once across reporting, reload and retry. Existing 15/30 plus new 4/6 yields Overall 19/36; do not average module percentages or add a phrase grade on top of target grades.

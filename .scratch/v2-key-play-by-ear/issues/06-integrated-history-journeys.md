@@ -4,7 +4,7 @@
 
 **Blocked by:** 05 — Play by Ear Insights: honest note accuracy and phrase-level delay
 
-**Status:** draft — awaiting breakdown approval; not published as ready-for-agent
+**Status:** ready-for-agent
 
 - [ ] Complete direct Start/Customize → practice/replay → check → Results → Insights/Overall → matching history journeys across the four existing modes and two new modes. Each earlier slice brings its own passing acceptance; this ticket does not defer their keyboard, recovery or tests until the end.
 - [ ] Ensure unified history and matching-session links open the correct mode and frozen session. Edit preset/template/key/mix after practice and reload; recorded reference still uses original source, actual key, material, BPM/durations and playback settings.
