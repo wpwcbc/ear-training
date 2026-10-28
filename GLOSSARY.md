@@ -108,3 +108,8 @@ recognition counterparts) remain unchanged to preserve presets, records and
 links. Application code uses `exerciseNames` and `progressionModes.degreeAudiation`
 from `src/v2/exercise-names.ts` for the current vocabulary. Historical specification
 and screenshot names describe their original delivery.
+
+
+Confirmed key and instrumental-reproduction terms from the completed interview
+are recorded in [CONTEXT.md](CONTEXT.md). Existing Degree Audiation and Degree
+Recognition retain their definitions above.
