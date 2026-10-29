@@ -8,7 +8,7 @@ export interface InsightRecord {
   a:Attempt; questionId:string; sessionId:string; time:number|null;
   dateSource:'question'|'completion'|'session'|'unknown';
   family:InsightFamily; context:'Single Chord'|'Progression'; key:string|null;
-  root:string; quality:string; chord:string; degree:string; href:string;
+  root:string; quality:string; chord:string; chordLabel:string; rootLabel:string; degree:string; href:string;
   source:Config|ProgressionConfig; question?:ProgressionQuestion; sourceKnown:boolean;
   generator:string|null; timing:string|null; exposure:string|null;
 }
@@ -30,7 +30,7 @@ export function insightRecords(sessions:Session[], runs:InsightRun[], progressio
       time:exact??completed??started,dateSource:exact!==null?'question':completed!==null?'completion':started!==null?'session':'unknown',
       family:a.exercise.includes('play-by-ear')?'Play by Ear':(a.exercise==='m2'||a.exercise==='progression-recognition')?'Degree Recognition':'Degree Audiation',
       context,key:context==='Progression'&&q?.practiceKey&&insightKeys.includes(q.practiceKey)?q.practiceKey:null,
-      root,quality:a.target.chord.quality,chord:root+a.target.chord.quality,degree:a.target.degree,
+      root,rootLabel:a.target.chord.root,quality:a.target.chord.quality,chord:root+a.target.chord.quality,chordLabel:a.target.chord.symbol,degree:a.target.degree,
       href:data?`#progression/${data.run.config.mode}/results/${encodeURIComponent(data.run.id)}`:'#results/'+a.sessionId,
       source:q?.source??q?.config??a.configurationSnapshot,question:q,
       sourceKnown:!q||context==='Single Chord'||!!q.source,
@@ -42,7 +42,8 @@ export function insightRecords(sessions:Session[], runs:InsightRun[], progressio
 }
 export function insightStats(records:InsightRecord[]){
   const unique=[...new Map(records.map(r=>[r.a.id,r])).values()];
-  return {...metrics(unique.map(r=>r.a)),questions:new Set(unique.map(r=>r.questionId)).size,sessions:new Set(unique.map(r=>r.sessionId)).size};
+  const assessed=unique.filter(r=>r.a.firstCorrect!==null);
+  return {...metrics(unique.map(r=>r.a)),assessedQuestions:new Set(assessed.map(r=>r.questionId)).size,assessedSessions:new Set(assessed.map(r=>r.sessionId)).size,questions:new Set(unique.map(r=>r.questionId)).size,sessions:new Set(unique.map(r=>r.sessionId)).size};
 }
 export function insightPeriod(days:number,now=new Date()){
   const end=new Date(now.getFullYear(),now.getMonth(),now.getDate()+1);
@@ -58,7 +59,7 @@ export function insightFilter(records:InsightRecord[],filters:InsightFilters){
 export function insightGroups(records:InsightRecord[],dimension:InsightDimension){
  const groups=new Map<string,InsightRecord[]>();
  for(const r of records){const label=dimension==='degree'?r.quality+' / '+r.degree:r[dimension]??'Not recorded';const group=groups.get(label)??[];group.push(r);groups.set(label,group);}
- return [...groups].map(([label,items])=>({label,items,m:insightStats(items)}));
+ return [...groups].map(([label,items])=>({label,displayLabel:dimension==='chord'?[...new Set(items.map(r=>r.chordLabel))].join(' / '):dimension==='root'?[...new Set(items.map(r=>r.rootLabel))].join(' / '):label,items,m:insightStats(items)}));
 }
 function stable(value:unknown):string {
  if(Array.isArray(value))return '['+value.map(stable).join(',')+']';
@@ -76,7 +77,7 @@ export function insightStratum(r:InsightRecord,byKey=false):string|null {
  if('mode' in c&&(!Array.isArray(c.levels)||!Number.isFinite(c.bpm)||r.context==='Progression'&&(!c.keyMode||(c.keyMode==='random'&&!c.keyPool))))return null;
  return stable({exercise:r.a.exercise,grading:r.a.gradingSource,method:r.a.responseMethod,exposure:r.exposure,generator:r.generator,timing:r.context==='Single Chord'&&r.family!=='Play by Ear'?r.timing:null,date:r.dateSource,conditions:sourceConditions(r),key:r.context==='Progression'&&!byKey?r.key:null,root:r.context==='Single Chord'&&!byKey?r.root:null});
 }
-export function insightEligible(records:InsightRecord[]){const m=insightStats(records);return m.n>=20&&m.questions>=10&&m.sessions>=3;}
+export function insightEligible(records:InsightRecord[]){const m=insightStats(records);return m.n>=20&&m.assessedQuestions>=10&&m.assessedSessions>=3;}
 export function insightConditionLabel(r:InsightRecord){
  const c=r.source;
  if('mode' in c)return `${r.context==='Progression'?c.chords.map(x=>x.symbol+' ('+x.beats+' beats)').join(' → '):(c.roots??[]).join(', ')+' · '+(c.qualities??[]).join(', ')} · ${c.bpm} BPM · ${c.notes} notes/chord · ${c.keyMode==='random'?'Random: '+c.keyPool?.join(', '):'Fixed '+(r.key??'key not recorded')}`;
@@ -97,7 +98,7 @@ export function insightPriorities(records:InsightRecord[],baselineId='',filters:
   const qualified=[...groups.values()].filter(g=>insightEligible(g.items)&&g.items.filter(r=>r.a.firstCorrect===false).length>=3&&new Set(g.items.filter(r=>r.a.firstCorrect===false).map(r=>r.sessionId)).size>=2).map(g=>({...g,m:insightStats(g.items),kind:'error' as const,basis:g.items[0]}));
   if(qualified.length)eligibleStrata.push({items,candidates:qualified});
  }
- eligibleStrata.sort((a,b)=>Math.max(...b.items.map(r=>r.time??0))-Math.max(...a.items.map(r=>r.time??0))||insightStats(b.items).n-insightStats(a.items).n);
+ eligibleStrata.sort((a,b)=>latestAssessed(b.items)-latestAssessed(a.items)||insightStats(b.items).n-insightStats(a.items).n);
  const usedErrors=new Set<string>();
  candidates=(eligibleStrata[0]?.candidates??[]).sort((a,b)=>b.specificity-a.specificity).filter(c=>{const k=c.items.filter(r=>r.a.firstCorrect===false).map(r=>r.a.id).sort().join('|');if(usedErrors.has(k))return false;usedErrors.add(k);return true;});
  candidates.sort((a,b)=>(b.m.n-b.m.correct)/b.m.n-(a.m.n-a.m.correct)/a.m.n||(b.m.n-b.m.correct)-(a.m.n-a.m.correct)||b.m.n-a.m.n||a.label.localeCompare(b.label));
@@ -147,7 +148,7 @@ export function insightTrend(records:InsightRecord[],days:number,now=new Date())
 export function insightKeyComparison(records:InsightRecord[]){
  const strata=new Map<string,InsightRecord[]>();
  for(const r of records){const k=insightStratum(r,true);if(k&&r.key){const items=strata.get(k)??[];items.push(r);strata.set(k,items);}}
- const groups=[...strata.values()].map(items=>({items,keys:insightGroups(items,'key').filter(g=>insightEligible(g.items))})).filter(g=>g.keys.length>=2).sort((a,b)=>Math.max(...b.items.map(r=>r.time??0))-Math.max(...a.items.map(r=>r.time??0))||b.items.length-a.items.length);
+ const groups=[...strata.values()].map(items=>({items,keys:insightGroups(items,'key').filter(g=>insightEligible(g.items))})).filter(g=>g.keys.length>=2).sort((a,b)=>latestAssessed(b.items)-latestAssessed(a.items)||b.items.length-a.items.length);
  const chosen=groups[0];return {items:chosen?.keys.flatMap(g=>g.items)??[],label:chosen?insightConditionLabel(chosen.items[0]):null};
 }
 export function insightEfficiency(records:InsightRecord[]){
@@ -171,3 +172,5 @@ export function insightEfficiency(records:InsightRecord[]){
 }
 
 export function insightSetupId(r:InsightRecord){return stable(sourceConditions(r));}
+
+function latestAssessed(records:InsightRecord[]){return records.reduce((latest,r)=>r.a.firstCorrect!==null?Math.max(latest,r.time??0):latest,0);}

@@ -72,3 +72,32 @@ test('local calendar periods cross daylight-saving changes without drifting a da
  try{const p=insightPeriod(28,new Date(2026,10,3,12));assert.deepEqual([new Date(p.start).toISOString(),new Date(p.end).toISOString()],['2026-10-07T04:00:00.000Z','2026-11-04T05:00:00.000Z']);}
  finally{if(original===undefined)delete process.env.TZ;else process.env.TZ=original;}
 });
+test('key comparison uses compatible source conditions and distinct eligible questions per actual key',async()=>{
+ const {insightKeyComparison}=await import('../js/v2/model.js');const {defaultConfig,generate}=await import('../js/v2/progression.js');
+ const config={...defaultConfig('play'),keyMode:'random',keyPool:['C','Eb']},runs=[],evidence=[];
+ for(const key of ['C','Eb'])for(let i=0;i<12;i++){
+  const q=generate(config,()=>.3,key);q.created='2026-10-20T12:00:00Z';const id=key+'-'+i%3;let run=runs.find(r=>r.id===id);if(!run){run={id,config,questions:[],ended:true};runs.push(run);}run.questions.push(q);
+  for(const n of q.notes){n.correct=true;n.exposure='fresh';evidence.push({...attempt(builtins[0].config,{id:n.id,chord:n.chord,degree:n.degree,midi:n.midi,options:[],generatorVersion:q.generatorVersion},id,'fresh'),id:n.id,exercise:'progression-play-by-ear',firstCorrect:true});}
+ }
+ const rows=insightRecords([],runs,evidence),comparison=insightKeyComparison(rows);assert.equal(insightStats(comparison.items).n,144);assert.equal(new Set(comparison.items.map(r=>r.key)).size,2);
+ rows.filter(r=>r.key==='Eb').forEach(r=>r.source={...r.source,bpm:120});assert.equal(insightKeyComparison(rows).items.length,0);
+});
+test('incompatible small groups cannot create a recurrent-error recommendation',async()=>{
+ const {insightPriorities}=await import('../js/v2/model.js');const rows=repeatedRecords().map((r,i)=>({...r,source:{...r.source,volume:i%2?.5:.6}}));assert.equal(insightPriorities(rows).errors.length,0);
+});
+test('unassessed questions and sessions cannot satisfy the recurrent evidence gate',async()=>{
+ const {insightPriorities}=await import('../js/v2/model.js');
+ const assessed=repeatedRecords().map((r,i)=>({...r,questionId:'phrase-'+i%2,sessionId:'rated-'+i%2}));
+ const unassessed=repeatedRecords(8).map((r,i)=>({...r,questionId:'unfinished-'+i,sessionId:'unrated-session',a:{...r.a,firstCorrect:null}}));
+ assert.equal(insightPriorities([...assessed,...unassessed]).errors.length,0);
+});
+test('the most recent assessed stratum wins over a newly unassessed older setup',async()=>{
+ const {insightPriorities}=await import('../js/v2/model.js');
+ const older=repeatedRecords().map(r=>({...r,time:1,source:{...r.source,volume:.5}})),newer=repeatedRecords().map(r=>({...r,time:2,source:{...r.source,volume:.6}}));
+ const unfinished={...older[0],a:{...older[0].a,id:'unassessed-later',firstCorrect:null},time:3};
+ assert.equal(insightPriorities([...older,...newer,unfinished]).errors[0].basis.source.volume,.6);
+});
+test('musical grouping preserves recorded chord spelling for display',async()=>{
+ const {insightGroups}=await import('../js/v2/model.js');const {parseChord}=await import('../js/jazz/theory.js');const session=single();session.attempts[0].target.chord=parseChord('Db7');session.attempts=[session.attempts[0]];
+ const records=insightRecords([session],[],[]),group=insightGroups(records.filter(r=>r.root==='C#'),'chord')[0];assert.equal(group.label,'C#7');assert.equal(group.displayLabel,'Db7');
+});

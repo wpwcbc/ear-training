@@ -3,6 +3,7 @@ import { exerciseNames, modeForExercise } from './exercise-names.js';
 const families = ['Degree Recognition', 'Degree Audiation', 'Play by Ear'];
 const initial = { family: 'Overall', context: 'Single Chord', days: 28, dimension: 'Key', key: '', root: '', quality: '', chord: '', degree: '', production: 'all', sort: 'Errors', all: false, baseline: '', chordView: 'Chord quality', comparable: false, condition: '', setup: '' };
 let view = { ...initial };
+let scopeNotice = '';
 try {
     const saved = JSON.parse(sessionStorage.getItem('jazzEarLab:v2:insightView') ?? 'null');
     if (saved && ['Overall', ...families].includes(saved.family) && [7, 28, 90, 0].includes(saved.days))
@@ -19,8 +20,15 @@ export function renderInsights(host, sessions, runs, evidence, onSetup) {
         const open = Array.from(host.querySelectorAll('details[open]')).map(n => n.querySelector('summary')?.textContent);
         const finish = () => { for (const d of Array.from(host.querySelectorAll('details')))
             if (open.includes(d.querySelector('summary')?.textContent))
-                d.open = true; if (focus)
-            Array.from(host.querySelectorAll('[data-insight-control]')).find(n => n.dataset.insightControl === focus)?.focus({ preventScroll: true }); };
+                d.open = true; if (focus) {
+            const restored = Array.from(host.querySelectorAll('[data-insight-control]')).find(n => n.dataset.insightControl === focus);
+            const target = restored ?? host.querySelector('.insight-analysis h2') ?? host.querySelector('h2');
+            if (target) {
+                if (!restored)
+                    target.tabIndex = -1;
+                target.focus({ preventScroll: true });
+            }
+        } };
         host.replaceChildren();
         host.classList.add('insights-work');
         try {
@@ -33,14 +41,40 @@ export function renderInsights(host, sessions, runs, evidence, onSetup) {
             o.value = v;
             s.append(o);
         } s.value = value; s.onchange = () => { change(s.value); render(); }; l.append(s); return l; };
-        const reset = () => { view.key = view.root = view.quality = view.chord = view.degree = ''; view.all = false; view.baseline = ''; view.comparable = false; view.condition = view.setup = ''; };
+        const reset = () => { scopeNotice = ''; view.key = view.root = view.quality = view.chord = view.degree = ''; view.all = false; view.baseline = ''; view.comparable = false; view.condition = view.setup = ''; };
+        const changeScope = (family, context = view.context) => {
+            const cleared = [];
+            if (context === 'Single Chord' && view.key) {
+                view.key = '';
+                cleared.push('playback key (Single Chord uses chord roots)');
+            }
+            if (view.condition || view.setup) {
+                view.condition = view.setup = '';
+                cleared.push('exercise-specific practice conditions');
+            }
+            if ((family !== 'Degree Audiation' || context !== 'Single Chord') && view.production !== 'all') {
+                view.production = 'all';
+                cleared.push('Audiation production category');
+            }
+            view.family = family;
+            view.context = context;
+            view.baseline = '';
+            view.comparable = false;
+            view.all = false;
+            scopeNotice = cleared.length ? 'Cleared incompatible filters: ' + cleared.join('; ') + '. Other musical filters were retained.' : '';
+        };
         const bar = el('div', '', 'insight-toolbar');
-        bar.append(select('Practice family', view.family, ['Overall', ...families], v => { view.family = v; reset(); view.production = 'all'; }), select('Period', view.days ? `Last ${view.days} days` : 'All time', ['Last 7 days', 'Last 28 days', 'Last 90 days', 'All time'], v => { view.days = v === 'All time' ? 0 : Number(v.match(/\d+/)[0]); }));
+        bar.append(select('Practice family', view.family, ['Overall', ...families], v => changeScope(v)), select('Period', view.days ? `Last ${view.days} days` : 'All time', ['Last 7 days', 'Last 28 days', 'Last 90 days', 'All time'], v => { view.days = v === 'All time' ? 0 : Number(v.match(/\d+/)[0]); }));
         host.append(bar);
+        if (scopeNotice) {
+            const notice = el('p', scopeNotice, 'insight-scope-note');
+            notice.setAttribute('role', 'status');
+            host.append(notice);
+        }
         if (view.family !== 'Overall') {
             const contexts = el('div', '', 'insight-contexts');
             for (const c of ['Single Chord', 'Progression'])
-                contexts.append(button(c, () => { view.context = c; reset(); }, view.context === c));
+                contexts.append(button(c, () => changeScope(view.family, c), view.context === c));
             host.append(contexts);
         }
         const period = insightPeriod(view.days || 28), scope = view.days ? all.filter(r => r.time !== null && r.time >= period.start && r.time < period.end) : all;
@@ -56,7 +90,11 @@ export function renderInsights(host, sessions, runs, evidence, onSetup) {
         } block.append(el('h2', title), el('p', percent(m), 'metric-number'), el('p', `${m.correct} / ${m.n} assessed`, 'assessment-count'), el('p', `${m.questions} questions · ${m.sessions} sessions · ${m.unassessed} unassessed`, 'insight-scope-note')); if (!compact || m.replayed)
             block.append(el('p', `Replay-assisted first responses: ${m.replayed} / ${m.n}`, 'insight-scope-note')); block.dataset.assessed = String(m.n); block.dataset.correct = String(m.correct); return block; };
         if (view.family === 'Overall') {
+            const overviewRows = insightFilter(scope, { root: view.root, quality: view.quality, chord: view.chord, degree: view.degree }).filter(r => !view.key || r.context === 'Single Chord' || r.key === view.key);
             host.append(el('h2', 'Recent performance'));
+            const active = Object.entries({ key: view.key, root: view.root, quality: view.quality, chord: view.chord, degree: view.degree }).filter(([, value]) => value);
+            if (active.length)
+                host.append(el('p', 'Filters: ' + active.map(([key, value]) => key + ': ' + value + (key === 'key' ? ' (progression only)' : '')).join(' · ')), button('Clear filters', reset));
             if (!scope.length) {
                 host.append(el('p', all.length ? 'No matching records in this period. Try a wider period.' : 'No V2 records in this browser. Choose an exercise to begin.'), button('Show all time', () => { view.days = 0; }));
                 const link = el('a', 'Choose an exercise');
@@ -70,8 +108,8 @@ export function renderInsights(host, sessions, runs, evidence, onSetup) {
                 section.append(el('h3', family), el('p', family === 'Degree Recognition' ? 'System graded' : 'Self-rated · not pitch-verified', 'insight-scope-note'));
                 const grid = el('div', '', 'insight-family-contexts');
                 for (const context of ['Single Chord', 'Progression']) {
-                    const records = scope.filter(r => r.family === family && r.context === context), block = outcome(records, context, true);
-                    const enter = button('View ' + context + ' · ' + family, () => { view.family = family; view.context = context; reset(); });
+                    const records = overviewRows.filter(r => r.family === family && r.context === context), block = outcome(records, context, true);
+                    const enter = button('View ' + context + ' · ' + family, () => changeScope(family, context));
                     enter.setAttribute('aria-label', 'View ' + context + ' · ' + family);
                     enter.textContent = 'View ' + context;
                     block.append(enter);
@@ -80,7 +118,7 @@ export function renderInsights(host, sessions, runs, evidence, onSetup) {
                 section.append(grid);
                 host.append(section);
             }
-            host.append(details('Combined degree accuracy', outcome(scope, 'Mixed practice including self-ratings')));
+            host.append(details('Combined degree accuracy', outcome(overviewRows, 'Mixed practice including self-ratings')));
         }
         else {
             const mode = Object.entries(exerciseNames).find(([, name]) => name === view.context + ' · ' + view.family)[0];
@@ -192,9 +230,11 @@ export function renderInsights(host, sessions, runs, evidence, onSetup) {
                     const group = groups.find(g => g.label === name), m = insightStats(group?.items ?? []);
                     const item = button(name, () => { view[dimension] = name; view.dimension = 'Chord'; }, view[dimension] === name);
                     item.setAttribute('aria-label', 'Inspect ' + name);
+                    if (dimension === 'root' && group && group.displayLabel !== name)
+                        item.append(el('small', 'Recorded as ' + group.displayLabel));
                     item.append(el(m.n ? 'strong' : 'span', m.n ? percent(m) : m.unassessed ? 'Unassessed only' : 'No records'));
                     if (m.questions)
-                        item.append(el('span', `${m.correct}/${m.n} assessed`), el('small', `${m.questions} questions`), el('small', m.n < 20 || m.questions < 10 || m.sessions < 3 ? 'Limited sample' : 'Recorded'));
+                        item.append(el('span', `${m.correct}/${m.n} assessed`), el('small', `${m.questions} questions`), el('small', !insightEligible(group?.items ?? []) ? 'Limited sample' : 'Recorded'));
                     grid.append(item);
                 }
                 analysis.append(grid);
@@ -208,8 +248,8 @@ export function renderInsights(host, sessions, runs, evidence, onSetup) {
                 analysis.append(el('p', 'Recorded outcomes, not an ability ranking. Conditions and sample sizes may differ.', 'insight-scope-note'));
                 for (const group of view.all ? groups : groups.slice(0, 5)) {
                     const row = el('article', '', 'insight-data-row');
-                    row.append(el('h3', group.label), el('strong', percent(group.m)), el('p', `${group.m.correct} / ${group.m.n} assessed · ${group.m.questions} questions · ${group.m.sessions} sessions`));
-                    if (group.m.n < 20 || group.m.questions < 10 || group.m.sessions < 3)
+                    row.append(el('h3', group.displayLabel), el('strong', percent(group.m)), el('p', `${group.m.correct} / ${group.m.n} assessed · ${group.m.questions} questions · ${group.m.sessions} sessions`));
+                    if (!insightEligible(group.items))
                         row.append(el('small', 'Insufficient sample'));
                     row.append(button('Inspect ' + group.label, () => { if (dimension === 'degree') {
                         const [quality, degree] = group.label.split(' / ');
@@ -233,7 +273,7 @@ export function renderInsights(host, sessions, runs, evidence, onSetup) {
                     else if (answer === 'unknown')
                         unknown++;
                     else {
-                        const label = r.chord + ' · ' + r.degree + ' → ' + answer;
+                        const label = r.chordLabel + ' · ' + r.degree + ' → ' + answer;
                         confusions.set(label, (confusions.get(label) || 0) + 1);
                     }
                 }
@@ -276,7 +316,7 @@ export function renderInsights(host, sessions, runs, evidence, onSetup) {
                 const body = el('tbody');
                 for (const g of groups) {
                     const row = el('tr');
-                    row.append(el('th', g.label), el('td', `${g.m.correct}/${g.m.n}`), el('td', String(g.m.questions)), el('td', String(g.m.sessions)), el('td', `${g.m.replayed}/${g.m.n}`));
+                    row.append(el('th', g.displayLabel), el('td', `${g.m.correct}/${g.m.n}`), el('td', String(g.m.questions)), el('td', String(g.m.sessions)), el('td', `${g.m.replayed}/${g.m.n}`));
                     row.firstChild.scope = 'row';
                     body.append(row);
                 }
@@ -291,7 +331,14 @@ export function renderInsights(host, sessions, runs, evidence, onSetup) {
                 items.push(r);
                 fullGroups.set(label, items);
             }
-            const full = details('Detailed breakdown', table('Chord quality × degree', insightGroups(rows, 'degree')), table(view.context === 'Progression' ? 'Practice key × chord' : 'Chord root × chord', [...fullGroups].map(([label, items]) => ({ label, items, m: insightStats(items) }))));
+            const full = details('Detailed breakdown', table('Chord quality × degree', insightGroups(rows, 'degree')), table(view.context === 'Progression' ? 'Practice key × chord' : 'Chord root × chord', [...fullGroups].map(([label, items]) => ({ label, displayLabel: [...new Set(items.map(r => (r.context === 'Progression' ? (r.key ?? 'Not recorded') : r.rootLabel) + ' / ' + r.chordLabel))].join('; '), items, m: insightStats(items) }))));
+            const chordDegrees = new Map();
+            for (const r of rows) {
+                const label = r.chord + ' / ' + r.degree, items = chordDegrees.get(label) ?? [];
+                items.push(r);
+                chordDegrees.set(label, items);
+            }
+            full.append(table('Full chord × degree', [...chordDegrees].map(([label, items]) => ({ label, displayLabel: [...new Set(items.map(r => r.chordLabel + ' / ' + r.degree))].join('; '), items, m: insightStats(items) }))));
             host.append(full);
             const sources = new Map();
             for (const r of rows) {

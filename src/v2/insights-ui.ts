@@ -5,6 +5,7 @@ const families:InsightFamily[]=['Degree Recognition','Degree Audiation','Play by
 type View={family:'Overall'|InsightFamily;context:'Single Chord'|'Progression';days:number;dimension:string;key:string;root:string;quality:string;chord:string;degree:string;production:string;sort:string;all:boolean;baseline:string;chordView:string;comparable:boolean;condition:string;setup:string};
 const initial:View={family:'Overall',context:'Single Chord',days:28,dimension:'Key',key:'',root:'',quality:'',chord:'',degree:'',production:'all',sort:'Errors',all:false,baseline:'',chordView:'Chord quality',comparable:false,condition:'',setup:''};
 let view:View={...initial};
+let scopeNotice='';
 try{const saved=JSON.parse(sessionStorage.getItem('jazzEarLab:v2:insightView')??'null');if(saved&&['Overall',...families].includes(saved.family)&&[7,28,90,0].includes(saved.days))view={...initial,...saved};}catch{/* View preferences never block history. */}
 function el<K extends keyof HTMLElementTagNameMap>(tag:K,text='',cls=''){const n=document.createElement(tag);n.textContent=text;n.className=cls;return n;}
 function details(title:string,...nodes:HTMLElement[]){const n=el('details');n.append(el('summary',title),...nodes);return n;}
@@ -14,17 +15,25 @@ export function renderInsights(host:HTMLElement,sessions:Session[],runs:InsightR
  function render(){
   const focus=(document.activeElement as HTMLElement)?.dataset.insightControl;
   const open=Array.from(host.querySelectorAll('details[open]')).map(n=>n.querySelector('summary')?.textContent);
-  const finish=()=>{for(const d of Array.from(host.querySelectorAll('details')))if(open.includes(d.querySelector('summary')?.textContent))d.open=true;if(focus)Array.from(host.querySelectorAll<HTMLElement>('[data-insight-control]')).find(n=>n.dataset.insightControl===focus)?.focus({preventScroll:true});};
+  const finish=()=>{for(const d of Array.from(host.querySelectorAll('details')))if(open.includes(d.querySelector('summary')?.textContent))d.open=true;if(focus){const restored=Array.from(host.querySelectorAll<HTMLElement>('[data-insight-control]')).find(n=>n.dataset.insightControl===focus);const target=restored??host.querySelector<HTMLElement>('.insight-analysis h2')??host.querySelector<HTMLElement>('h2');if(target){if(!restored)target.tabIndex=-1;target.focus({preventScroll:true});}}};
   host.replaceChildren();host.classList.add('insights-work');
   try{sessionStorage.setItem('jazzEarLab:v2:insightView',JSON.stringify(view));}catch{/* Nonessential view preference. */}
   const button=(text:string,action:()=>void,selected=false)=>{const b=el('button',text,'secondary');b.type='button';b.dataset.insightControl=text;b.setAttribute('aria-pressed',String(selected));b.onclick=()=>{action();render();};return b;};
   const select=(name:string,value:string,values:string[],change:(v:string)=>void)=>{const l=el('label',name),s=el('select');s.setAttribute('aria-label',name);s.dataset.insightControl=name;for(const v of values){const o=el('option',v);o.value=v;s.append(o);}s.value=value;s.onchange=()=>{change(s.value);render();};l.append(s);return l;};
-  const reset=()=>{view.key=view.root=view.quality=view.chord=view.degree='';view.all=false;view.baseline='';view.comparable=false;view.condition=view.setup='';};
+  const reset=()=>{scopeNotice='';view.key=view.root=view.quality=view.chord=view.degree='';view.all=false;view.baseline='';view.comparable=false;view.condition=view.setup='';};
+  const changeScope=(family:View['family'],context=view.context)=>{
+   const cleared:string[]=[];
+   if(context==='Single Chord'&&view.key){view.key='';cleared.push('playback key (Single Chord uses chord roots)');}
+   if(view.condition||view.setup){view.condition=view.setup='';cleared.push('exercise-specific practice conditions');}
+   if((family!=='Degree Audiation'||context!=='Single Chord')&&view.production!=='all'){view.production='all';cleared.push('Audiation production category');}
+   view.family=family;view.context=context;view.baseline='';view.comparable=false;view.all=false;
+   scopeNotice=cleared.length?'Cleared incompatible filters: '+cleared.join('; ')+'. Other musical filters were retained.':'';
+  };
   const bar=el('div','','insight-toolbar');
-  bar.append(select('Practice family',view.family,['Overall',...families],v=>{view.family=v as View['family'];reset();view.production='all';}),select('Period',view.days?`Last ${view.days} days`:'All time',['Last 7 days','Last 28 days','Last 90 days','All time'],v=>{view.days=v==='All time'?0:Number(v.match(/\d+/)![0]);}));
-  host.append(bar);
+  bar.append(select('Practice family',view.family,['Overall',...families],v=>changeScope(v as View['family'])),select('Period',view.days?`Last ${view.days} days`:'All time',['Last 7 days','Last 28 days','Last 90 days','All time'],v=>{view.days=v==='All time'?0:Number(v.match(/\d+/)![0]);}));
+  host.append(bar);if(scopeNotice){const notice=el('p',scopeNotice,'insight-scope-note');notice.setAttribute('role','status');host.append(notice);}
   if(view.family!=='Overall'){
-   const contexts=el('div','','insight-contexts');for(const c of ['Single Chord','Progression'] as const)contexts.append(button(c,()=>{view.context=c;reset();},view.context===c));host.append(contexts);
+   const contexts=el('div','','insight-contexts');for(const c of ['Single Chord','Progression'] as const)contexts.append(button(c,()=>changeScope(view.family,c),view.context===c));host.append(contexts);
   }
   const period=insightPeriod(view.days||28),scope=view.days?all.filter(r=>r.time!==null&&r.time>=period.start&&r.time<period.end):all;
   const dateLabel=(n:number)=>new Date(n).toLocaleDateString();
@@ -33,10 +42,12 @@ export function renderInsights(host:HTMLElement,sessions:Session[],runs:InsightR
   if(all.some(r=>r.time===null))host.append(el('p',`${all.filter(r=>r.time===null).length} records have no usable date; available in All time.`,'insight-scope-note'));
   const outcome=(records:InsightRecord[],title:string,compact=false)=>{const m=insightStats(records),block=el('section','','insight-outcome');block.setAttribute('aria-label',title);if(compact&&!m.questions){block.append(el('h2',title),el('p','No records in this period','insight-scope-note'));return block;}block.append(el('h2',title),el('p',percent(m),'metric-number'),el('p',`${m.correct} / ${m.n} assessed`,'assessment-count'),el('p',`${m.questions} questions · ${m.sessions} sessions · ${m.unassessed} unassessed`,'insight-scope-note'));if(!compact||m.replayed)block.append(el('p',`Replay-assisted first responses: ${m.replayed} / ${m.n}`,'insight-scope-note'));block.dataset.assessed=String(m.n);block.dataset.correct=String(m.correct);return block;};
   if(view.family==='Overall'){
+   const overviewRows=insightFilter(scope,{root:view.root,quality:view.quality,chord:view.chord,degree:view.degree}).filter(r=>!view.key||r.context==='Single Chord'||r.key===view.key);
    host.append(el('h2','Recent performance'));
+   const active=Object.entries({key:view.key,root:view.root,quality:view.quality,chord:view.chord,degree:view.degree}).filter(([,value])=>value);if(active.length)host.append(el('p','Filters: '+active.map(([key,value])=>key+': '+value+(key==='key'?' (progression only)':'')).join(' · ')),button('Clear filters',reset));
    if(!scope.length){host.append(el('p',all.length?'No matching records in this period. Try a wider period.':'No V2 records in this browser. Choose an exercise to begin.'),button('Show all time',()=>{view.days=0;}));const link=el('a','Choose an exercise');link.href='#home';host.append(link);finish();return;}
-   for(const family of families){const section=el('section','','insight-family');section.append(el('h3',family),el('p',family==='Degree Recognition'?'System graded':'Self-rated · not pitch-verified','insight-scope-note'));const grid=el('div','','insight-family-contexts');for(const context of ['Single Chord','Progression'] as const){const records=scope.filter(r=>r.family===family&&r.context===context),block=outcome(records,context,true);const enter=button('View '+context+' · '+family,()=>{view.family=family;view.context=context;reset();});enter.setAttribute('aria-label','View '+context+' · '+family);enter.textContent='View '+context;block.append(enter);grid.append(block);}section.append(grid);host.append(section);}
-   host.append(details('Combined degree accuracy',outcome(scope,'Mixed practice including self-ratings')));
+   for(const family of families){const section=el('section','','insight-family');section.append(el('h3',family),el('p',family==='Degree Recognition'?'System graded':'Self-rated · not pitch-verified','insight-scope-note'));const grid=el('div','','insight-family-contexts');for(const context of ['Single Chord','Progression'] as const){const records=overviewRows.filter(r=>r.family===family&&r.context===context),block=outcome(records,context,true);const enter=button('View '+context+' · '+family,()=>changeScope(family,context));enter.setAttribute('aria-label','View '+context+' · '+family);enter.textContent='View '+context;block.append(enter);grid.append(block);}section.append(grid);host.append(section);}
+   host.append(details('Combined degree accuracy',outcome(overviewRows,'Mixed practice including self-ratings')));
   }else{
    const mode=Object.entries(exerciseNames).find(([,name])=>name===view.context+' · '+view.family)![0];
    const allMode=all.filter(r=>r.a.exercise===mode).filter(r=>(!view.condition||insightStratum(r)===view.condition)&&(!view.setup||insightSetupId(r)===view.setup)).filter(r=>mode!=='m1'||view.production==='all'||(view.production==='played'?r.a.responseMethod==='played':['imagined','sung'].includes(r.a.responseMethod)));
@@ -82,8 +93,8 @@ export function renderInsights(host:HTMLElement,sessions:Session[],runs:InsightR
     const grid=el('div','','insight-key-grid');
     for(const name of [...insightKeys,...(groups.some(g=>g.label==='Not recorded')?['Not recorded']:[])]){
      const group=groups.find(g=>g.label===name),m=insightStats(group?.items??[]);
-     const item=button(name,()=>{view[dimension]=name;view.dimension='Chord';},view[dimension]===name);item.setAttribute('aria-label','Inspect '+name);
-     item.append(el(m.n?'strong':'span',m.n?percent(m):m.unassessed?'Unassessed only':'No records'));if(m.questions)item.append(el('span',`${m.correct}/${m.n} assessed`),el('small',`${m.questions} questions`),el('small',m.n<20||m.questions<10||m.sessions<3?'Limited sample':'Recorded'));grid.append(item);
+     const item=button(name,()=>{view[dimension]=name;view.dimension='Chord';},view[dimension]===name);item.setAttribute('aria-label','Inspect '+name);if(dimension==='root'&&group&&group.displayLabel!==name)item.append(el('small','Recorded as '+group.displayLabel));
+     item.append(el(m.n?'strong':'span',m.n?percent(m):m.unassessed?'Unassessed only':'No records'));if(m.questions)item.append(el('span',`${m.correct}/${m.n} assessed`),el('small',`${m.questions} questions`),el('small',!insightEligible(group?.items??[])?'Limited sample':'Recorded'));grid.append(item);
     }analysis.append(grid);
    }else{
     if(view.dimension==='Chord')analysis.append(select('Chord view',view.chordView,['Chord quality','Full chord'],v=>{view.chordView=v;}));
@@ -92,13 +103,13 @@ export function renderInsights(host:HTMLElement,sessions:Session[],runs:InsightR
     const groups=insightGroups(rows,dimension).sort((a,b)=>view.sort==='Name'?a.label.localeCompare(b.label):view.sort==='Practice volume'?b.m.n-a.m.n||a.label.localeCompare(b.label):((b.m.n-b.m.correct)/(b.m.n||1)-(a.m.n-a.m.correct)/(a.m.n||1))||(b.m.n-b.m.correct)-(a.m.n-a.m.correct)||b.m.n-a.m.n||a.label.localeCompare(b.label));
     analysis.append(el('p','Recorded outcomes, not an ability ranking. Conditions and sample sizes may differ.','insight-scope-note'));
     for(const group of view.all?groups:groups.slice(0,5)){
-     const row=el('article','','insight-data-row');row.append(el('h3',group.label),el('strong',percent(group.m)),el('p',`${group.m.correct} / ${group.m.n} assessed · ${group.m.questions} questions · ${group.m.sessions} sessions`));
-     if(group.m.n<20||group.m.questions<10||group.m.sessions<3)row.append(el('small','Insufficient sample'));
+     const row=el('article','','insight-data-row');row.append(el('h3',group.displayLabel),el('strong',percent(group.m)),el('p',`${group.m.correct} / ${group.m.n} assessed · ${group.m.questions} questions · ${group.m.sessions} sessions`));
+     if(!insightEligible(group.items))row.append(el('small','Insufficient sample'));
      row.append(button('Inspect '+group.label,()=>{if(dimension==='degree'){const [quality,degree]=group.label.split(' / ');view.quality=quality;view.degree=degree;}else{view[dimension]=group.label;view.dimension='Degree';}}));analysis.append(row);
     }
     if(groups.length>5)analysis.append(button(view.all?'Show fewer':'All '+(view.dimension==='Chord'?'chords':'degrees'),()=>{view.all=!view.all;}));
     const wrong=rows.filter(r=>r.a.firstCorrect===false),confusions=new Map<string,number>();let unknown=0,unspecified=0;
-    for(const r of wrong){const answer=r.a.gradingSource==='self'?r.a.imaginedWrongDegree:r.a.firstAnswer;if(!answer)unspecified++;else if(answer==='unknown')unknown++;else{const label=r.chord+' · '+r.degree+' → '+answer;confusions.set(label,(confusions.get(label)||0)+1);}}
+    for(const r of wrong){const answer=r.a.gradingSource==='self'?r.a.imaginedWrongDegree:r.a.firstAnswer;if(!answer)unspecified++;else if(answer==='unknown')unknown++;else{const label=r.chordLabel+' · '+r.degree+' → '+answer;confusions.set(label,(confusions.get(label)||0)+1);}}
     analysis.append(details('Degree confusions',...Array.from(confusions).sort((a,b)=>b[1]-a[1]).map(([label,count])=>el('p',label+' · '+count)),el('p',`Unknown: ${unknown} · Incorrect without annotation: ${unspecified} · Unassessed: ${insightStats(rows).unassessed}`)));
    }
    host.append(analysis);
@@ -119,10 +130,10 @@ export function renderInsights(host:HTMLElement,sessions:Session[],runs:InsightR
    const table=(caption:string,groups:ReturnType<typeof insightGroups>)=>{
     const scroll=el('div','','table-scroll');scroll.tabIndex=0;scroll.setAttribute('role','region');scroll.setAttribute('aria-label',caption);
     const t=el('table');t.append(el('caption',caption));const thead=el('thead'),tr=el('tr');for(const title of ['Music','Correct / assessed','Questions','Sessions','Replay-assisted']){const th=el('th',title);th.scope='col';tr.append(th);}thead.append(tr);t.append(thead);const body=el('tbody');
-    for(const g of groups){const row=el('tr');row.append(el('th',g.label),el('td',`${g.m.correct}/${g.m.n}`),el('td',String(g.m.questions)),el('td',String(g.m.sessions)),el('td',`${g.m.replayed}/${g.m.n}`));(row.firstChild as HTMLTableCellElement).scope='row';body.append(row);}t.append(body);scroll.append(t);return scroll;
+    for(const g of groups){const row=el('tr');row.append(el('th',g.displayLabel),el('td',`${g.m.correct}/${g.m.n}`),el('td',String(g.m.questions)),el('td',String(g.m.sessions)),el('td',`${g.m.replayed}/${g.m.n}`));(row.firstChild as HTMLTableCellElement).scope='row';body.append(row);}t.append(body);scroll.append(t);return scroll;
    };
    const fullGroups=new Map<string,InsightRecord[]>();for(const r of rows){const label=(r.context==='Progression'?(r.key??'Not recorded'):r.root)+' / '+r.chord;const items=fullGroups.get(label)??[];items.push(r);fullGroups.set(label,items);}
-   const full=details('Detailed breakdown',table('Chord quality × degree',insightGroups(rows,'degree')),table(view.context==='Progression'?'Practice key × chord':'Chord root × chord',[...fullGroups].map(([label,items])=>({label,items,m:insightStats(items)}))));host.append(full);
+   const full=details('Detailed breakdown',table('Chord quality × degree',insightGroups(rows,'degree')),table(view.context==='Progression'?'Practice key × chord':'Chord root × chord',[...fullGroups].map(([label,items])=>({label,displayLabel:[...new Set(items.map(r=>(r.context==='Progression'?(r.key??'Not recorded'):r.rootLabel)+' / '+r.chordLabel))].join('; '),items,m:insightStats(items)}))));const chordDegrees=new Map<string,InsightRecord[]>();for(const r of rows){const label=r.chord+' / '+r.degree,items=chordDegrees.get(label)??[];items.push(r);chordDegrees.set(label,items);}full.append(table('Full chord × degree',[...chordDegrees].map(([label,items])=>({label,displayLabel:[...new Set(items.map(r=>r.chordLabel+' / '+r.degree))].join('; '),items,m:insightStats(items)}))));host.append(full);
    const sources=new Map<string,InsightRecord>();for(const r of rows){const identity=JSON.stringify(r.source);if(!sources.has(identity))sources.set(identity,r);}
    const conditions=details('Source conditions');
    for(const r of sources.values()){const label=insightConditionLabel(r),c=r.source,section=el('section');section.append(el('h3',label));if('mode'in c)section.append(el('p','Target pools: '+Object.entries(c.pools).map(([q,p])=>q+': '+p?.join(', ')).join('; ')),el('p','Voicing mix: '+c.levels.map(n=>Math.round(n*100)+'%').join(', ')),el('p','Volume: '+Math.round(c.volume*100)+'%'));
