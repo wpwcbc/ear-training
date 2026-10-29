@@ -483,7 +483,7 @@ function config() {
   const status = el("p", issue ? "Invalid settings. Review the highlighted group." : dirty ? "Not saved. Retry saving." : savedPresetId === activeId ? "Changes saved to this preset." : "Preset ready", "notice");
   status.id = "config-status"; status.dataset.state = issue ? "invalid" : dirty ? "unsaved" : "saved"; status.setAttribute("role", "status");
   const launch = el("div", "", "config-launch");
-  launch.append(button("Start practice", () => {if(inInsightPreview()){const p={id:crypto.randomUUID(),name:"Insights: "+insightPreview!.label,config:validate(draft)};presets.push(p);void start(p);}else void start({ ...preset(), config: validate(draft) });}, false, Boolean(issue)), status);
+  launch.append(button("Start practice", () => {if(inInsightPreview()){const p={id:crypto.randomUUID(),name:"Insights: "+insightPreview!.label,config:validate(draft)};presets.push(p);return start(p);}else return start({ ...preset(), config: validate(draft) });}, false, Boolean(issue)), status);
   if(inInsightPreview())status.textContent="Independent draft · source preset unchanged";
   side.append(launch);
   const management = disclosure("Preset actions", button("Back to presets", () => location.hash = "home"));

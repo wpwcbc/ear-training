@@ -464,10 +464,10 @@ function config() {
     launch.append(button("Start practice", () => { if (inInsightPreview()) {
         const p = { id: crypto.randomUUID(), name: "Insights: " + insightPreview.label, config: validate(draft) };
         presets.push(p);
-        void start(p);
+        return start(p);
     }
     else
-        void start({ ...preset(), config: validate(draft) }); }, false, Boolean(issue)), status);
+        return start({ ...preset(), config: validate(draft) }); }, false, Boolean(issue)), status);
     if (inInsightPreview())
         status.textContent = "Independent draft · source preset unchanged";
     side.append(launch);
