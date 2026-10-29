@@ -64,7 +64,7 @@ export function validate(input) {
     }
     return c;
 }
-export function generate(input, random = Math.random, drawnKey) {
+export function generate(input, random = Math.random, drawnKey, previousStartDegree) {
     const source = validate(input), config = structuredClone(source), key = drawnKey ?? (source.keyMode === "random" ? source.keyPool[Math.floor(random() * source.keyPool.length)] : source.key), id = crypto.randomUUID();
     if (!practiceKeys.includes(key) || (source.keyMode === "random" && !source.keyPool.includes(key)))
         throw Error("Unsupported practice key.");
@@ -74,9 +74,11 @@ export function generate(input, random = Math.random, drawnKey) {
     }
     const offset = source.mode === progressionModes.singlePlayByEar ? 0 : pitchClass(key);
     config.chords = config.chords.map(row => { const chord = parseChord(row.symbol); return offset === 0 ? { ...row } : { ...row, symbol: practiceKeys[(pitchClass(chord.root) + offset) % 12] + chord.quality }; });
+    const pitchUses = new Map();
+    let previousPitch;
     return {
         id,
-        config, source, practiceKey: key, generatorVersion: "v2-keyed-progression-1",
+        config, source, practiceKey: key, generatorVersion: "v2-keyed-progression-2",
         created: new Date().toISOString(),
         submitted: false,
         done: false,
@@ -85,14 +87,25 @@ export function generate(input, random = Math.random, drawnKey) {
         notes: config.chords.flatMap((row, occurrence) => {
             const chord = parseChord(row.symbol), pool = config.pools[chord.quality];
             return Array.from({ length: config.notes }, (_, position) => {
-                const degree = pool[Math.floor(random() * pool.length)];
+                let candidates = pool.map(degree => ({ degree, midi: inRange(targetPc(chord, degree), 60, 83) }));
+                if (occurrence === 0 && position === 0 && candidates.some(n => n.degree !== previousStartDegree))
+                    candidates = candidates.filter(n => n.degree !== previousStartDegree);
+                // Across the whole phrase, avoid adjacent pitches first, then prefer
+                // unused (or least-used) pitches. Never leave the configured pool.
+                if (candidates.some(n => n.midi !== previousPitch))
+                    candidates = candidates.filter(n => n.midi !== previousPitch);
+                const leastUsed = Math.min(...candidates.map(n => pitchUses.get(n.midi) ?? 0));
+                candidates = candidates.filter(n => (pitchUses.get(n.midi) ?? 0) === leastUsed);
+                const { degree, midi } = candidates[Math.floor(random() * candidates.length)];
+                previousPitch = midi;
+                pitchUses.set(midi, (pitchUses.get(midi) ?? 0) + 1);
                 return {
                     id: `${id}:${occurrence}:${position}`,
                     occurrence,
                     position,
                     chord,
                     degree,
-                    midi: inRange(targetPc(chord, degree), 60, 83),
+                    midi,
                     answer: null,
                     correct: null,
                     assisted: false,
@@ -105,7 +118,7 @@ export function generate(input, random = Math.random, drawnKey) {
 export function questionStream(input, random = Math.random) {
     const source = validate(input);
     const singleNext = source.mode === progressionModes.singlePlayByEar ? stream({ ...builtins[0].config, exercise: "m2", roots: source.roots, qualities: source.qualities, targetMode: "exact", targetPools: source.pools, targets: [...new Set(Object.values(source.pools).flat())] }, crypto.randomUUID()) : null;
-    let bag = [], last = "";
+    let bag = [], last = "", previousStartDegree;
     return () => {
         let key = source.key;
         if (source.keyMode === "random") {
@@ -121,13 +134,14 @@ export function questionStream(input, random = Math.random) {
             key = bag.shift();
             last = key;
         }
-        const question = generate(source, random, key);
+        const question = generate(source, random, key, previousStartDegree);
         if (singleNext) {
             const target = singleNext();
             question.config.chords = [{ symbol: target.chord.symbol, beats: 4 }];
             Object.assign(question.notes[0], { chord: target.chord, degree: target.degree, midi: target.midi });
             delete question.practiceKey;
         }
+        previousStartDegree = question.notes[0].degree;
         return question;
     };
 }

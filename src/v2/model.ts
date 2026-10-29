@@ -216,17 +216,32 @@ export function stream(input: Config, seed: string): () => Question {
   const pairs = c.qualities.flatMap(quality => targetsFor(c, quality).map(degree => ({quality, degree})));
   let qualityBag: Quality[] = [];
   const targetBags = new Map<Quality, string[]>();
+  let previousDegree: string | undefined;
   return () => {
     if (!bag.length) bag = shuffle([...pairs]);
     if (!rootBag.length) rootBag = shuffle([...c.roots]);
+    // Keep each bag balanced, swapping the next draw rather than discarding it.
+    const different = bag.findIndex(pair => pair.degree !== previousDegree);
+    if (bag[bag.length - 1].degree === previousDegree && different >= 0)
+      [bag[different], bag[bag.length - 1]] = [bag[bag.length - 1], bag[different]];
     let pair = bag.pop()!;
     if (c.targetPools) {
       if (!qualityBag.length) qualityBag = shuffle([...c.qualities]);
+      const differentQuality = qualityBag.findIndex(quality => {
+        const targets = targetBags.get(quality);
+        return (targets?.length ? targets : targetsFor(c, quality)).some(degree => degree !== previousDegree);
+      });
+      if (differentQuality >= 0)
+        [qualityBag[differentQuality], qualityBag[qualityBag.length - 1]] = [qualityBag[qualityBag.length - 1], qualityBag[differentQuality]];
       const quality = qualityBag.pop()!;
       let targets = targetBags.get(quality);
       if (!targets?.length) targetBags.set(quality, targets = shuffle(targetsFor(c, quality)));
+      const different = targets.findIndex(degree => degree !== previousDegree);
+      if (targets[targets.length - 1] === previousDegree && different >= 0)
+        [targets[different], targets[targets.length - 1]] = [targets[targets.length - 1], targets[different]];
       pair = {quality, degree: targets.pop()!};
     }
+    previousDegree = pair.degree;
     const chord = parseChord(rootBag.pop()! + pair.quality);
     return {
       id: `${seed}:${index++}`,
@@ -234,7 +249,7 @@ export function stream(input: Config, seed: string): () => Question {
       degree: pair.degree,
       midi: inRange(targetPc(chord, pair.degree), 60, 83),
       options: optionsFor(chord, pair.degree),
-      generatorVersion: c.targetPools ? "v2-quality-balanced-2" : "v2-balanced-1",
+      generatorVersion: c.targetPools ? "v2-quality-balanced-3" : "v2-balanced-2",
     };
   };
 }
