@@ -1,8 +1,8 @@
 import {mkdir} from 'node:fs/promises';
 import assert from 'node:assert/strict';
-const {chromium}=await import('/opt/codex/cua_node/lib/node_modules/playwright/index.mjs');
-const browser=await chromium.launch({headless:true,executablePath:'/usr/bin/chromium'});
-const url='http://127.0.0.1:4173/jazz-ear-lab-v2/';
+const {chromium}=await import(process.env.PLAYWRIGHT_MODULE||'/opt/codex/cua_node/lib/node_modules/playwright/index.mjs');
+const browser=await chromium.launch({headless:true,executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE||'/usr/bin/chromium'});
+const url=(process.env.BASE_URL||'http://127.0.0.1:4173')+'/jazz-ear-lab-v2/';
 try{
  const folder=process.env.V2_INSIGHT_SCREENSHOTS;if(folder)await mkdir(folder,{recursive:true});
  const page=await browser.newPage({viewport:{width:390,height:900}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
@@ -47,6 +47,11 @@ try{
  await page.locator('summary').filter({hasText:/^Detailed breakdown$/}).click();
  assert.ok(await page.getByText('Repeated first-response errors',{exact:true}).count());
  assert.ok(await page.getByText('Coverage gap · insufficient practice, not a weakness',{exact:true}).count());
+ await page.getByRole('button',{name:/^View evidence:.*Fm7.*b7/}).first().click();
+ await page.getByRole('button',{name:'Matching practice conditions · remove',exact:true}).waitFor();
+ await page.getByRole('button',{name:'Progression',exact:true}).click();
+ assert.equal(await page.getByRole('button',{name:'Matching practice conditions · remove',exact:true}).count(),1);
+ await page.getByRole('button',{name:'Clear filters',exact:true}).click();
  const before=await page.evaluate(()=>({presets:localStorage.getItem('jazzEarLab:v2:progressionPresets'),history:localStorage.getItem('jazzEarLab:v2:progressionHistory')}));
  const setup=page.getByRole('button',{name:/^Setup practice:.*Fm7.*b7/});await setup.first().click();
  await page.getByRole('heading',{name:'Customize Progression · Play by Ear',exact:true}).waitFor();

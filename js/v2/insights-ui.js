@@ -43,6 +43,8 @@ export function renderInsights(host, sessions, runs, evidence, onSetup) {
         } s.value = value; s.onchange = () => { change(s.value); render(); }; l.append(s); return l; };
         const reset = () => { scopeNotice = ''; view.key = view.root = view.quality = view.chord = view.degree = ''; view.all = false; view.baseline = ''; view.comparable = false; view.condition = view.setup = ''; };
         const changeScope = (family, context = view.context) => {
+            if (family === view.family && context === view.context)
+                return;
             const cleared = [];
             if (context === 'Single Chord' && view.key) {
                 view.key = '';

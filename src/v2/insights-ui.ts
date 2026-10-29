@@ -22,6 +22,7 @@ export function renderInsights(host:HTMLElement,sessions:Session[],runs:InsightR
   const select=(name:string,value:string,values:string[],change:(v:string)=>void)=>{const l=el('label',name),s=el('select');s.setAttribute('aria-label',name);s.dataset.insightControl=name;for(const v of values){const o=el('option',v);o.value=v;s.append(o);}s.value=value;s.onchange=()=>{change(s.value);render();};l.append(s);return l;};
   const reset=()=>{scopeNotice='';view.key=view.root=view.quality=view.chord=view.degree='';view.all=false;view.baseline='';view.comparable=false;view.condition=view.setup='';};
   const changeScope=(family:View['family'],context=view.context)=>{
+   if(family===view.family&&context===view.context)return;
    const cleared:string[]=[];
    if(context==='Single Chord'&&view.key){view.key='';cleared.push('playback key (Single Chord uses chord roots)');}
    if(view.condition||view.setup){view.condition=view.setup='';cleared.push('exercise-specific practice conditions');}
