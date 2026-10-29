@@ -1,6 +1,6 @@
 # Actionable V2 Insights — proposed ticket breakdown
 
-Status: proposal awaiting user approval; no implementation tickets published yet.
+Status: user-approved breakdown; eight local implementation tickets published with ready-for-agent status.
 Date: 2026-10-29, Asia/Hong_Kong.
 
 Source: [ready local specification](../../V2_ACTIONABLE_INSIGHTS_SPEC.md).
@@ -8,7 +8,7 @@ Design: [information architecture](../../V2_INSIGHTS_INFORMATION_DESIGN.md).
 The user confirmed the browser-first test seam. The specification, including its
 first-version defaults and 17 acceptance examples, remains the contract.
 
-## Proposed vertical slices
+## Approved vertical slices
 
 ### 01 — Recent-performance overview and period scope
 
@@ -287,16 +287,16 @@ All 17 acceptance examples have an owning slice:
 - Existing tests that encode the old seven-button UI should be adapted to the new
   family/context navigation while retaining behavioural coverage; do not discard
   assertions merely to make the redesign pass.
-- Spec and design documents remain unchanged. This proposal creates no runtime
-  changes, tickets marked ready, GitHub issues, external labels or parent closure.
+- Spec and design documents remain unchanged. Publication creates no runtime
+  changes, GitHub issues, external labels or parent closure.
 
 ## Approval / publication
 
-This file makes the proposed granularity and blocking edges concrete and reviewable.
-After approval, publish one file per ticket in this feature's local issues collection,
-numbered 01–08 with ready-for-agent status, explicit blockers, acceptance checkboxes
-and specification coverage. A blocked ready-for-agent ticket is not startable until
-its blockers finish.
+The user confirmed this breakdown without merges, splits or edge changes. Eight
+separate local issue files are now published, numbered 01–08, with ready-for-agent
+status, explicit blockers, acceptance checkboxes and specification coverage. See
+[the ticket index](README.md). A blocked ready-for-agent ticket is not startable
+until its blockers finish. This confirmation did not start implementation.
 
 Global issue-tracker/triage setup remains absent. Continue the established feature-
 local pattern only; external tracker publication requires `/setup-matt-pocock-skills`
