@@ -1,7 +1,8 @@
 # Actionable V2 Insights — approved tickets
 
-Status: eight user-approved repository-local tickets published, all ready-for-agent.
-Approved/published 2026-10-29, Asia/Hong_Kong. Runtime implementation has not started.
+Status: all eight approved repository-local tickets **done**.
+Approved, published and implemented 2026-10-29, Asia/Hong_Kong.
+See [delivery, actual captures, testing and independent review](../../V2_ACTIONABLE_INSIGHTS_IMPLEMENTATION.md). Merge/deployment are separate.
 
 Source: [specification](../../V2_ACTIONABLE_INSIGHTS_SPEC.md).
 Design: [information architecture](../../V2_INSIGHTS_INFORMATION_DESIGN.md).
@@ -13,19 +14,20 @@ it does not claim that these implementation tickets are done.
 
 | Ticket | Demoable delivery | Blocked by | Status |
 |---|---|---|---|
-| [01](issues/01-recent-performance-periods.md) | Recent-performance overview and period scope | None (can start immediately) | ready-for-agent |
-| [02](issues/02-practice-key-root-analysis.md) | Actual practice-key and single-chord root analysis | 01 — Recent-performance overview and period scope | ready-for-agent |
-| [03](issues/03-chord-degree-drilldown.md) | Chord and degree drill-down with contextual confusions | 01 — Recent-performance overview and period scope | ready-for-agent |
-| [04](issues/04-priorities-coverage.md) | Evidence-based priorities and coverage gaps | 02 — Practice-key/root analysis; 03 — Chord/degree drill-down | ready-for-agent |
-| [05](issues/05-practice-preview-return.md) | Faithful practice-configuration preview and return | 04 — Evidence-based priorities and coverage gaps | ready-for-agent |
-| [06](issues/06-comparable-trends.md) | Comparable-condition key analysis and period trends | 02 — Practice-key/root analysis | ready-for-agent |
-| [07](issues/07-completion-efficiency.md) | Grain-correct completion efficiency and assistance | 02 — Practice-key/root analysis; 03 — Chord/degree drill-down | ready-for-agent |
-| [08](issues/08-evidence-history-journeys.md) | Complete evidence explorer and faithful history journeys | 05 — Configuration preview; 06 — Comparable trends; 07 — Efficiency | ready-for-agent |
+| [01](issues/01-recent-performance-periods.md) | Recent-performance overview and period scope | None (can start immediately) | done |
+| [02](issues/02-practice-key-root-analysis.md) | Actual practice-key and single-chord root analysis | 01 — Recent-performance overview and period scope | done |
+| [03](issues/03-chord-degree-drilldown.md) | Chord and degree drill-down with contextual confusions | 01 — Recent-performance overview and period scope | done |
+| [04](issues/04-priorities-coverage.md) | Evidence-based priorities and coverage gaps | 02 — Practice-key/root analysis; 03 — Chord/degree drill-down | done |
+| [05](issues/05-practice-preview-return.md) | Faithful practice-configuration preview and return | 04 — Evidence-based priorities and coverage gaps | done |
+| [06](issues/06-comparable-trends.md) | Comparable-condition key analysis and period trends | 02 — Practice-key/root analysis | done |
+| [07](issues/07-completion-efficiency.md) | Grain-correct completion efficiency and assistance | 02 — Practice-key/root analysis; 03 — Chord/degree drill-down | done |
+| [08](issues/08-evidence-history-journeys.md) | Complete evidence explorer and faithful history journeys | 05 — Configuration preview; 06 — Comparable trends; 07 — Efficiency | done |
 
-The initial eligible frontier is **01 only**. Once 01 is done, 02 and 03 are
-eligible. Once 02 is done, 06 is eligible. Both 02 and 03 gate 04 and 07;
-04 gates 05; 05, 06 and 07 gate 08. Blocked ready-for-agent tickets cannot start
-before their prerequisites finish. These edges are not an instruction to spawn agents.
+The approved initial eligible frontier was **01 only**. It unlocked 02/03,
+then 06 after 02, 04/07 after 02/03, 05 after 04, and 08 after 05/06/07.
+All are now complete. These edges record prerequisites, not an instruction to
+spawn implementation agents. Separate Standards/Spec review ran under the invoked
+code-review skill after implementation.
 
 ## Shared delivery and verification
 
@@ -54,9 +56,9 @@ before their prerequisites finish. These edges are not an instruction to spawn a
 ## Publication boundary
 
 The user confirmed the proposed eight slices without merges, splits or blocking-edge
-changes. Each is now a separate local issue file with ready-for-agent status and
-explicit textual blockers. No runtime, parent spec or design source was modified.
-No implementation was started by this confirmation.
+changes. Each was published as a separate ready-for-agent issue with textual blockers.
+The later implement invocation authorized runtime delivery; ticket acceptance is
+now checked and status is done. Parent spec and source design remain unchanged.
 
 This is the established feature-local tracker convention only. Global tracker and
 triage setup remain absent; external publication requires `/setup-matt-pocock-skills`

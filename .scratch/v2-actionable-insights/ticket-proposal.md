@@ -1,6 +1,7 @@
 # Actionable V2 Insights — proposed ticket breakdown
 
-Status: user-approved breakdown; eight local implementation tickets published with ready-for-agent status.
+Status: user-approved breakdown; tickets initially published ready-for-agent and now completed.
+See [current delivery status](README.md) and the linked implementation report.
 Date: 2026-10-29, Asia/Hong_Kong.
 
 Source: [ready local specification](../../V2_ACTIONABLE_INSIGHTS_SPEC.md).
