@@ -381,3 +381,26 @@ uses rem so enlarged text does not cover the final config field.
 The existing TTF assets remain self-hosted with `font-display: swap`; only the
 regular face is preloaded. Fallback remains Segoe UI / sans-serif, with no invented
 metric overrides or additional family. See [runtime evidence and verification](../.impeccable/review/v2-typeset/README.md).
+
+
+## Progression keys and Play by Ear delivery
+
+Progression Harmony now distinguishes the editable C-source from the actual
+practice key: Fixed or Random, with a native twelve-key checkbox pool and All.
+Key policy and selected values remain visible in configuration summaries.
+
+Two additional entries share the existing exercise naming hierarchy: Single Chord
+· Play by Ear and Progression · Play by Ear. They use the existing harmonic board
+with hidden target-position placeholders during demonstration/performance, then
+reveal degrees and native Incorrect checkboxes for explicit bulk self-assessment.
+Single-chord instrumental boards are bounded at960px; progression preserves the
+three-column desktop and stacked-chord mobile layout. Replay remains secondary;
+Done follows the board and is gated by natural accompaniment completion.
+
+Instrumental Results and module Insights show whole-question post-accompaniment
+completion delay separately from existing response time. Timing descriptions and
+counts remain subordinate to self-rated accuracy, use existing type roles and
+tabular numerals, and do not claim measured motor/rhythmic performance. No new
+family, color palette, decorative motion or raster runtime assets are introduced.
+See the [implementation report](../V2_KEYS_AND_PLAY_BY_EAR_IMPLEMENTATION.md) and
+[actual captures](../.impeccable/review/v2-keys-play-by-ear/README.md).

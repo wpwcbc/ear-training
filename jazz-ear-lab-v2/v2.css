@@ -415,3 +415,14 @@ th { background: var(--quiet); }
 input[type="number"], output, .session-count, .assessment-count, .unassessed,
 .harmonic-meta, .chord-duration, .scope-date { font-variant-numeric: tabular-nums; }
 .config-selected { line-height: 1.5; }
+
+/* Instrumental reproduction shares the approved harmonic board and type roles. */
+.single-performance .progression-answer-board { grid-template-columns: minmax(0,1fr); max-width: 960px; margin-inline: auto; }
+.single-performance .progression-chord-group { border-right: 0; padding-right: 0; }
+.single-performance .progression-note-grid { grid-template-columns: minmax(0,1fr); }
+.instrumental-board label { display: grid; gap: 8px; margin-block: 12px; }
+.instrumental-board label:has(input[type="checkbox"]) { display: flex; align-items: center; min-height: 44px; }
+.completion-summary { grid-column: 1 / -1; max-inline-size: 72ch; border-top: 1px solid var(--rule); padding-top: 20px; margin-top: 16px; }
+.completion-summary strong { font-variant-numeric: tabular-nums; }
+
+.key-pool { flex: 1 1 100%; width: 100%; }

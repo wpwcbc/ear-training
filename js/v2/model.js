@@ -297,7 +297,7 @@ export function uniqueAttempts(rows) {
 }
 export function insightRows(input, module = "overall", production = "all") {
     return uniqueAttempts(input).filter(a => {
-        if (!["m1", "m2", "progression-recognition", "progression-singing"].includes(a.exercise))
+        if (!Object.keys(exerciseNames).includes(a.exercise))
             return false;
         if (module !== "overall" && a.exercise !== module)
             return false;

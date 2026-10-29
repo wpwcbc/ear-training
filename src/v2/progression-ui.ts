@@ -1,9 +1,10 @@
-import { exerciseNames, progressionModes, progressionName, progressionExercise, type ProgressionMode } from "./exercise-names.js";
+import { exerciseNames, progressionModes, progressionName, progressionExercise, isPlayByEar, type ProgressionMode } from "./exercise-names.js";
 import { configurationChapters, configurationGroup, rememberGroups, practiceSummary, type ConfigurationChapter } from "./configuration.js";
 import { AudioEngine } from "../jazz/audio.js";
 import {
   parseChord,
-  pitchClass,
+  qualities,
+  type Quality,
   degrees,
 } from "../jazz/theory.js";
 import {
@@ -16,9 +17,11 @@ import {
 } from "./model.js";
 import {
   defaults,
+  defaultConfig, performanceComplete, finishPerformance, assessPerformance, completionTiming,
+  practiceKeys,
   templates,
   validate,
-  generate,
+  questionStream,
   submit,
   rate,
   report,
@@ -51,8 +54,8 @@ export function progressionEvidence(): Attempt[] {
         const config = {
           ...structuredClone(builtins[0].config),
           exercise:
-            q.config.mode === progressionModes.degreeAudiation ? ("m1" as const) : ("m2" as const),
-          method: "sung" as const,
+            (q.config.mode === progressionModes.degreeAudiation || isPlayByEar(q.config.mode)) ? ("m1" as const) : ("m2" as const),
+          method: isPlayByEar(q.config.mode) ? "played" as const : "sung" as const,
           roots: [n.chord.root],
           qualities: [n.chord.quality],
           targets: q.config.pools[n.chord.quality] ?? [n.degree],
@@ -68,7 +71,7 @@ export function progressionEvidence(): Attempt[] {
             degree: n.degree,
             midi: n.midi,
             options: optionsFor(n.chord, n.degree),
-            generatorVersion: "v2-progression-1",
+            generatorVersion: q.generatorVersion ?? "v2-progression-1",
           },
           run.id,
           n.exposure ?? "previously-seen",
@@ -77,15 +80,15 @@ export function progressionEvidence(): Attempt[] {
           ...a,
           id: n.id,
           exercise: progressionExercise(q.config.mode),
-          timingVersion: "progression-timing-not-recorded",
-          progressionContext: JSON.stringify(q.config),
+          timingVersion: isPlayByEar(q.config.mode) ? q.completionTimingVersion ?? "v2-play-after-backing-1" : "progression-timing-not-recorded",
+          progressionContext: JSON.stringify(q.source && q.config.mode !== progressionModes.singlePlayByEar ? {...q.config, sourceChords:q.source.chords, practiceKey:q.practiceKey} : q.config),
           replayQuestionId: q.id,
           replayEventsBefore: q.before,
           replayEventsAfter: q.after,
           firstCorrect: n.correct,
           firstAnswer: n.answer,
           imaginedWrongDegree:
-            q.config.mode === progressionModes.degreeAudiation && n.correct === false
+            (q.config.mode === progressionModes.degreeAudiation || isPlayByEar(q.config.mode)) && n.correct === false
               ? (n.answer ?? undefined)
               : undefined,
           replaysBeforeFirst: n.assisted ? 1 : 0,
@@ -102,15 +105,31 @@ export function progressionSessions() {
     startedAt: run.questions[0]?.created ?? "",
     label: progressionName(run.config.mode),
     count: run.questions.length,
+    unit: run.config.mode === progressionModes.singlePlayByEar ? (run.questions.length === 1 ? "question" : "questions") : (run.questions.length === 1 ? "progression" : "progressions"),
     ended: run.ended,
     href: `#progression/${run.config.mode}/results/${encodeURIComponent(run.id)}`,
   }));
 }
+export function instrumentalQuestions(exercise?: string) {
+  return (retainedRuns ?? read<Run[]>(historyKey, [])).flatMap(run => run.questions).filter(q => isPlayByEar(q.config.mode) && (!exercise || progressionExercise(q.config.mode) === exercise));
+}
+export function completionSummary(questions: ProgressionQuestion[]) {
+  const report = completionTiming(questions), section = document.createElement("section"); section.className = "completion-summary";
+  const title = document.createElement("h2"); title.textContent = "Post-accompaniment completion delay"; section.append(title);
+  const note = document.createElement("p"); note.textContent = "Whole-question timing · all-correct, unassisted attempts only · includes button interaction · separate from Overall response time."; section.append(note);
+  if (!report.groups.length) { const p = document.createElement("p"); p.textContent = "Unavailable · n=0 eligible questions"; section.append(p); }
+  for (const group of report.groups) {
+    const p = document.createElement("p"), value = document.createElement("strong"); value.textContent = `${(group.median / 1000).toFixed(2)}s median · n=${group.n}`;
+    p.append(value, document.createTextNode(" · " + group.label)); section.append(p);
+  }
+  const excluded = document.createElement("p"); excluded.textContent = `${report.excluded} excluded: incomplete, incorrect, unavailable, replay-assisted or interrupted questions.`; section.append(excluded); return section;
+}
 export function progressionConditions(context: string): string {
   try {
-    const c = validate(JSON.parse(context) as ProgressionConfig);
+    const stored = JSON.parse(context) as ProgressionConfig & {practiceKey?:string;sourceChords?:ProgressionConfig["chords"]};
+    const c = validate(stored);
     const pools = Object.entries(c.pools).map(([quality, pool]) => `${quality}: ${pool!.join(", ")}`).join("; ");
-    return `${progressionName(c.mode)} · ${c.chords.map(row => `${row.symbol} (${row.beats} beats)`).join(" → ")} · ${c.bpm} BPM · ${c.notes} ${c.notes === 1 ? "note" : "notes"} per chord · Targets: ${pools} · Voice mix: ${c.levels.map(level => Math.round(level * 100) + "%").join(", ")} · Volume: ${Math.round(c.volume * 100)}% · Progression timing unavailable`;
+    return `${progressionName(c.mode)} · ${c.chords.map(row => `${row.symbol} (${row.beats} beats)`).join(" → ")} · ${c.bpm} BPM · ${c.notes} ${c.notes === 1 ? "note" : "notes"} per chord · Targets: ${pools} · Voice mix: ${c.levels.map(level => Math.round(level * 100) + "%").join(", ")} · Volume: ${Math.round(c.volume * 100)}% · ${isPlayByEar(c.mode) ? "Instrumental playing · Self-assessed · Separate post-accompaniment delay" : "Progression timing unavailable"}${stored.practiceKey ? " · Practice key: " + stored.practiceKey : ""}${stored.sourceChords ? " · C source: " + stored.sourceChords.map(row=>row.symbol).join(" → ") : ""}`;
   } catch {
     return "Progression · stored conditions unavailable";
   }
@@ -134,14 +153,16 @@ export function mountProgression(
     question: ProgressionQuestion | null = null,
     answers: string[] = [],
     frame = 0;
+  let newQuestion: (() => ProgressionQuestion) | null = null;
   const presets = read<Record<string, ProgressionConfig>>(presetKey, {}),
     runs = retainedRuns ?? read<Run[]>(historyKey, []);
   const configGroups = new Map<string, boolean>();
   let configUnsaved = false, settingsStep: ConfigurationChapter = "Harmony";
   const buttonCounts = new Map<string, number>();
-  let ratingFocus = false, feedback = "";
+  let ratingFocus = false, feedback = "", phase = "";
+  let errorDraft: Record<string,string> = {};
   let config = structuredClone(
-      presets[initialMode] ?? { ...defaults, mode: initialMode },
+      presets[initialMode] ?? defaultConfig(initialMode),
     ),
     message = retainedRuns
       ? "Unsaved progression results retained. Retry saving."
@@ -159,6 +180,7 @@ export function mountProgression(
     write(historyKey, runs);
     dirty = false;
     retainedRuns = null;
+    if (message.startsWith("Could not save V2 data")) message = "";
   };
   const stopAudio = () => {
     token++;
@@ -241,14 +263,17 @@ export function mountProgression(
     input.setAttribute("aria-label", text);
     for (const v of values) {
       const labels: Record<string, string> = {
-        unknown: "Don’t know",
+        unknown: "Don’t know", fixed: "Fixed key", random: "Random key",
         [progressionModes.degreeRecognition]: exerciseNames["progression-recognition"],
         [progressionModes.degreeAudiation]: exerciseNames["progression-singing"],
+        [progressionModes.singlePlayByEar]: exerciseNames["single-play-by-ear"],
+        [progressionModes.playByEar]: exerciseNames["progression-play-by-ear"],
         major: "Major ii–V–I",
         minor: "Minor ii–V–i",
         backdoor: "Backdoor",
       };
-      const option = el("option", labels[v] ?? v.replace(/^(singing|recognition)(?= \/ )/, mode => labels[mode]));
+      const mode = Object.values(progressionModes).find(mode => v === mode || v.startsWith(mode + " / "));
+      const option = el("option", labels[v] ?? (mode ? progressionName(mode) + v.slice(mode.length) : v));
       option.value = v;
       input.append(option);
     }
@@ -271,6 +296,7 @@ export function mountProgression(
     write(presetKey, { ...presets, [presetId]: valid });
     presets[presetId] = valid;
     configUnsaved = false;
+    if (!dirty) message = "";
   }
   function startPractice() {
     const valid = validate(config);
@@ -280,12 +306,13 @@ export function mountProgression(
       questions: [],
       ended: false,
     };
+    newQuestion = questionStream(valid);
     runs.push(activeRun);
     next();
   }
   function next() {
     stopAudio();
-    question = generate(activeRun!.config);
+    question = newQuestion!();
     const seen = new Set(
       runs.flatMap((run) =>
         run.questions.flatMap((q) =>
@@ -299,7 +326,7 @@ export function mountProgression(
       seen.add(key);
     }
     activeRun!.questions.push(question);
-    answers = question.notes.map(() => "");
+    answers = question.notes.map(() => ""); errorDraft = {};
     heard = false;
     referenceHeard = false;
     feedback = "";
@@ -314,58 +341,52 @@ export function mountProgression(
     const op = token,
       q = question!;
     busy = true;
-    message = "";
+    if (!dirty) message = "";
     render();
+    const savePlaybackProgress = () => { try { save(); } catch (e) { message = (e as Error).message; } };
     try {
       await audio.ready();
       if (closed || op !== token) return;
-      const plan = sequence(q, reference || q.config.mode === progressionModes.degreeRecognition);
-      const playback = audio.playSequence(
-        plan.events,
-        plan.countIn,
-        plan.duration,
-      );
-      if (
-        replay &&
-        (!reference || q.config.mode === progressionModes.degreeRecognition || q.referencePlayed)
-      ) {
-        if (q.submitted || q.done) q.after++;
-        else q.before++;
-        save();
+      const instrumental = isPlayByEar(q.config.mode);
+      if (instrumental && !reference) { delete q.performanceEndedAt; heard = false; referenceHeard = false; }
+      if (replay && (!reference || q.config.mode === progressionModes.degreeRecognition || q.referencePlayed)) {
+        if (q.submitted || q.done) q.after++; else q.before++;
+        savePlaybackProgress();
       }
-      const follow = () => {
+      const passes = instrumental && !reference ? [true, false] : [reference || q.config.mode === progressionModes.degreeRecognition];
+      for (const melody of passes) {
+        phase = reference ? "Reference playing" : instrumental ? melody ? "Demonstration" : "Playing accompaniment" : "Playing";
+        render();
+        const plan = sequence(q, melody);
+        const playback = audio.playSequence(plan.events, plan.countIn, plan.duration);
+        const follow = () => {
+          if (closed || op !== token) return;
+          const index = plan.starts.filter(t => audio.position >= t).length - 1;
+          const active = root.querySelector<HTMLElement>("[data-active-chord]");
+          if (active) active.textContent = index < 0 ? "Count-in" : q.config.chords[index].symbol;
+          host.querySelectorAll<HTMLElement>("[data-chord]").forEach((node,i) => node.style.background = i === index ? "var(--signal)" : "");
+          const status = host.querySelector<HTMLElement>("[data-playback-status]");
+          if (status && instrumental) status.textContent = phase + (index < 0 ? " · Count-in" : "");
+          frame = requestAnimationFrame(follow);
+        };
+        follow();
+        const end = await playback.completed;
         if (closed || op !== token) return;
-        const index = plan.starts.filter((t) => audio.position >= t).length - 1;
-        const active = root.querySelector<HTMLElement>("[data-active-chord]");
-        if (active)
-          active.textContent =
-            index < 0 ? "Count-in" : q.config.chords[index].symbol;
-        host
-          .querySelectorAll<HTMLElement>("[data-chord]")
-          .forEach(
-            (node, i) =>
-              (node.style.background = i === index ? "var(--signal)" : ""),
-          );
-        frame = requestAnimationFrame(follow);
-      };
-      follow();
-      const end = await playback.completed;
-      if (closed || op !== token) return;
-      cancelAnimationFrame(frame);
-      busy = false;
-      if (end === "completed") {
-        if (reference) {
-          referenceHeard = true;
-          q.referencePlayed = true;
-          save();
-        } else heard = true;
-      } else
-        message =
-          "Playback interrupted. Retry the whole progression; answers are retained.";
+        cancelAnimationFrame(frame);
+        if (end !== "completed") {
+          if (instrumental && !q.done) q.interrupted = true;
+          throw Error("Playback interrupted. Retry the whole progression; answers are retained.");
+        }
+        if (instrumental && !reference && !melody) performanceComplete(q, performance.now() - Math.max(0, audio.position - plan.duration) * 1000);
+      }
+      busy = false; phase = "";
+      if (reference) { referenceHeard = true; q.referencePlayed = true; savePlaybackProgress(); }
+      else { heard = true; savePlaybackProgress(); }
       render();
     } catch (e) {
       if (op === token && !closed) {
         busy = false;
+        if (isPlayByEar(q.config.mode) && !q.done) q.interrupted = true;
         message = (e as Error).message;
         render();
       }
@@ -393,7 +414,7 @@ export function mountProgression(
     outcome.append(
       el(
         "h2",
-        config.mode === progressionModes.degreeAudiation
+        (config.mode === progressionModes.degreeAudiation || isPlayByEar(config.mode))
           ? "Self-rated accuracy"
           : "Recognition accuracy",
       ),
@@ -408,7 +429,7 @@ export function mountProgression(
     const unassessed = el("p", `${m.unassessed} unassessed`);
     unassessed.className = "unassessed";
     outcome.append(percentage, count, unassessed);
-    if (config.mode === progressionModes.degreeAudiation)
+    if (config.mode === progressionModes.degreeAudiation || isPlayByEar(config.mode))
       outcome.append(el("p", "Self-rated · not pitch-verified"));
     const replay = el("div");
     replay.className = "supporting-metric";
@@ -419,10 +440,16 @@ export function mountProgression(
     const total = el("div");
     total.className = "supporting-metric";
     total.append(
-      el("p", "Progressions"),
+      el("p", config.mode === progressionModes.singlePlayByEar ? "Questions" : "Progressions"),
       el("strong", String(questions.length)),
     );
     support.append(replay, total);
+    if (isPlayByEar(config.mode)) {
+      const delay = el("div"); delay.className = "supporting-metric";
+      delay.append(el("p", "Post-accompaniment completion delay"));
+      for (const q of questions.length === 1 ? questions : []) delay.append(el("p", `${q.completionDelayMs === undefined ? "Unavailable" : (q.completionDelayMs / 1000).toFixed(2) + "s"} · ${q.interrupted ? "Interrupted/recovered" : q.before ? "Replay-assisted" : "Unassisted"}`));
+      delay.append(el("p", "Whole-question delay includes button interaction. It is separate from Overall response time.")); support.append(delay, completionSummary(questions));
+    }
     body.append(
       support,
       el(
@@ -436,7 +463,9 @@ export function mountProgression(
   function configIssue(): { chapter: ConfigurationChapter; group: string; message: string; field?: string } | null {
     try { validate(config); return null; } catch (e) {
       const message = (e as Error).message;
-      if (config.chords.length < 2 || config.chords.length > 32) return { chapter: "Harmony", group: "chords", message };
+      if (/practice key|random key/.test(message)) return { chapter: "Harmony", group: "keys", message };
+      if (config.mode === progressionModes.singlePlayByEar && /roots|qualities/.test(message)) return { chapter: "Harmony", group: "single", message };
+      if (config.mode !== progressionModes.singlePlayByEar && (config.chords.length < 2 || config.chords.length > 32)) return { chapter: "Harmony", group: "chords", message };
       for (let i = 0; i < config.chords.length; i++) {
         const row = config.chords[i];
         try { parseChord(row.symbol); } catch { return { chapter: "Harmony", group: "chords", field: `Chord ${i + 1}`, message }; }
@@ -449,8 +478,7 @@ export function mountProgression(
         return { chapter: "Practice", group: "tempo", field: "Notes per chord", message };
       if (!Number.isInteger(config.count) || config.count < 0 || config.count > 200)
         return { chapter: "Practice", group: "length", field: "Questions (0 = Unlimited)", message };
-      for (const row of config.chords) {
-        const quality = parseChord(row.symbol).quality;
+      for (const quality of config.mode === progressionModes.singlePlayByEar ? config.qualities! : config.chords.map(row => parseChord(row.symbol).quality)) {
         if (!config.pools[quality]?.length) return { chapter: "Target degrees", group: "pool:" + quality, message };
       }
       return { chapter: "Sound", group: !Number.isFinite(config.volume) || config.volume < 0 || config.volume > 1 ? "volume" : "mix", message };
@@ -496,14 +524,44 @@ export function mountProgression(
     if (issue && issue.chapter !== settingsStep) content.push(el("p", issue.message), button("Review invalid settings: " + issue.chapter, () => {
       settingsStep = issue.chapter; render(); root.querySelector<HTMLElement>("input[aria-invalid='true'],select[aria-invalid='true']")?.focus();
     }));
-    if (settingsStep === "Harmony") {
-      const template = el("div"); template.className = "config-fields"; template.append(label("Template"), label("Transpose"));
+    const single = config.mode === progressionModes.singlePlayByEar;
+    if (settingsStep === "Harmony" && single) {
+      const controls: HTMLElement[] = [];
+      for (const [name, values, selected] of [["Roots", practiceKeys, config.roots!], ["Chord qualities", qualities, config.qualities!]] as const) {
+        const fieldset = el("fieldset"); fieldset.append(el("legend", name)); const pool = el("div"); pool.className = "pool";
+        for (const value of values) {
+          const item = el("label"), check = el("input"); check.type = "checkbox"; check.checked = selected.includes(value as never); check.dataset.control = name + ":" + value;
+          check.onchange = () => { const next = new Set<string>(selected); check.checked ? next.add(value) : next.delete(value); if (name === "Roots") config.roots = [...next]; else { config.qualities = [...next] as Quality[]; addQualityPools(config); } try { persistConfig(); message = ""; } catch(e) { message = (e as Error).message; } render(); };
+          item.append(check, el("span", value)); pool.append(item);
+        }
+        fieldset.append(pool); controls.push(fieldset);
+      }
+      controls.push(button("All 12 Keys", () => { config.roots = [...practiceKeys]; persistConfig(); render(); }));
+      content.push(group("single", "Roots and chord qualities", `${config.roots!.join(", ")} · ${config.qualities!.join(", ")}`, controls, true));
+    }
+    if (settingsStep === "Harmony" && !single) {
+      const template = el("div"); template.className = "config-fields"; template.append(label("Template"));
+      const keyControls = el("div"); keyControls.className = "config-fields";
+      keyControls.append(select("Key mode", config.keyMode ?? "fixed", ["fixed", "random"], value => { config.keyMode = value as "fixed" | "random"; config.keyPool ??= [...practiceKeys]; persistConfig(); }));
+      if (config.keyMode !== "random") keyControls.append(label("Practice key"));
+      else {
+        const pool = el("fieldset"); pool.className = "key-pool"; pool.append(el("legend", "Random keys"));
+        const choices = el("div"); choices.className = "pool";
+        for (const key of practiceKeys) {
+          const item = el("label"), check = el("input"); check.type = "checkbox"; check.dataset.control = "key:" + key;
+          check.checked = (config.keyPool ?? practiceKeys).includes(key);
+          check.onchange = () => { const values = new Set(config.keyPool ?? practiceKeys); check.checked ? values.add(key) : values.delete(key); config.keyPool = [...values]; try { persistConfig(); message = ""; } catch(e) { message = (e as Error).message; } render(); };
+          item.append(check, el("span", key)); choices.append(item);
+        }
+        pool.append(choices, button("All", () => { config.keyPool = [...practiceKeys]; persistConfig(); render(); })); keyControls.append(pool);
+      }
+      content.push(group("keys", "Practice key", config.keyMode === "random" ? "Random: " + (config.keyPool ?? practiceKeys).join(", ") : "Fixed " + (config.key ?? "C"), [keyControls], true));
       const chords = nodes.filter(node => node.classList.contains("actions") && Array.from(node.querySelectorAll("input[aria-label]")).some(field => /^Chord \d+$/.test(field.getAttribute("aria-label")!)));
       chords.forEach((row, i) => {
         row.className = "chord-editor-row"; row.setAttribute("role", "group"); row.setAttribute("aria-label", "Chord " + (i + 1) + " settings");
         row.querySelectorAll("button").forEach(b => { b.setAttribute("aria-label", b.textContent!); b.textContent = b.textContent?.startsWith("Move") ? "Up" : "Remove"; });
       });
-      content.push(group("template", "Template and transpose", config.chords.map(row => row.symbol).join(" → "), [template], true),
+      content.push(group("template", "Template and key", config.chords.map(row => row.symbol).join(" → "), [template], true),
         group("chords", "Chord sequence", `${config.chords.length} chords · ${config.chords.map(row => row.beats).join(" / ")} beats`, [...chords, action("Add chord")], true));
     }
     if (settingsStep === "Target degrees") {
@@ -516,7 +574,7 @@ export function mountProgression(
     if (settingsStep === "Practice") {
       const fields = nodes.find(node => node.classList.contains("actions") && node.querySelector("input[aria-label='BPM']"))!;
       const labels = Array.from(fields.children) as HTMLElement[];
-      const tempo = el("div"); tempo.className = "config-fields"; tempo.append(labels[0], labels[1]);
+      const tempo = el("div"); tempo.className = "config-fields"; tempo.append(labels[0], ...(single ? [] : [labels[1]]));
       content.push(group("tempo", "Tempo and notes", `${config.bpm} BPM · ${config.notes} notes per chord`, [tempo, el("p", "One-bar count-in · targets evenly spaced within each chord")], true),
         group("length", "Session length", config.count === 0 ? "Unlimited" : `${config.count} questions`, [labels[2]], true));
     }
@@ -526,23 +584,24 @@ export function mountProgression(
       content.push(group("volume", "Overall volume", Math.round(config.volume * 100) + "%", [levels.pop()!], true),
         group("mix", "Voicing mix", config.levels.map(v => Math.round(v * 100) + "%").join(", "), [el("p", "Original voices, low to high. Accompaniment only; 0% mutes, 100% is standard, 200% is double nominal gain."), ...levels]));
     }
-    side.append(el("h2", "This practice"), el("h3", "Progression"), el("p", config.chords.map(row => `${row.symbol} (${row.beats} beats)`).join(" → ")), el("h3", "Target degrees"));
-    const used = new Set(config.chords.flatMap(row => { try { return [parseChord(row.symbol).quality]; } catch { return []; } }));
+    side.append(el("p", "Practice key: " + (config.keyMode === "random" ? "Random · " + (config.keyPool ?? practiceKeys).join(", ") : config.key ?? "C")), el("h2", "This practice"), el("h3", single ? "Chord pools" : "C-source progression"), el("p", single ? `${config.roots!.join(", ")} · ${config.qualities!.join(", ")}` : config.chords.map(row => `${row.symbol} (${row.beats} beats)`).join(" → ")), el("h3", "Target degrees"));
+    const used = new Set(single ? config.qualities! : config.chords.flatMap(row => { try { return [parseChord(row.symbol).quality]; } catch { return []; } }));
     for (const quality of used) side.append(el("p", `${quality}: ${config.pools[quality]?.join(", ") || "None selected"}`));
     side.append(el("h3", "Practice"), el("p", `${config.bpm} BPM · ${config.notes} notes per chord · ${config.count === 0 ? "Unlimited" : config.count + " questions"}`),
       el("h3", "Sound"), el("p", `Voice mix: ${config.levels.map(v => Math.round(v * 100) + "%").join(", ")}`), el("p", `Volume: ${Math.round(config.volume * 100)}%`));
+    if (single) side.firstElementChild?.remove();
     const summaryContent = Array.from(side.children) as HTMLElement[];
     side.replaceChildren(practiceSummary(configGroups, presetId + ":overview", summaryContent));
-    const compact = el("p", `${config.chords.map(row => row.symbol).join(" → ")} · ${config.bpm} BPM · ${config.notes} notes/chord · ${config.count === 0 ? "Unlimited" : config.count + " questions"}`);
+    const compact = el("p", `${single ? config.roots!.join(", ") + " · " + config.qualities!.join(", ") : config.chords.map(row => row.symbol).join(" → ")} · ${config.bpm} BPM · ${config.notes} notes/chord · ${config.count === 0 ? "Unlimited" : config.count + " questions"}`);
     compact.className = "config-mobile-overview"; header.append(compact);
     const launch = el("div"); launch.className = "config-launch";
     const start = action("Start practice") as HTMLButtonElement; start.disabled = Boolean(issue);
-    const status = el("p", issue ? "Invalid settings. Review the highlighted group." : configUnsaved ? `Not saved to ${presetId}. Retry saving.` : `Saved preset: ${presetId}`);
+    const status = el("p", issue ? "Invalid settings. Review the highlighted group." : configUnsaved ? `Not saved to ${presetId}. Retry saving.` : `Saved preset: ${Object.values(progressionModes).includes(presetId as ProgressionMode) ? progressionName(presetId as ProgressionMode) : presetId}`);
     status.id = "progression-save-status"; status.className = "notice";
     status.dataset.state = issue ? "invalid" : configUnsaved ? "unsaved" : "saved"; status.setAttribute("role", "status");
     launch.append(start, status); side.append(launch);
     if (configUnsaved) side.append(button("Retry saving preset", () => { persistConfig(); message = ""; render(); }));
-    const history = el("details"); history.append(el("summary", "Past progression sessions"));
+    const history = el("details"); history.append(el("summary", "Past sessions"));
     nodes.filter(node => node.tagName === "BUTTON" && node.textContent?.startsWith("Results ·")).forEach(node => history.append(node));
     if (history.children.length > 1) side.append(history);
     host.replaceChildren(...content); layout.append(host, side); page.append(header, layout);
@@ -556,12 +615,13 @@ export function mountProgression(
     const footer = el("div"); footer.className = "harmonic-actions";
     const primary = Array.from(host.querySelectorAll("button")).filter(b => ["Submit all answers", "Done — hear full reference", "Next question", "Finish"].includes(b.textContent!));
     footer.append(playback, ...primary);
-    const notes = el("p", `${config.bpm} BPM · ${config.notes} ${config.notes === 1 ? "note" : "notes"} per chord`);
+    const notes = el("p", `${config.bpm} BPM · ${config.notes} ${config.notes === 1 ? "note" : "notes"} per chord${question?.practiceKey ? " · Key " + question.practiceKey : ""}`);
     notes.className = "harmonic-meta";
     const score = host.querySelector<HTMLElement>(":scope > .evidence-summary");
-    const provenance = config.mode === progressionModes.degreeAudiation ? [el("p", "Individual self-ratings · no microphone verification")] : [];
+    const provenance = (config.mode === progressionModes.degreeAudiation || isPlayByEar(config.mode)) ? [el("p", "Individual self-ratings · no microphone verification")] : [];
     const recovery = Array.from(host.children).filter(node => node.getAttribute("role") === "alert" || (node.tagName === "BUTTON" && node.textContent === "Retry saving"));
     host.classList.add("harmonic-progression");
+    host.classList.toggle("single-performance", config.mode === progressionModes.singlePlayByEar);
     host.replaceChildren(...recovery, status, ...provenance, board, notes, footer, ...(score ? [score] : []));
     root.replaceChildren(top, host);
   }
@@ -631,7 +691,7 @@ export function mountProgression(
     if (view === "settings" && priorView === "settings") window.scrollTo(0, scroll);
     const announcement = document.getElementById("practice-announcement");
     const state = message || (view === "practice"
-      ? `${progressionName(config.mode)}. Question ${activeRun!.questions.length}. ${busy ? "Playing" : question!.submitted ? "Answers checked" : referenceHeard ? "Reference complete. Rate your response" : heard ? config.mode === progressionModes.degreeAudiation ? "Ready to sing or hear full reference" : "Ready to answer" : "Ready"}. ${feedback}`
+      ? `${progressionName(config.mode)}. Question ${activeRun!.questions.length}. ${busy ? phase || "Playing" : question!.submitted ? "Answers checked" : referenceHeard ? "Reference complete. Rate your response" : heard ? config.mode === progressionModes.degreeAudiation ? "Ready to sing or hear full reference" : "Ready to answer" : "Ready"}. ${feedback}`
       : view === "results" ? `${progressionName(config.mode)} results. ${busy ? "Reference playing" : "Playback stopped"}` : `Progression settings. ${settingsStep}`);
     if (announcement && announcement.textContent !== state) announcement.textContent = state;
   }
@@ -664,7 +724,7 @@ export function mountProgression(
           presetId = value;
           configUnsaved = false;
           config = structuredClone(
-            presets[value] ?? { ...defaults, mode: value },
+            presets[value] ?? defaultConfig(value as ProgressionMode),
           );
         }),
       );
@@ -708,54 +768,7 @@ export function mountProgression(
           },
         ),
       );
-      host.append(
-        select(
-          "Transpose",
-          "0",
-          [
-            "0",
-            "-2",
-            "-1",
-            "1",
-            "2",
-            "3",
-            "4",
-            "5",
-            "6",
-            "7",
-            "8",
-            "9",
-            "10",
-            "11",
-          ],
-          (value) => {
-            const names = [
-              "C",
-              "C#",
-              "D",
-              "Eb",
-              "E",
-              "F",
-              "F#",
-              "G",
-              "Ab",
-              "A",
-              "Bb",
-              "B",
-            ];
-            config.chords = config.chords.map((row) => {
-              const chord = parseChord(row.symbol);
-              return {
-                ...row,
-                symbol:
-                  names[(pitchClass(chord.root) + Number(value) + 12) % 12] +
-                  chord.quality,
-              };
-            });
-            persistConfig();
-          },
-        ),
-      );
+      host.append(select("Practice key", config.key ?? "C", practiceKeys, value => { config.key = value; persistConfig(); }));
       config.chords.forEach((row, i) => {
         const group = el("div");
         group.className = "actions";
@@ -830,7 +843,7 @@ export function mountProgression(
         el("p", "One-bar count-in · targets evenly spaced within each chord"),
       );
       host.append(el("h2", "Target pools"));
-      for (const quality of [
+      for (const quality of config.mode === progressionModes.singlePlayByEar ? config.qualities! : [
         ...new Set(
           config.chords.flatMap((row) => {
             try {
@@ -893,7 +906,7 @@ export function mountProgression(
       for (const run of runs.slice().reverse())
         host.append(
           button(
-            `Results · ${run.config.mode} · ${run.questions.length} questions`,
+            `Results · ${progressionName(run.config.mode)} · ${run.questions.length} ${run.questions.length === 1 ? "question" : "questions"}`,
             () => {
               activeRun = run;
               config = structuredClone(run.config);
@@ -916,10 +929,11 @@ export function mountProgression(
         item.className = "progression-review-group";
         item.dataset.disclosure = q.id;
         const m = report([q]);
+        item.append(el("p", q.config.mode === progressionModes.singlePlayByEar ? "Chord: " + q.config.chords[0].symbol : "Practice key: " + (q.practiceKey ?? "Stored original")));
         item.append(
           el(
             "summary",
-            `Progression ${run.questions.indexOf(q) + 1} · ${m.correct} / ${m.assessed} assessed`,
+            `${run.config.mode === progressionModes.singlePlayByEar ? "Question" : "Progression"} ${run.questions.indexOf(q) + 1} · ${m.correct} / ${m.assessed} assessed`,
           ),
           el(
             "p",
@@ -997,11 +1011,12 @@ export function mountProgression(
       return;
     }
     const q = question!;
+    if (isPlayByEar(q.config.mode)) { renderInstrument(q); return; }
     const status = el("p", busy ? "Playing" : referenceHeard ? "Reference complete · rate each note" : heard ? config.mode === progressionModes.degreeAudiation ? "Ready to sing" : "Ready to answer" : "Ready");
     status.dataset.playbackStatus = "";
     status.dataset.control = "playback-status";
     status.className = "playback-status";
-    host.append(status);
+    host.append(status, el("p", "Practice key: " + (q.practiceKey ?? "Stored original")));
     const chords = el("div");
     chords.className = "actions";
     q.config.chords.forEach((row, i) => {
@@ -1225,8 +1240,47 @@ export function mountProgression(
       );
     }
   }
+  function renderInstrument(q: ProgressionQuestion) {
+    const status = el("p", busy ? phase || "Playing" : q.submitted ? "Answers checked" : referenceHeard ? "Reference complete · self-assess your playing" : q.done ? "Retry full reference" : heard ? "Ready to finish · additional completion time is being recorded" : "Replay demonstration to recover");
+    status.dataset.playbackStatus = ""; status.className = "playback-status"; host.append(status);
+    const playback = el("div"); playback.className = "actions progression-playback";
+    playback.append(button(q.done ? "Replay whole reference" : "Replay demonstration", () => play(q.done,true), busy), button("Stop", finish)); host.append(playback);
+    if (!q.done) host.append(button("Done — hear full reference", () => { finishPerformance(q,performance.now()); save(); return play(true,false); }, busy || !heard || q.performanceEndedAt === undefined));
+    const board = el("section"); board.className = "progression-answer-board instrumental-board"; board.setAttribute("aria-label", "Instrumental reproduction board");
+    board.append(el("h2", q.done && referenceHeard ? "Check your playing" : "Listen, then play by ear"));
+    q.config.chords.forEach((chord, occurrence) => {
+      const group = el("fieldset"), legend = el("legend", `${occurrence + 1} · ${chord.symbol}`); group.className = "progression-chord-group"; legend.dataset.chord = String(occurrence);
+      const duration = el("span", `${chord.beats} beats`); duration.className = "chord-duration"; legend.append(duration); group.append(legend);
+      const grid = el("div"); grid.className = "progression-note-grid";
+      q.notes.filter(n => n.occurrence === occurrence).forEach(n => {
+        const row = el("section"); row.setAttribute("role","group"); row.setAttribute("aria-label", `${occurrence + 1} · ${chord.symbol} · note ${n.position + 1}`);
+        row.append(el("h3", `Note ${n.position + 1}`));
+        if (referenceHeard || q.submitted) {
+          const degree = el("p",n.degree); degree.className = "progression-target-degree"; row.append(degree);
+          if (q.submitted) row.append(el("p", n.correct ? "Correct · self-rated" : `Incorrect · ${n.answer === "unknown" ? "Unknown" : n.answer}`));
+          else {
+            const item = el("label"), check = el("input"); check.type = "checkbox"; check.checked = n.id in errorDraft; check.dataset.control = "error:" + n.id;
+            check.onchange = () => { if(check.checked) errorDraft[n.id] = "unknown"; else delete errorDraft[n.id]; render(); };
+            item.append(check,el("span","Incorrect")); row.append(item);
+            if (check.checked) row.append(select("Degree you played · " + (occurrence + 1) + "/" + (n.position + 1), errorDraft[n.id], ["unknown", ...optionsFor(n.chord,n.degree).filter(d=>d!==n.degree)], value => { errorDraft[n.id] = value; }));
+          }
+        } else row.append(el("p","Target hidden"));
+        grid.append(row);
+      });
+      group.append(grid); board.append(group);
+    });
+    if (referenceHeard && !q.submitted) {
+      const controls = el("div"); controls.className = "actions";
+      const commit = (errors: Record<string,string>) => { assessPerformance(q,errors); save(); render(); };
+      controls.append(button("All correct",()=>commit({})), button("Remaining notes correct and submit",()=>commit(errorDraft))); board.append(controls);
+    }
+    const title = board.querySelector("h2")!; title.dataset.control = "answer-board-title"; title.tabIndex = -1;
+    host.append(board);
+    if (q.submitted) host.append(summary([q]), button(activeRun!.config.count && activeRun!.questions.length >= activeRun!.config.count ? "Finish" : "Next question", () => { if(activeRun!.config.count && activeRun!.questions.length >= activeRun!.config.count) finish(); else next(); }, busy));
+  }
   const hidden = () => {
-    if (document.hidden && busy) {
+    if (document.hidden && (busy || (question && isPlayByEar(question.config.mode) && !question.done && view === "practice"))) {
+      if (question && isPlayByEar(question.config.mode) && !question.done) { question.interrupted = true; delete question.performanceEndedAt; heard = false; }
       stopAudio();
       message =
         "Playback interrupted. Replay the whole progression; answers are retained.";

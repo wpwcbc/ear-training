@@ -1,6 +1,6 @@
-import { exerciseNames, progressionModes, progressionName } from "./exercise-names.js";
+import { exerciseNames, progressionModes, progressionName, modeForExercise, isPlayByEar } from "./exercise-names.js";
 import { configurationChapters, configurationGroup, rememberGroups, practiceSummary } from "./configuration.js";
-import { mountProgression, progressionEvidence, progressionSessions, progressionConditions } from "./progression-ui.js";
+import { mountProgression, progressionEvidence, progressionSessions, progressionConditions, instrumentalQuestions, completionSummary } from "./progression-ui.js";
 import { AudioEngine } from "../jazz/audio.js";
 import { parseChord, chordNotes, chordToneDegrees, degreeForPc } from "../jazz/theory.js";
 import { QuestionLifecycle } from "./question.js";
@@ -813,8 +813,9 @@ function results(id) {
     host.append(review);
 }
 function customizeFocus(items, key) {
-    if (items[0].exercise.startsWith("progression-")) {
-        location.hash = "progression";
+    const mode = modeForExercise(items[0].exercise);
+    if (mode) {
+        location.hash = "progression/" + mode;
         return;
     }
     const config = {
@@ -846,9 +847,9 @@ function insights() {
     let rows = insightRows(all, insightModule, production);
     host.append(scope);
     if (!rows.length) {
-        const progressionMode = insightModule === "progression-singing" ? progressionModes.degreeAudiation : insightModule === "progression-recognition" ? progressionModes.degreeRecognition : null;
+        const progressionMode = modeForExercise(insightModule);
         const label = progressionMode ? progressionName(progressionMode) : "";
-        host.append(el("p", progressionMode ? `No ${label} records yet. Start a progression practice.` : "No matching V2 records. Choose an exercise to start practicing."), button(progressionMode ? `Practice ${label}` : "Practice", () => location.hash = progressionMode ? `progression/${progressionMode}` : "home"));
+        host.append(el("p", progressionMode ? `No ${label} records yet. Start a ${progressionMode === progressionModes.singlePlayByEar ? "single-chord" : "progression"} practice.` : "No matching V2 records. Choose an exercise to start practicing."), button(progressionMode ? `Practice ${label}` : "Practice", () => location.hash = progressionMode ? `progression/${progressionMode}` : "home"));
         return;
     }
     const c = rows[0].configurationSnapshot;
@@ -858,7 +859,7 @@ function insights() {
     scope.append(disclosure("Source conditions", ...conditions.map(text => el("p", text)), disclosure("Technical versions", ...versions.map(text => el("p", text)))));
     const historyEntries = [
         ...sessions.map(s => ({ id: s.id, startedAt: s.startedAt, label: exerciseNames[s.config.exercise], count: s.attempts.length, unit: "records", ended: Boolean(s.endedAt), href: "#results/" + s.id })),
-        ...progressionSessions().map(s => ({ ...s, unit: s.count === 1 ? "progression" : "progressions" })),
+        ...progressionSessions(),
     ].sort((a, b) => b.startedAt.localeCompare(a.startedAt));
     const filters = el("div", "", "insight-filters");
     filters.append(select("Root", rootFilter || "All selected roots", ["All selected roots", ...new Set(rows.map((a) => a.target.chord.root))], (value) => {
@@ -884,11 +885,17 @@ function insights() {
         return { key, items, m: metrics(items) };
     });
     const overview = summary(rows, c, false), body = overview.querySelector(".evidence-body");
-    overview.querySelector(".outcome h2").textContent = insightModule === "overall" ? "Combined degree accuracy" : (insightModule === "m1" || insightModule === "progression-singing") ? "Self-rated accuracy" : "First-answer accuracy";
+    overview.querySelector(".outcome h2").textContent = insightModule === "overall" ? "Combined degree accuracy" : (insightModule === "m1" || insightModule === "progression-singing" || insightModule === "single-play-by-ear" || insightModule === "progression-play-by-ear") ? "Self-rated accuracy" : "First-answer accuracy";
     overview.querySelector(".assessment-source")?.remove();
     const labels = overview.querySelectorAll(".supporting-metric > p");
     labels[1].textContent = "Mixed-practice response time";
     body.prepend(confusions(rows));
+    const selectedMode = modeForExercise(insightModule);
+    if (selectedMode && isPlayByEar(selectedMode)) {
+        const delay = completionSummary(instrumentalQuestions(insightModule));
+        delay.append(el("p", "Whole-question timing uses this module before note-level root/quality filters."));
+        body.append(delay);
+    }
     body.append(el("p", "M1 Done and M2 answer submission use different readiness boundaries. Mixed-practice time is not pure recognition speed or measured performance onset."));
     overview.querySelector(".evidence-notes > p:last-child")?.remove();
     overview.querySelector(".evidence-notes").append(el("p", "Methods, pools, mix and versions remain in source records; totals combine mixed practice."));
@@ -897,7 +904,7 @@ function insights() {
     patterns.append(el("p", "Descriptive observations, not a diagnosis. Sample counts and practice conditions may differ."));
     for (const cell of cells) {
         const row = el("article", "", "pattern-row");
-        row.append(el("h3", cell.key.replace("/", " / ")), el("strong", `${cell.m.correct} / ${cell.m.n} assessed`), button(cell.items.every(a => a.exercise.startsWith("progression-")) ? "Progression settings" : "Customize focus", () => customizeFocus(cell.items, cell.key)));
+        row.append(el("h3", cell.key.replace("/", " / ")), el("strong", `${cell.m.correct} / ${cell.m.n} assessed`), button(cell.items.every(a => modeForExercise(a.exercise)) ? "Progression settings" : "Customize focus", () => customizeFocus(cell.items, cell.key)));
         patterns.append(row);
     }
     const notes = body.querySelector(".evidence-notes");
@@ -917,7 +924,7 @@ function insights() {
         const tr = el("tr"), m = cell.m;
         tr.append(el("td", cell.key), el("td", `${m.correct}/${m.n}`), el("td", `${m.replayed}/${m.n}`), el("td", `${m.median === null ? "Unavailable" : (m.median / 1000).toFixed(2) + "s"} (${m.timed})`));
         const td = el("td");
-        td.append(button(cell.items.every(a => a.exercise.startsWith("progression-")) ? "Progression settings" : "Customize focus", () => customizeFocus(cell.items, cell.key)));
+        td.append(button(cell.items.every(a => modeForExercise(a.exercise)) ? "Progression settings" : "Customize focus", () => customizeFocus(cell.items, cell.key)));
         tr.append(td);
         tbody.append(tr);
     }
@@ -981,7 +988,7 @@ function render() {
     host.replaceChildren();
     if (route === "progression" || route.startsWith("progression/")) {
         try {
-            disposeProgression = mountProgression(host, route.split("/")[1] === progressionModes.degreeAudiation ? progressionModes.degreeAudiation : progressionModes.degreeRecognition, route.endsWith("/start"), route.split("/")[2] === "results" ? decodeURIComponent(route.split("/")[3] ?? "") : undefined);
+            disposeProgression = mountProgression(host, Object.values(progressionModes).find(mode => mode === route.split("/")[1]) ?? progressionModes.degreeRecognition, route.endsWith("/start"), route.split("/")[2] === "results" ? decodeURIComponent(route.split("/")[3] ?? "") : undefined);
         }
         catch (e) {
             report(e);
