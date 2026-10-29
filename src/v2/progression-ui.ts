@@ -16,7 +16,6 @@ import {
   type Attempt,
 } from "./model.js";
 import {
-  defaults,
   defaultConfig, performanceComplete, finishPerformance, assessPerformance, completionTiming,
   practiceKeys,
   templates,
@@ -162,7 +161,7 @@ export function mountProgression(
   let ratingFocus = false, feedback = "", phase = "";
   let errorDraft: Record<string,string> = {};
   let config = structuredClone(
-      presets[initialMode] ?? defaultConfig(initialMode),
+      presets[initialMode]?.mode === initialMode ? presets[initialMode] : defaultConfig(initialMode),
     ),
     message = retainedRuns
       ? "Unsaved progression results retained. Retry saving."
@@ -493,7 +492,7 @@ export function mountProgression(
     const label = (name: string) => nodes.find(node => node.tagName === "LABEL" && node.querySelector("[aria-label]")?.getAttribute("aria-label") === name)!;
     const action = (name: string) => nodes.find(node => node.tagName === "BUTTON" && node.textContent === name)!;
     const presetControls = el("div"); presetControls.className = "config-preset-controls";
-    presetControls.append(label("Mode"), label("Saved preset"), action("Save as new preset"));
+    presetControls.append(label("Saved preset"), action("Save as new preset"));
     header.append(title, presetControls);
     tabs.className = "steps config-tabs"; tabs.setAttribute("aria-label", "Configuration chapters");
     for (const name of configurationChapters) {
@@ -720,23 +719,14 @@ export function mountProgression(
     }
     if (view === "settings") {
       host.append(
-        select("Mode", config.mode, Object.values(progressionModes), (value) => {
-          presetId = value;
-          configUnsaved = false;
-          config = structuredClone(
-            presets[value] ?? defaultConfig(value as ProgressionMode),
-          );
-        }),
-      );
-      host.append(
         select(
           "Saved preset",
           presetId,
-          [...new Set([presetId, ...Object.keys(presets)])],
+          [...new Set([presetId, ...Object.keys(presets).filter(id => presets[id].mode === config.mode)])],
           (value) => {
             presetId = value;
             configUnsaved = false;
-            config = structuredClone(presets[value] ?? defaults);
+            config = structuredClone(presets[value] ?? defaultConfig(config.mode));
           },
         ),
         button("Save as new preset", () => {

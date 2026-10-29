@@ -29,9 +29,9 @@ try{
  assert.equal(history[0].questions[0].before,1);assert.ok(history[0].questions[0].notes.every(n=>n.assisted));
  await page.getByRole('button',{name:'Practice again',exact:true}).click();
  await page.getByRole('button',{name:'Harmony',exact:true}).click();
- await page.getByLabel('Mode',{exact:true}).waitFor({timeout:3000}).catch(async e=>{console.log(await page.locator('main').innerText(),errors);throw e;});
+ await page.getByLabel('Saved preset',{exact:true}).waitFor({timeout:3000}).catch(async e=>{console.log(await page.locator('main').innerText(),errors);throw e;});
  await page.getByRole('button',{name:'Harmony',exact:true}).click();
- await page.getByLabel('Mode',{exact:true}).selectOption('singing');
+ await page.goto(url+'#progression/singing');await page.getByRole('heading',{name:'Customize Progression · Degree Audiation',exact:true}).waitFor();
  await page.getByRole('button',{name:'Practice',exact:true}).click();
  await page.getByLabel('BPM',{exact:true}).fill('300');await page.getByLabel('BPM',{exact:true}).dispatchEvent('change');
  await page.getByLabel('Questions (0 = Unlimited)',{exact:true}).fill('1');await page.getByLabel('Questions (0 = Unlimited)',{exact:true}).dispatchEvent('change');
@@ -46,7 +46,7 @@ try{
  await page.goto(url+'#progression');await page.screenshot({path:'/tmp/progression-runtime-desktop.png',fullPage:true});await page.setViewportSize({width:390,height:844});await page.screenshot({path:'/tmp/progression-runtime-mobile.png',fullPage:true});
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);assert.deepEqual(errors,[]);
  await page.evaluate(()=>{const key='jazzEarLab:v2:progressionPresets',p=JSON.parse(localStorage.getItem(key));p.singing.levels=[0,0,0,0,0];p.singing.chords.forEach(c=>c.beats=1);localStorage.setItem(key,JSON.stringify(p));});
- await page.reload();await page.getByLabel('Mode',{exact:true}).selectOption('singing');await page.getByRole('button',{name:'Start practice',exact:true}).click();
+ await page.reload();await page.goto(url+'#progression/singing');await page.getByRole('heading',{name:'Customize Progression · Degree Audiation',exact:true}).waitFor();await page.getByRole('button',{name:'Start practice',exact:true}).click();
  const silentStart=Date.now();await page.waitForTimeout(500);assert.equal(await page.getByRole('button',{name:'Done — hear full reference',exact:true}).isDisabled(),true);
  await page.waitForFunction(()=>[...document.querySelectorAll('button')].some(b=>b.textContent==='Done — hear full reference'&&!b.disabled));assert.ok(Date.now()-silentStart>=1200,'silent count-in and progression finish before Done');
  await page.getByRole('button',{name:'Stop',exact:true}).click();await page.getByRole('button',{name:'Practice again',exact:true}).click();
@@ -62,7 +62,7 @@ try{
 
 
  await page.getByRole('button',{name:'Harmony',exact:true}).click();
- await page.getByLabel('Mode',{exact:true}).selectOption('recognition');
+ await page.goto(url+'#progression/recognition');await page.getByRole('heading',{name:'Customize Progression · Degree Recognition',exact:true}).waitFor();
  await page.getByRole('button',{name:'Practice',exact:true}).click();
  await page.getByLabel('Questions (0 = Unlimited)',{exact:true}).fill('0');await page.getByLabel('Questions (0 = Unlimited)',{exact:true}).dispatchEvent('change');
  await page.getByRole('button',{name:'Start practice',exact:true}).click();
