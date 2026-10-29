@@ -10,7 +10,7 @@ test('per-quality pools drive balanced quality sampling without changing old pre
  assert.equal(rows.filter(q=>q.chord.quality==='maj7').length,40);
  assert.deepEqual([...new Set(rows.filter(q=>q.chord.quality==='maj7').map(q=>q.degree))],['3']);
  for(const degree of ['1','b3','5','b7'])assert.equal(rows.filter(q=>q.chord.quality==='m7'&&q.degree===degree).length,10);
- assert.ok(rows.every(q=>q.options.length===12&&q.generatorVersion==='v2-quality-balanced-2'));
+ assert.ok(rows.every(q=>q.options.length===12&&q.generatorVersion==='v2-quality-balanced-3'));
  assert.equal(JSON.stringify(old),original);
  assert.throws(()=>validate({...config,targetPools:{maj7:[],m7:['b3']}}),/maj7/);
 });
