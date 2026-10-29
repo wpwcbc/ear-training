@@ -41,8 +41,8 @@ try{
  await page.getByRole('button',{name:'Correct',exact:true}).first().waitFor();await page.getByRole('button',{name:'Correct',exact:true}).first().click();
  await page.getByRole('button',{name:'Finish',exact:true}).click();await page.getByText('1 / 1 assessed notes',{exact:true}).waitFor();
  await page.getByRole('button',{name:'Overall Insights',exact:true}).click();await page.waitForURL(/#insights$/);await page.getByRole('heading',{name:'Insights',exact:true}).waitFor();
- assert.equal(await page.locator('.outcome').getAttribute('data-assessed'),'7');assert.equal(await page.locator('.outcome').getAttribute('data-correct'),'1');
- assert.ok((await page.locator('.supporting-metric').allTextContents()).join(' ').includes('Unavailable'));
+ assert.equal(await page.locator('[aria-label="Mixed practice including self-ratings"]').getAttribute('data-assessed'),'7');assert.equal(await page.locator('[aria-label="Mixed practice including self-ratings"]').getAttribute('data-correct'),'1');
+ assert.equal(await page.getByText('Mixed-practice response time',{exact:true}).count(),0);
  await page.goto(url+'#progression');await page.screenshot({path:'/tmp/progression-runtime-desktop.png',fullPage:true});await page.setViewportSize({width:390,height:844});await page.screenshot({path:'/tmp/progression-runtime-mobile.png',fullPage:true});
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);assert.deepEqual(errors,[]);
  await page.evaluate(()=>{const key='jazzEarLab:v2:progressionPresets',p=JSON.parse(localStorage.getItem(key));p.singing.levels=[0,0,0,0,0];p.singing.chords.forEach(c=>c.beats=1);localStorage.setItem(key,JSON.stringify(p));});

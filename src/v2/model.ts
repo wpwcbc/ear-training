@@ -427,3 +427,12 @@ export function metrics(input: Attempt[]) {
     timed: n,
   };
 }
+
+// Public reporting seam shared by Insights and its behaviour-level checks.
+export {insightRecords, insightStats, insightPeriod} from './insights.js';
+export {insightFilter, insightGroups} from './insights.js';
+export {insightPriorities, insightStratum, insightEligible, insightConditionLabel} from './insights.js';
+
+export {insightPractice} from './insights.js';
+export {insightTrend, insightKeyComparison} from './insights.js';
+export {insightEfficiency} from './insights.js';

@@ -1,10 +1,12 @@
-import { exerciseNames, progressionModes, progressionName, modeForExercise, isPlayByEar } from "./exercise-names.js";
+import { insightPractice } from "./insights.js";
+import { renderInsights } from "./insights-ui.js";
+import { exerciseNames, progressionModes, progressionName } from "./exercise-names.js";
 import { configurationChapters, configurationGroup, rememberGroups, practiceSummary } from "./configuration.js";
-import { mountProgression, progressionEvidence, progressionSessions, progressionConditions, instrumentalQuestions, completionSummary } from "./progression-ui.js";
+import { mountProgression, progressionRuns, progressionEvidence } from "./progression-ui.js";
 import { AudioEngine } from "../jazz/audio.js";
 import { parseChord, chordNotes, chordToneDegrees, degreeForPc } from "../jazz/theory.js";
 import { QuestionLifecycle } from "./question.js";
-import { builtins, primaryPresets, roots, qualities, degrees, validate, editableConfig, targetsFor, insightRows, stream, attempt, read, write, keys, metrics, } from "./model.js";
+import { builtins, primaryPresets, roots, qualities, degrees, validate, editableConfig, targetsFor, stream, attempt, read, write, keys, metrics, } from "./model.js";
 const host = document.getElementById("app"), error = document.getElementById("error");
 const audio = new AudioEngine();
 let question = null;
@@ -15,8 +17,9 @@ let session = null, current = null, generate = null;
 const configGroups = new Map();
 let step = "Harmony";
 let dirty = false, fatal = false;
-let insightModule = "overall", production = "all", auditionQuality = "";
-let rootFilter = "", qualityFilter = "";
+let auditionQuality = "";
+let insightPreview = null;
+const inInsightPreview = () => location.hash === "#insight-setup" && insightPreview?.kind === "single";
 let headingFocus = true, lastRoute = "", savedPresetId = "";
 let practiceSignature = "";
 function restoreControl(key) {
@@ -241,6 +244,12 @@ function autoSave() {
     const status = document.getElementById("config-status");
     try {
         const c = validate(draft);
+        if (inInsightPreview() && insightPreview?.kind === "single") {
+            insightPreview.config = c;
+            status.textContent = "Independent draft · source preset unchanged";
+            configRender();
+            return;
+        }
         preset().config = c;
         persist();
         status.textContent = dirty
@@ -307,8 +316,10 @@ function config() {
     const issue = configIssue();
     const page = el("section", "", "config-page"), header = el("header", "", "config-header");
     const modeName = exerciseNames[draft.exercise];
-    const title = heading("Customize " + preset().name + (preset().name === modeName ? "" : " — " + modeName));
+    const title = heading(inInsightPreview() ? "Customize " + modeName : "Customize " + preset().name + (preset().name === modeName ? "" : " — " + modeName));
     header.append(title);
+    if (inInsightPreview())
+        header.append(el("p", "Insights practice: " + insightPreview.label + ". Independent draft; source presets unchanged."), button("Back to Insights", () => location.hash = "insights"));
     const editor = el("section", "", "config-editor"), side = el("aside", "", "config-summary");
     editor.setAttribute("aria-label", "Preset settings");
     const tabs = el("nav", "", "steps config-tabs");
@@ -374,7 +385,7 @@ function config() {
         countLabel.append(count);
         editor.append(group("length", "Session length", draft.count === 0 ? "Unlimited" : `${Number.isNaN(draft.count) ? "Invalid" : draft.count} questions`, [countLabel], true));
         const options = [];
-        if (!primaryPresets.some(p => p.id === activeId))
+        if (!inInsightPreview() && !primaryPresets.some(p => p.id === activeId))
             options.push(select("Exercise", draft.exercise, ["m1", "m2"], value => { draft.exercise = value; autoSave(); }));
         if (draft.exercise === "m1")
             options.push(select("Response method (self-assessed)", draft.method, ["imagined", "sung", "played"], value => { draft.method = value; autoSave(); }));
@@ -450,7 +461,15 @@ function config() {
     status.dataset.state = issue ? "invalid" : dirty ? "unsaved" : "saved";
     status.setAttribute("role", "status");
     const launch = el("div", "", "config-launch");
-    launch.append(button("Start practice", () => start({ ...preset(), config: validate(draft) }), false, Boolean(issue)), status);
+    launch.append(button("Start practice", () => { if (inInsightPreview()) {
+        const p = { id: crypto.randomUUID(), name: "Insights: " + insightPreview.label, config: validate(draft) };
+        presets.push(p);
+        void start(p);
+    }
+    else
+        void start({ ...preset(), config: validate(draft) }); }, false, Boolean(issue)), status);
+    if (inInsightPreview())
+        status.textContent = "Independent draft · source preset unchanged";
     side.append(launch);
     const management = disclosure("Preset actions", button("Back to presets", () => location.hash = "home"));
     if (!primaryPresets.some(p => p.id === activeId))
@@ -479,7 +498,10 @@ function config() {
             location.hash = "home";
         }
     }));
-    side.append(management);
+    if (!inInsightPreview())
+        side.append(management);
+    else
+        side.append(button("Save as new preset", () => { const p = { id: crypto.randomUUID(), name: "Insights: " + insightPreview.label, config: validate(draft) }; presets.push(p); persist(); }));
     const layout = el("div", "", "config-layout");
     layout.append(editor, side);
     page.append(header, layout);
@@ -812,146 +834,18 @@ function results(id) {
     }
     host.append(review);
 }
-function customizeFocus(items, key) {
-    const mode = modeForExercise(items[0].exercise);
-    if (mode) {
-        location.hash = "progression/" + mode;
-        return;
-    }
-    const config = {
-        ...editableConfig(items[0].configurationSnapshot),
-        qualities: [items[0].target.chord.quality],
-        targetMode: "exact",
-        targets: [items[0].target.degree],
-        targetPools: { [items[0].target.chord.quality]: [items[0].target.degree] },
-    };
-    if (rootFilter)
-        config.roots = [rootFilter];
-    let focus = presets.find((p) => !builtins.some((b) => b.id === p.id) && JSON.stringify(p.config) === JSON.stringify(config));
-    if (!focus) {
-        focus = { id: crypto.randomUUID(), name: `Focus: ${exerciseNames[config.exercise]} ${key}${rootFilter ? " / " + rootFilter : ""}`, config };
-        presets.push(focus);
-    }
-    persist();
-    customize(focus);
-}
 function insights() {
     heading("Insights");
-    const all = [...sessions.flatMap(s => s.attempts), ...progressionEvidence()], scope = el("section", "", "insight-scope");
-    const nav = actions();
-    for (const [value, label] of [["overall", "Overall"], ...Object.entries(exerciseNames)])
-        nav.append(button(label, () => { insightModule = value; production = "all"; rootFilter = ""; qualityFilter = ""; render(); }, insightModule !== value));
-    scope.append(nav);
-    if (insightModule === "m1")
-        scope.append(select("Production category", production, ["all", "imagined-sung", "played"], value => { production = value; render(); }));
-    let rows = insightRows(all, insightModule, production);
-    host.append(scope);
-    if (!rows.length) {
-        const progressionMode = modeForExercise(insightModule);
-        const label = progressionMode ? progressionName(progressionMode) : "";
-        host.append(el("p", progressionMode ? `No ${label} records yet. Start a ${progressionMode === progressionModes.singlePlayByEar ? "single-chord" : "progression"} practice.` : "No matching V2 records. Choose an exercise to start practicing."), button(progressionMode ? `Practice ${label}` : "Practice", () => location.hash = progressionMode ? `progression/${progressionMode}` : "home"));
-        return;
+    const work = el("div");
+    host.append(work);
+    try {
+        renderInsights(work, sessions, progressionRuns(), progressionEvidence(), (record, label, filters) => { insightPreview = insightPractice(record, filters, label); if (insightPreview.kind === "single")
+            draft = editableConfig(insightPreview.config); step = "Harmony"; location.hash = "insight-setup"; });
     }
-    const c = rows[0].configurationSnapshot;
-    scope.append(el("p", "V2 outcomes · self-ratings and selected answers count equally. Self-ratings are not pitch-verified."));
-    const conditions = [...new Set(rows.map(a => a.progressionContext ? progressionConditions(a.progressionContext) : describe(a.configurationSnapshot)))];
-    const versions = [...new Set(rows.map(a => `${a.timingVersion} · ${a.target.generatorVersion}`))];
-    scope.append(disclosure("Source conditions", ...conditions.map(text => el("p", text)), disclosure("Technical versions", ...versions.map(text => el("p", text)))));
-    const historyEntries = [
-        ...sessions.map(s => ({ id: s.id, startedAt: s.startedAt, label: exerciseNames[s.config.exercise], count: s.attempts.length, unit: "records", ended: Boolean(s.endedAt), href: "#results/" + s.id })),
-        ...progressionSessions(),
-    ].sort((a, b) => b.startedAt.localeCompare(a.startedAt));
-    const filters = el("div", "", "insight-filters");
-    filters.append(select("Root", rootFilter || "All selected roots", ["All selected roots", ...new Set(rows.map((a) => a.target.chord.root))], (value) => {
-        rootFilter = value === "All selected roots" ? "" : value;
-        render();
-    }), select("Chord quality", qualityFilter || "All selected qualities", ["All selected qualities", ...new Set(rows.map((a) => a.target.chord.quality))], (value) => {
-        qualityFilter = value === "All selected qualities" ? "" : value;
-        render();
-    }));
-    host.append(scope, filters);
-    rows = rows.filter((a) => (!rootFilter || a.target.chord.root === rootFilter) && (!qualityFilter || a.target.chord.quality === qualityFilter));
-    if (!rows.length) {
-        host.append(el("p", "Not enough comparable data for these filters."), button("Clear filters", () => { rootFilter = ""; qualityFilter = ""; render(); }));
-        return;
+    catch (e) {
+        work.append(el("p", "Insights records could not be read. Existing history was preserved."), button("Retry Insights", () => { clearError(); render(); }));
+        report(e);
     }
-    const dates = historyEntries.filter((s) => rows.some((a) => a.sessionId === s.id)).map((s) => s.startedAt.slice(0, 10)).sort();
-    if (dates.length) {
-        const range = dates[0] === dates[dates.length - 1] ? dates[0] : `${dates[0]} to ${dates[dates.length - 1]}`;
-        scope.append(el("p", `Recorded ${range} · All matching sessions`, "scope-date"));
-    }
-    const cells = [...new Set(rows.map((a) => `${a.target.chord.quality}/${a.target.degree}`))].map((key) => {
-        const items = rows.filter((a) => `${a.target.chord.quality}/${a.target.degree}` === key);
-        return { key, items, m: metrics(items) };
-    });
-    const overview = summary(rows, c, false), body = overview.querySelector(".evidence-body");
-    overview.querySelector(".outcome h2").textContent = insightModule === "overall" ? "Combined degree accuracy" : (insightModule === "m1" || insightModule === "progression-singing" || insightModule === "single-play-by-ear" || insightModule === "progression-play-by-ear") ? "Self-rated accuracy" : "First-answer accuracy";
-    overview.querySelector(".assessment-source")?.remove();
-    const labels = overview.querySelectorAll(".supporting-metric > p");
-    labels[1].textContent = "Mixed-practice response time";
-    body.prepend(confusions(rows));
-    const selectedMode = modeForExercise(insightModule);
-    if (selectedMode && isPlayByEar(selectedMode)) {
-        const delay = completionSummary(instrumentalQuestions(insightModule));
-        delay.append(el("p", "Whole-question timing uses this module before note-level root/quality filters."));
-        body.append(delay);
-    }
-    body.append(el("p", "M1 Done and M2 answer submission use different readiness boundaries. Mixed-practice time is not pure recognition speed or measured performance onset."));
-    overview.querySelector(".evidence-notes > p:last-child")?.remove();
-    overview.querySelector(".evidence-notes").append(el("p", "Methods, pools, mix and versions remain in source records; totals combine mixed practice."));
-    const patterns = el("section", "", "patterns");
-    patterns.append(el("h2", "Chord-degree performance"));
-    patterns.append(el("p", "Descriptive observations, not a diagnosis. Sample counts and practice conditions may differ."));
-    for (const cell of cells) {
-        const row = el("article", "", "pattern-row");
-        row.append(el("h3", cell.key.replace("/", " / ")), el("strong", `${cell.m.correct} / ${cell.m.n} assessed`), button(cell.items.every(a => modeForExercise(a.exercise)) ? "Progression settings" : "Customize focus", () => customizeFocus(cell.items, cell.key)));
-        patterns.append(row);
-    }
-    const notes = body.querySelector(".evidence-notes");
-    body.prepend(patterns);
-    const table = el("table"), head = el("tr");
-    table.append(el("caption", "Chord Quality × Degree"));
-    for (const name of ["Quality / degree", "Correct / assessed", "Replay-assisted", "Correct median (n)", "Practice"]) {
-        const th = el("th", name);
-        th.scope = "col";
-        head.append(th);
-    }
-    const thead = el("thead");
-    thead.append(head);
-    table.append(thead);
-    const tbody = el("tbody");
-    for (const cell of cells) {
-        const tr = el("tr"), m = cell.m;
-        tr.append(el("td", cell.key), el("td", `${m.correct}/${m.n}`), el("td", `${m.replayed}/${m.n}`), el("td", `${m.median === null ? "Unavailable" : (m.median / 1000).toFixed(2) + "s"} (${m.timed})`));
-        const td = el("td");
-        td.append(button(cell.items.every(a => modeForExercise(a.exercise)) ? "Progression settings" : "Customize focus", () => customizeFocus(cell.items, cell.key)));
-        tr.append(td);
-        tbody.append(tr);
-    }
-    table.append(tbody);
-    const scroll = el("div", "", "table-scroll");
-    scroll.tabIndex = 0;
-    scroll.setAttribute("role", "region");
-    scroll.setAttribute("aria-label", "Chord quality and degree breakdown");
-    scroll.append(table);
-    const detail = disclosure("Detailed breakdown", scroll, confusions(rows), notes);
-    detail.className = "insight-detail";
-    const history = el("ul", "", "session-history");
-    const matching = historyEntries.filter(s => rows.some(a => a.sessionId === s.id));
-    for (const s of matching) {
-        const item = el("li"), link = el("a", `${s.startedAt.slice(0, 10)} · ${s.label} · ${s.count} ${s.unit}${s.ended ? "" : " (interrupted)"}`);
-        link.href = s.href;
-        item.append(link);
-        history.append(item);
-    }
-    if (matching[0]) {
-        const link = el("a", "View latest matching session", "session-link");
-        link.href = matching[0].href;
-        const item = el("li");
-        item.append(link);
-        history.prepend(item);
-    }
-    host.append(overview, detail, disclosure("Sessions", history));
 }
 let disposeProgression;
 function render() {
@@ -986,7 +880,16 @@ function render() {
         audio.stop();
     }
     host.replaceChildren();
-    if (route === "progression" || route.startsWith("progression/")) {
+    if (route === "insight-setup" && insightPreview) {
+        if (insightPreview.kind === "progression")
+            disposeProgression = mountProgression(host, insightPreview.config.mode, false, undefined, insightPreview);
+        else
+            config();
+    }
+    else if (route === "insight-setup") {
+        host.append(el("p", "This temporary draft is no longer available. Return to its Insights evidence."), button("Back to Insights", () => location.hash = "insights"));
+    }
+    else if (route === "progression" || route.startsWith("progression/")) {
         try {
             disposeProgression = mountProgression(host, Object.values(progressionModes).find(mode => mode === route.split("/")[1]) ?? progressionModes.degreeRecognition, route.endsWith("/start"), route.split("/")[2] === "results" ? decodeURIComponent(route.split("/")[3] ?? "") : undefined);
         }

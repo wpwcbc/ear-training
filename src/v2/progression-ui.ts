@@ -29,7 +29,7 @@ import {
   type ProgressionConfig,
   type ProgressionQuestion,
 } from "./progression.js";
-interface Run {
+export interface Run {
   id: string;
   config: ProgressionConfig;
   questions: ProgressionQuestion[];
@@ -45,6 +45,7 @@ if (typeof window !== "undefined")
       e.returnValue = "";
     }
   });
+export function progressionRuns(): Run[] { return retainedRuns ?? read<Run[]>(historyKey, []); }
 export function progressionEvidence(): Attempt[] {
   const runs = retainedRuns ?? read<Run[]>(historyKey, []);
   return runs.flatMap((run) =>
@@ -138,6 +139,7 @@ export function mountProgression(
   initialMode: ProgressionMode = progressionModes.degreeRecognition,
   autoStart = false,
   resultId?: string,
+  preview?: {config:ProgressionConfig;label:string},
 ) {
   const host = document.createElement("div");
   host.className = "progression-work";
@@ -160,8 +162,9 @@ export function mountProgression(
   const buttonCounts = new Map<string, number>();
   let ratingFocus = false, feedback = "", phase = "";
   let errorDraft: Record<string,string> = {};
+  let previewActive=Boolean(preview);
   let config = structuredClone(
-      presets[initialMode]?.mode === initialMode ? presets[initialMode] : defaultConfig(initialMode),
+      preview?.config ?? (presets[initialMode]?.mode === initialMode ? presets[initialMode] : defaultConfig(initialMode)),
     ),
     message = retainedRuns
       ? "Unsaved progression results retained. Retry saving."
@@ -291,6 +294,7 @@ export function mountProgression(
   };
   function persistConfig() {
     const valid = validate(config);
+    if(previewActive&&preview){preview.config=valid;configUnsaved=false;return;}
     configUnsaved = true;
     write(presetKey, { ...presets, [presetId]: valid });
     presets[presetId] = valid;
@@ -494,6 +498,7 @@ export function mountProgression(
     const presetControls = el("div"); presetControls.className = "config-preset-controls";
     presetControls.append(label("Saved preset"), action("Save as new preset"));
     header.append(title, presetControls);
+    if(preview)header.append(el("p", "Insights practice: "+preview.label+". Independent draft; source presets unchanged. Key narrowing is shown below. Degree targeting affects every occurrence of that chord quality."),button("Back to Insights",()=>{location.hash="insights";}));
     tabs.className = "steps config-tabs"; tabs.setAttribute("aria-label", "Configuration chapters");
     for (const name of configurationChapters) {
       const tab = button(name, () => { settingsStep = name; render(); });
@@ -595,7 +600,7 @@ export function mountProgression(
     compact.className = "config-mobile-overview"; header.append(compact);
     const launch = el("div"); launch.className = "config-launch";
     const start = action("Start practice") as HTMLButtonElement; start.disabled = Boolean(issue);
-    const status = el("p", issue ? "Invalid settings. Review the highlighted group." : configUnsaved ? `Not saved to ${presetId}. Retry saving.` : `Saved preset: ${Object.values(progressionModes).includes(presetId as ProgressionMode) ? progressionName(presetId as ProgressionMode) : presetId}`);
+    const status = el("p", previewActive&&!issue ? "Independent Insights draft · source preset unchanged" : issue ? "Invalid settings. Review the highlighted group." : configUnsaved ? `Not saved to ${presetId}. Retry saving.` : `Saved preset: ${Object.values(progressionModes).includes(presetId as ProgressionMode) ? progressionName(presetId as ProgressionMode) : presetId}`);
     status.id = "progression-save-status"; status.className = "notice";
     status.dataset.state = issue ? "invalid" : configUnsaved ? "unsaved" : "saved"; status.setAttribute("role", "status");
     launch.append(start, status); side.append(launch);
@@ -738,6 +743,7 @@ export function mountProgression(
             throw Error("That preset name already exists.");
           write(presetKey, { ...presets, [presetId]: valid });
           presets[presetId] = valid;
+          previewActive=false;
           render();
         }),
       );
