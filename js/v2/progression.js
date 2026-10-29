@@ -64,7 +64,52 @@ export function validate(input) {
     }
     return c;
 }
-export function generate(input, random = Math.random, drawnKey, previousStartDegree) {
+/** Randomize which positions get first choice, then repair adjacent pitches globally. */
+function phraseTargets(choices, random) {
+    const pick = (items) => items[Math.floor(random() * items.length)];
+    const order = choices.map((_, i) => i);
+    for (let i = order.length - 1; i > 0; i--) {
+        const j = Math.floor(random() * (i + 1));
+        [order[i], order[j]] = [order[j], order[i]];
+    }
+    const targets = new Array(choices.length);
+    const uses = new Map();
+    for (const i of order) {
+        let candidates = choices[i];
+        const different = candidates.filter(n => n.midi !== targets[i - 1]?.midi && n.midi !== targets[i + 1]?.midi);
+        if (different.length)
+            candidates = different;
+        const leastUsed = Math.min(...candidates.map(n => uses.get(n.midi) ?? 0));
+        const target = pick(candidates.filter(n => (uses.get(n.midi) ?? 0) === leastUsed));
+        targets[i] = target;
+        uses.set(target.midi, (uses.get(target.midi) ?? 0) + 1);
+    }
+    if (targets.every((n, i) => !i || n.midi !== targets[i - 1].midi))
+        return targets;
+    // A random fill can trap a position between two assigned neighbors. Find a
+    // whole-phrase repair: minimize adjacent repeats first, then changed targets.
+    // One repeat costs more than changing every target; singleton pools still work.
+    const repeatCost = choices.length + 1;
+    const paths = [];
+    for (let i = 0; i < choices.length; i++) {
+        paths.push(choices[i].map(target => {
+            const changeCost = Number(target !== targets[i]);
+            if (!i)
+                return { cost: changeCost, previous: -1 };
+            const costs = paths[i - 1].map((path, j) => path.cost + changeCost + (choices[i - 1][j].midi === target.midi ? repeatCost : 0));
+            const best = Math.min(...costs);
+            return { cost: best, previous: pick(costs.flatMap((cost, j) => cost === best ? [j] : [])) };
+        }));
+    }
+    const last = paths[paths.length - 1], best = Math.min(...last.map(path => path.cost));
+    let selected = pick(last.flatMap((path, j) => path.cost === best ? [j] : []));
+    for (let i = choices.length - 1; i >= 0; i--) {
+        targets[i] = choices[i][selected];
+        selected = paths[i][selected].previous;
+    }
+    return targets;
+}
+export function generate(input, random = Math.random, drawnKey) {
     const source = validate(input), config = structuredClone(source), key = drawnKey ?? (source.keyMode === "random" ? source.keyPool[Math.floor(random() * source.keyPool.length)] : source.key), id = crypto.randomUUID();
     if (!practiceKeys.includes(key) || (source.keyMode === "random" && !source.keyPool.includes(key)))
         throw Error("Unsupported practice key.");
@@ -74,51 +119,34 @@ export function generate(input, random = Math.random, drawnKey, previousStartDeg
     }
     const offset = source.mode === progressionModes.singlePlayByEar ? 0 : pitchClass(key);
     config.chords = config.chords.map(row => { const chord = parseChord(row.symbol); return offset === 0 ? { ...row } : { ...row, symbol: practiceKeys[(pitchClass(chord.root) + offset) % 12] + chord.quality }; });
-    const pitchUses = new Map();
-    let previousPitch;
+    const slots = config.chords.flatMap((row, occurrence) => {
+        const chord = parseChord(row.symbol);
+        return Array.from({ length: config.notes }, (_, position) => ({ chord, occurrence, position }));
+    });
+    const targets = phraseTargets(slots.map(({ chord }) => config.pools[chord.quality].map(degree => ({ degree, midi: inRange(targetPc(chord, degree), 60, 83) }))), random);
     return {
         id,
-        config, source, practiceKey: key, generatorVersion: "v2-keyed-progression-2",
+        config, source, practiceKey: key, generatorVersion: "v2-keyed-progression-3",
         created: new Date().toISOString(),
         submitted: false,
         done: false,
         before: 0,
         after: 0,
-        notes: config.chords.flatMap((row, occurrence) => {
-            const chord = parseChord(row.symbol), pool = config.pools[chord.quality];
-            return Array.from({ length: config.notes }, (_, position) => {
-                let candidates = pool.map(degree => ({ degree, midi: inRange(targetPc(chord, degree), 60, 83) }));
-                if (occurrence === 0 && position === 0 && candidates.some(n => n.degree !== previousStartDegree))
-                    candidates = candidates.filter(n => n.degree !== previousStartDegree);
-                // Across the whole phrase, avoid adjacent pitches first, then prefer
-                // unused (or least-used) pitches. Never leave the configured pool.
-                if (candidates.some(n => n.midi !== previousPitch))
-                    candidates = candidates.filter(n => n.midi !== previousPitch);
-                const leastUsed = Math.min(...candidates.map(n => pitchUses.get(n.midi) ?? 0));
-                candidates = candidates.filter(n => (pitchUses.get(n.midi) ?? 0) === leastUsed);
-                const { degree, midi } = candidates[Math.floor(random() * candidates.length)];
-                previousPitch = midi;
-                pitchUses.set(midi, (pitchUses.get(midi) ?? 0) + 1);
-                return {
-                    id: `${id}:${occurrence}:${position}`,
-                    occurrence,
-                    position,
-                    chord,
-                    degree,
-                    midi,
-                    answer: null,
-                    correct: null,
-                    assisted: false,
-                };
-            });
-        }),
+        notes: slots.map((slot, i) => ({
+            id: `${id}:${slot.occurrence}:${slot.position}`,
+            ...slot,
+            ...targets[i],
+            answer: null,
+            correct: null,
+            assisted: false,
+        })),
     };
 }
 /** One frozen session: only requesting a new question consumes a key draw. */
 export function questionStream(input, random = Math.random) {
     const source = validate(input);
     const singleNext = source.mode === progressionModes.singlePlayByEar ? stream({ ...builtins[0].config, exercise: "m2", roots: source.roots, qualities: source.qualities, targetMode: "exact", targetPools: source.pools, targets: [...new Set(Object.values(source.pools).flat())] }, crypto.randomUUID()) : null;
-    let bag = [], last = "", previousStartDegree;
+    let bag = [], last = "";
     return () => {
         let key = source.key;
         if (source.keyMode === "random") {
@@ -134,14 +162,13 @@ export function questionStream(input, random = Math.random) {
             key = bag.shift();
             last = key;
         }
-        const question = generate(source, random, key, previousStartDegree);
+        const question = generate(source, random, key);
         if (singleNext) {
             const target = singleNext();
             question.config.chords = [{ symbol: target.chord.symbol, beats: 4 }];
             Object.assign(question.notes[0], { chord: target.chord, degree: target.degree, midi: target.midi });
             delete question.practiceKey;
         }
-        previousStartDegree = question.notes[0].degree;
         return question;
     };
 }
