@@ -16,7 +16,6 @@ import {
   type Attempt,
 } from "./model.js";
 import {
-  defaults,
   defaultConfig, performanceComplete, finishPerformance, assessPerformance, completionTiming,
   practiceKeys,
   templates,
@@ -162,7 +161,7 @@ export function mountProgression(
   let ratingFocus = false, feedback = "", phase = "";
   let errorDraft: Record<string,string> = {};
   let config = structuredClone(
-      presets[initialMode] ?? defaultConfig(initialMode),
+      presets[initialMode]?.mode === initialMode ? presets[initialMode] : defaultConfig(initialMode),
     ),
     message = retainedRuns
       ? "Unsaved progression results retained. Retry saving."
@@ -493,7 +492,7 @@ export function mountProgression(
     const label = (name: string) => nodes.find(node => node.tagName === "LABEL" && node.querySelector("[aria-label]")?.getAttribute("aria-label") === name)!;
     const action = (name: string) => nodes.find(node => node.tagName === "BUTTON" && node.textContent === name)!;
     const presetControls = el("div"); presetControls.className = "config-preset-controls";
-    presetControls.append(label("Mode"), label("Saved preset"), action("Save as new preset"));
+    presetControls.append(label("Saved preset"), action("Save as new preset"));
     header.append(title, presetControls);
     tabs.className = "steps config-tabs"; tabs.setAttribute("aria-label", "Configuration chapters");
     for (const name of configurationChapters) {
@@ -555,13 +554,13 @@ export function mountProgression(
         }
         pool.append(choices, button("All", () => { config.keyPool = [...practiceKeys]; persistConfig(); render(); })); keyControls.append(pool);
       }
-      content.push(group("keys", "Practice key", config.keyMode === "random" ? "Random: " + (config.keyPool ?? practiceKeys).join(", ") : "Fixed " + (config.key ?? "C"), [keyControls], true));
+      content.push(group("keys", "Practice key", config.keyMode === "random" ? "Random: " + (config.keyPool ?? practiceKeys).join(", ") : "Fixed " + (config.key ?? "C"), [el("p", "Enter your chords in C key below. Choose a fixed playback key, or Random key to draw from your selected keys for each question. Your C-key chords stay unchanged."), keyControls], true));
       const chords = nodes.filter(node => node.classList.contains("actions") && Array.from(node.querySelectorAll("input[aria-label]")).some(field => /^Chord \d+$/.test(field.getAttribute("aria-label")!)));
       chords.forEach((row, i) => {
         row.className = "chord-editor-row"; row.setAttribute("role", "group"); row.setAttribute("aria-label", "Chord " + (i + 1) + " settings");
         row.querySelectorAll("button").forEach(b => { b.setAttribute("aria-label", b.textContent!); b.textContent = b.textContent?.startsWith("Move") ? "Up" : "Remove"; });
       });
-      content.push(group("template", "Template and key", config.chords.map(row => row.symbol).join(" → "), [template], true),
+      content.push(group("template", "C-key template", config.chords.map(row => row.symbol).join(" → "), [template], true),
         group("chords", "Chord sequence", `${config.chords.length} chords · ${config.chords.map(row => row.beats).join(" / ")} beats`, [...chords, action("Add chord")], true));
     }
     if (settingsStep === "Target degrees") {
@@ -720,23 +719,14 @@ export function mountProgression(
     }
     if (view === "settings") {
       host.append(
-        select("Mode", config.mode, Object.values(progressionModes), (value) => {
-          presetId = value;
-          configUnsaved = false;
-          config = structuredClone(
-            presets[value] ?? defaultConfig(value as ProgressionMode),
-          );
-        }),
-      );
-      host.append(
         select(
           "Saved preset",
           presetId,
-          [...new Set([presetId, ...Object.keys(presets)])],
+          [...new Set([presetId, ...Object.keys(presets).filter(id => presets[id].mode === config.mode)])],
           (value) => {
             presetId = value;
             configUnsaved = false;
-            config = structuredClone(presets[value] ?? defaults);
+            config = structuredClone(presets[value] ?? defaultConfig(config.mode));
           },
         ),
         button("Save as new preset", () => {

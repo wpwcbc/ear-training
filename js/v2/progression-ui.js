@@ -3,7 +3,7 @@ import { configurationChapters, configurationGroup, rememberGroups, practiceSumm
 import { AudioEngine } from "../jazz/audio.js";
 import { parseChord, qualities, degrees, } from "../jazz/theory.js";
 import { read, write, optionsFor, attempt, builtins, } from "./model.js";
-import { defaults, defaultConfig, performanceComplete, finishPerformance, assessPerformance, completionTiming, practiceKeys, templates, validate, questionStream, submit, rate, report, sequence, addQualityPools, } from "./progression.js";
+import { defaultConfig, performanceComplete, finishPerformance, assessPerformance, completionTiming, practiceKeys, templates, validate, questionStream, submit, rate, report, sequence, addQualityPools, } from "./progression.js";
 const presetKey = "jazzEarLab:v2:progressionPresets", historyKey = "jazzEarLab:v2:progressionHistory";
 let retainedRuns = null;
 if (typeof window !== "undefined")
@@ -117,7 +117,7 @@ export function mountProgression(root, initialMode = progressionModes.degreeReco
     const buttonCounts = new Map();
     let ratingFocus = false, feedback = "", phase = "";
     let errorDraft = {};
-    let config = structuredClone(presets[initialMode] ?? defaultConfig(initialMode)), message = retainedRuns
+    let config = structuredClone(presets[initialMode]?.mode === initialMode ? presets[initialMode] : defaultConfig(initialMode)), message = retainedRuns
         ? "Unsaved progression results retained. Retry saving."
         : "";
     const el = (tag, text = "") => {
@@ -462,7 +462,7 @@ export function mountProgression(root, initialMode = progressionModes.degreeReco
         const action = (name) => nodes.find(node => node.tagName === "BUTTON" && node.textContent === name);
         const presetControls = el("div");
         presetControls.className = "config-preset-controls";
-        presetControls.append(label("Mode"), label("Saved preset"), action("Save as new preset"));
+        presetControls.append(label("Saved preset"), action("Save as new preset"));
         header.append(title, presetControls);
         tabs.className = "steps config-tabs";
         tabs.setAttribute("aria-label", "Configuration chapters");
@@ -573,7 +573,7 @@ export function mountProgression(root, initialMode = progressionModes.degreeReco
                 pool.append(choices, button("All", () => { config.keyPool = [...practiceKeys]; persistConfig(); render(); }));
                 keyControls.append(pool);
             }
-            content.push(group("keys", "Practice key", config.keyMode === "random" ? "Random: " + (config.keyPool ?? practiceKeys).join(", ") : "Fixed " + (config.key ?? "C"), [keyControls], true));
+            content.push(group("keys", "Practice key", config.keyMode === "random" ? "Random: " + (config.keyPool ?? practiceKeys).join(", ") : "Fixed " + (config.key ?? "C"), [el("p", "Enter your chords in C key below. Choose a fixed playback key, or Random key to draw from your selected keys for each question. Your C-key chords stay unchanged."), keyControls], true));
             const chords = nodes.filter(node => node.classList.contains("actions") && Array.from(node.querySelectorAll("input[aria-label]")).some(field => /^Chord \d+$/.test(field.getAttribute("aria-label"))));
             chords.forEach((row, i) => {
                 row.className = "chord-editor-row";
@@ -581,7 +581,7 @@ export function mountProgression(root, initialMode = progressionModes.degreeReco
                 row.setAttribute("aria-label", "Chord " + (i + 1) + " settings");
                 row.querySelectorAll("button").forEach(b => { b.setAttribute("aria-label", b.textContent); b.textContent = b.textContent?.startsWith("Move") ? "Up" : "Remove"; });
             });
-            content.push(group("template", "Template and key", config.chords.map(row => row.symbol).join(" → "), [template], true), group("chords", "Chord sequence", `${config.chords.length} chords · ${config.chords.map(row => row.beats).join(" / ")} beats`, [...chords, action("Add chord")], true));
+            content.push(group("template", "C-key template", config.chords.map(row => row.symbol).join(" → "), [template], true), group("chords", "Chord sequence", `${config.chords.length} chords · ${config.chords.map(row => row.beats).join(" / ")} beats`, [...chords, action("Add chord")], true));
         }
         if (settingsStep === "Target degrees") {
             content.push(el("p", "Choose the degrees to practise against each chord quality."));
@@ -747,15 +747,10 @@ export function mountProgression(root, initialMode = progressionModes.degreeReco
                 }));
         }
         if (view === "settings") {
-            host.append(select("Mode", config.mode, Object.values(progressionModes), (value) => {
+            host.append(select("Saved preset", presetId, [...new Set([presetId, ...Object.keys(presets).filter(id => presets[id].mode === config.mode)])], (value) => {
                 presetId = value;
                 configUnsaved = false;
-                config = structuredClone(presets[value] ?? defaultConfig(value));
-            }));
-            host.append(select("Saved preset", presetId, [...new Set([presetId, ...Object.keys(presets)])], (value) => {
-                presetId = value;
-                configUnsaved = false;
-                config = structuredClone(presets[value] ?? defaults);
+                config = structuredClone(presets[value] ?? defaultConfig(config.mode));
             }), button("Save as new preset", () => {
                 const name = prompt("Preset name");
                 if (!name?.trim())

@@ -15,8 +15,9 @@ try {
  await page.goto(base+'#insights');await page.getByRole('heading',{name:'Insights',exact:true}).waitFor();
  await button('Progression · Degree Audiation').click();
  await page.getByText('No Progression · Degree Audiation records yet. Start a progression practice.',{exact:true}).waitFor();
- await button('Practice Progression · Degree Audiation').click();await page.getByLabel('Mode',{exact:true}).waitFor();
- assert.equal(await page.getByLabel('Mode',{exact:true}).inputValue(),'singing');
+ await button('Practice Progression · Degree Audiation').click();await page.getByLabel('Saved preset',{exact:true}).waitFor();
+ await page.getByRole('heading',{name:'Customize Progression · Degree Audiation',exact:true}).waitFor();
+ assert.equal(await page.getByLabel('Mode',{exact:true}).count(),0);
  await page.getByRole('spinbutton',{name:'Chord 2 beats',exact:true}).waitFor();
  assert.equal(await button('Remove chord 2').count(),1);assert.equal(await button('Move chord 2 up').count(),1);
  await enter('Target degrees');await page.waitForFunction(()=>document.activeElement?.textContent==='Target degrees');
@@ -77,7 +78,7 @@ try {
  assert.equal(await page.locator('.progression-review-group').evaluate(n=>n.open),true);
  await capture('results-reference-complete-320');
  // A fresh Recognition run checks the submit path independently of self-ratings.
- await page.goto(base+'#progression/recognition');await page.getByLabel('Mode',{exact:true}).waitFor();
+ await page.goto(base+'#progression/recognition');await page.getByLabel('Saved preset',{exact:true}).waitFor();
  await button('Practice').click();
  for(const [label,value] of [['BPM','300'],['Questions (0 = Unlimited)','1']]){await page.getByLabel(label,{exact:true}).fill(value);await page.getByLabel(label,{exact:true}).dispatchEvent('change');}
  await button('Start practice').click();
