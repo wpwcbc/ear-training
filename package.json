@@ -20,6 +20,7 @@
 		"test:v2:critique": "node tests/browser-v2-critique.mjs",
 		"test:entry": "node tests/browser-entry.mjs",
 		"benchmark:summary": "node scripts/benchmark-summary.mjs",
-		"watch": "tsc -p . -w"
+		"watch": "tsc -p . -w",
+		"test:v2:insights": "node tests/browser-v2-actionable-insights.mjs && node tests/browser-v2-actionable-insights-state.mjs"
 	}
 }

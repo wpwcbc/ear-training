@@ -404,3 +404,27 @@ tabular numerals, and do not claim measured motor/rhythmic performance. No new
 family, color palette, decorative motion or raster runtime assets are introduced.
 See the [implementation report](../V2_KEYS_AND_PLAY_BY_EAR_IMPLEMENTATION.md) and
 [actual captures](../.impeccable/review/v2-keys-play-by-ear/README.md).
+
+
+## Actionable Insights delivery — 2026-10-29
+
+Insights now uses compact family/context and local-period scope, recent accuracy
+and sample counts, up to three evidence-based practice priorities, progressive
+Key/Chord/Degree exploration, applicable efficiency and disclosed full evidence.
+Desktop places the main result and priorities alongside each other; mobile keeps
+the same reading order. Overall shows three families with independent contexts,
+compact empty states and a secondary combined mixed-practice total.
+
+The existing Signal Route black/yellow/light ground, Source Sans 3 roles, flat
+rules and native controls are retained. Yellow marks active context/dimension and
+the Setup practice action; descriptive empty keys do not masquerade as failures.
+Keyboard drill-down moves to the new analysis heading when the prior control
+disappears; compatible musical scope is retained and incompatible removal stated.
+
+Actual practice key, chord root, full chord and degree remain distinct. Original
+spellings survive canonical grouping, and question-level instrumental delay is
+never rendered as per-chord or per-degree speed. Independent setup drafts preserve
+source presets. See [delivery and review](../V2_ACTIONABLE_INSIGHTS_IMPLEMENTATION.md)
+and [synthetic-fixture runtime captures](../.impeccable/review/v2-actionable-insights/README.md).
+This extension changes no design tokens or Legacy identity; it is not a claim of
+Safari/iOS, human screen-reader or learning-efficacy certification.

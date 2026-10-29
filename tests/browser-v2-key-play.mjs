@@ -78,10 +78,10 @@ try{
  const annotation=page.getByLabel('Degree you played · 1/2',{exact:true});const option=await annotation.locator('option').nth(1).getAttribute('value');await annotation.selectOption(option);
  await button('Remaining notes correct and submit').click();await page.getByText('4 / 6 assessed notes',{exact:true}).waitFor();
  await button('Finish').click();await page.getByText('4 / 6 assessed notes',{exact:true}).waitFor();await capture('progression-results');
- await button('Overall Insights').click();await button('Progression · Play by Ear').click();
+ await button('Overall Insights').click();await page.getByLabel('Practice family',{exact:true}).selectOption('Play by Ear');await button('Progression').click();
  await page.getByText('4 / 6 assessed',{exact:true}).waitFor();await page.getByText('Unavailable · n=0 eligible questions',{exact:true}).waitFor();await capture('play-insights');
- await button('Overall').click();await page.getByText('5 / 7 assessed',{exact:true}).waitFor();
- await page.getByText('Sessions',{exact:true}).click();const latest=page.getByRole('link',{name:'View latest matching session',exact:true});await latest.click();
+ await page.getByLabel('Practice family',{exact:true}).selectOption('Overall');await page.getByText('Combined degree accuracy',{exact:true}).click();await page.getByText('5 / 7 assessed',{exact:true}).waitFor();await page.getByLabel('Practice family',{exact:true}).selectOption('Play by Ear');await button('Progression').click();
+ await page.locator('summary').filter({hasText:/^Sessions$/}).click();const latest=page.getByRole('link',{name:'View latest matching session',exact:true});await latest.click();
  await page.getByText('4 / 6 assessed notes',{exact:true}).waitFor();await page.reload();await page.getByText('4 / 6 assessed notes',{exact:true}).waitFor();
  assert.deepEqual(errors,[]);
  console.log('PASS homepage mode retained, mode-scoped presets and stale-preset recovery; fixed/random keys; both Play by Ear automatic cycles, 4/6 mixed grades, Overall5/7, isolated delay and matching-history reload.');

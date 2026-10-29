@@ -13,8 +13,8 @@ try {
  const enter=async name=>{await button(name).focus();await page.keyboard.press('Enter');};
  const capture=async name=>{assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,name+' page overflow');if(folder)await page.screenshot({path:`${folder}/${name}.png`,fullPage:true});};
  await page.goto(base+'#insights');await page.getByRole('heading',{name:'Insights',exact:true}).waitFor();
- await button('Progression · Degree Audiation').click();
- await page.getByText('No Progression · Degree Audiation records yet. Start a progression practice.',{exact:true}).waitFor();
+ await page.getByLabel('Practice family',{exact:true}).selectOption('Degree Audiation');await button('Progression').click();
+ await page.getByText('No records for this exercise yet.',{exact:true}).waitFor();
  await button('Practice Progression · Degree Audiation').click();await page.getByLabel('Saved preset',{exact:true}).waitFor();
  await page.getByRole('heading',{name:'Customize Progression · Degree Audiation',exact:true}).waitFor();
  assert.equal(await page.getByLabel('Mode',{exact:true}).count(),0);
@@ -44,7 +44,7 @@ try {
  await enter('Finish');await button('Overall Insights').waitFor();
  await button('Overall Insights').click();await page.getByRole('heading',{name:'Insights',exact:true}).waitFor();
  assert.equal(await page.locator('#practice-announcement').textContent(),'');
- await button('Progression · Degree Audiation').click();
+ await page.getByLabel('Practice family',{exact:true}).selectOption('Degree Audiation');await button('Progression').click();
  await page.locator('.assessment-count').filter({hasText:/^1 \/ 1 assessed$/}).waitFor();
  await page.getByText('Source conditions',{exact:true}).click();
  const conditions=await page.locator('details').filter({has:page.locator('summary').filter({hasText:/^Source conditions$/})}).innerText();
@@ -52,7 +52,7 @@ try {
  assert.match(conditions,/300 BPM/);assert.doesNotMatch(conditions,/\{"mode"|"pools"|"levels"/);
  assert.equal(await page.getByText('progression-timing-not-recorded · v2-progression-1',{exact:true}).isVisible(),false);
  await capture('insights-readable-conditions-320');
- await page.getByText('Sessions',{exact:true}).click();
+ await page.locator('summary').filter({hasText:/^Sessions$/}).click();
  const latest=page.getByRole('link',{name:'View latest matching session',exact:true});
  const href=await latest.getAttribute('href');assert.match(href,/#progression\/singing\/results\//);
  await latest.click();await button('Practice again').waitFor();
@@ -88,8 +88,8 @@ try {
  assert.notEqual(await page.evaluate(()=>document.activeElement?.tagName),'BODY');
  assert.match(await page.locator('#practice-announcement').textContent(),/Answers checked/);
  await enter('Finish');await button('Overall Insights').click();
- await page.getByRole('heading',{name:'Insights',exact:true}).waitFor();await button('Progression · Degree Recognition').click();
- await page.getByText('Sessions',{exact:true}).click();
+ await page.getByRole('heading',{name:'Insights',exact:true}).waitFor();await page.getByLabel('Practice family',{exact:true}).selectOption('Degree Recognition');await button('Progression').click();
+ await page.locator('summary').filter({hasText:/^Sessions$/}).click();
  assert.match(await page.getByRole('link',{name:'View latest matching session',exact:true}).getAttribute('href'),/#progression\/recognition\/results\//);
  await page.getByRole('link',{name:'View latest matching session',exact:true}).click();await page.getByText('0 / 6 assessed notes',{exact:true}).waitFor();
  assert.deepEqual(errors,[]);

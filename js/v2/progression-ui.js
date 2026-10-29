@@ -13,6 +13,7 @@ if (typeof window !== "undefined")
             e.returnValue = "";
         }
     });
+export function progressionRuns() { return retainedRuns ?? read(historyKey, []); }
 export function progressionEvidence() {
     const runs = retainedRuns ?? read(historyKey, []);
     return runs.flatMap((run) => run.questions.flatMap((q) => q.notes.map((n) => {
@@ -105,7 +106,7 @@ export function progressionConditions(context) {
         return "Progression · stored conditions unavailable";
     }
 }
-export function mountProgression(root, initialMode = progressionModes.degreeRecognition, autoStart = false, resultId) {
+export function mountProgression(root, initialMode = progressionModes.degreeRecognition, autoStart = false, resultId, preview) {
     const host = document.createElement("div");
     host.className = "progression-work";
     const audio = new AudioEngine();
@@ -117,7 +118,8 @@ export function mountProgression(root, initialMode = progressionModes.degreeReco
     const buttonCounts = new Map();
     let ratingFocus = false, feedback = "", phase = "";
     let errorDraft = {};
-    let config = structuredClone(presets[initialMode]?.mode === initialMode ? presets[initialMode] : defaultConfig(initialMode)), message = retainedRuns
+    let previewActive = Boolean(preview);
+    let config = structuredClone(preview?.config ?? (presets[initialMode]?.mode === initialMode ? presets[initialMode] : defaultConfig(initialMode))), message = retainedRuns
         ? "Unsaved progression results retained. Retry saving."
         : "";
     const el = (tag, text = "") => {
@@ -240,6 +242,11 @@ export function mountProgression(root, initialMode = progressionModes.degreeReco
     };
     function persistConfig() {
         const valid = validate(config);
+        if (previewActive && preview) {
+            preview.config = valid;
+            configUnsaved = false;
+            return;
+        }
         configUnsaved = true;
         write(presetKey, { ...presets, [presetId]: valid });
         presets[presetId] = valid;
@@ -464,6 +471,8 @@ export function mountProgression(root, initialMode = progressionModes.degreeReco
         presetControls.className = "config-preset-controls";
         presetControls.append(label("Saved preset"), action("Save as new preset"));
         header.append(title, presetControls);
+        if (preview)
+            header.append(el("p", "Insights practice: " + preview.label + ". Independent draft; source presets unchanged. Key narrowing is shown below. Degree targeting affects every occurrence of that chord quality."), button("Back to Insights", () => { location.hash = "insights"; }));
         tabs.className = "steps config-tabs";
         tabs.setAttribute("aria-label", "Configuration chapters");
         for (const name of configurationChapters) {
@@ -624,7 +633,7 @@ export function mountProgression(root, initialMode = progressionModes.degreeReco
         launch.className = "config-launch";
         const start = action("Start practice");
         start.disabled = Boolean(issue);
-        const status = el("p", issue ? "Invalid settings. Review the highlighted group." : configUnsaved ? `Not saved to ${presetId}. Retry saving.` : `Saved preset: ${Object.values(progressionModes).includes(presetId) ? progressionName(presetId) : presetId}`);
+        const status = el("p", previewActive && !issue ? "Independent Insights draft · source preset unchanged" : issue ? "Invalid settings. Review the highlighted group." : configUnsaved ? `Not saved to ${presetId}. Retry saving.` : `Saved preset: ${Object.values(progressionModes).includes(presetId) ? progressionName(presetId) : presetId}`);
         status.id = "progression-save-status";
         status.className = "notice";
         status.dataset.state = issue ? "invalid" : configUnsaved ? "unsaved" : "saved";
@@ -761,6 +770,7 @@ export function mountProgression(root, initialMode = progressionModes.degreeReco
                     throw Error("That preset name already exists.");
                 write(presetKey, { ...presets, [presetId]: valid });
                 presets[presetId] = valid;
+                previewActive = false;
                 render();
             }));
             host.append(el("h2", "Progression"));
