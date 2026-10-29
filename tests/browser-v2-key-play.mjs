@@ -24,6 +24,20 @@ try{
   await page.getByRole('article',{name,exact:true}).getByRole('button',{name:'Customize',exact:true}).click();
   await page.getByRole('heading',{name:'Customize '+name,exact:true}).waitFor();
   assert.equal(await page.getByLabel('Mode',{exact:true}).count(),0);
+  if(mode!=='play-single'){
+   assert.equal(await page.getByLabel('Transpose',{exact:true}).count(),0);
+   await page.getByText('Enter your chords in C key below.',{exact:false}).waitFor();
+   const source=await page.getByLabel('Chord 1',{exact:true}).inputValue();
+   await page.getByLabel('Practice key',{exact:true}).selectOption('Eb');
+   assert.equal(await page.getByLabel('Chord 1',{exact:true}).inputValue(),source);
+   await page.getByLabel('Key mode',{exact:true}).selectOption('random');
+   const pool=page.getByRole('group',{name:'Random keys',exact:true});
+   await pool.getByRole('checkbox',{name:'C',exact:true}).uncheck();
+   assert.equal(await pool.getByRole('checkbox').evaluateAll(nodes=>nodes.filter(node=>node.checked).length),11);
+   await pool.getByRole('button',{name:'All',exact:true}).click();
+   assert.equal(await pool.getByRole('checkbox').evaluateAll(nodes=>nodes.filter(node=>node.checked).length),12);
+   assert.equal(await page.getByLabel('Chord 1',{exact:true}).inputValue(),source);
+  }
   const presets=page.getByLabel('Saved preset',{exact:true});
   assert.deepEqual(await presets.locator('option').evaluateAll(nodes=>nodes.map(n=>n.value)),[mode,mode+' / My preset']);
   await presets.selectOption(mode+' / My preset');
@@ -42,7 +56,7 @@ try{
  await page.getByLabel('Key mode',{exact:true}).selectOption('random');
  const keys=page.getByRole('group',{name:'Random keys',exact:true}).getByRole('checkbox');
  for(let i=0;i<12;i++)await keys.nth(i).uncheck();assert.equal(await button('Start practice').isDisabled(),true);await capture('empty-key-pool');
- await button('All').click();await capture('random-key-config');assert.equal(await keys.filter({checked:true}).count(),12);assert.equal(await button('Start practice').isEnabled(),true);assert.equal(await page.getByRole('alert').count(),0);
+ await button('All').click();await capture('random-key-config');assert.equal(await keys.evaluateAll(nodes=>nodes.filter(node=>node.checked).length),12);assert.equal(await button('Start practice').isEnabled(),true);assert.equal(await page.getByRole('alert').count(),0);
  assert.equal(await page.getByLabel('Chord 1',{exact:true}).inputValue(),'Dm7');
  await page.goto(base+'#home');await page.getByRole('article',{name:'Single Chord · Play by Ear',exact:true}).getByRole('button',{name:'Customize',exact:true}).click();
  await button('Practice').click();await change('BPM','300');await change('Questions (0 = Unlimited)','1');

@@ -573,7 +573,7 @@ export function mountProgression(root, initialMode = progressionModes.degreeReco
                 pool.append(choices, button("All", () => { config.keyPool = [...practiceKeys]; persistConfig(); render(); }));
                 keyControls.append(pool);
             }
-            content.push(group("keys", "Practice key", config.keyMode === "random" ? "Random: " + (config.keyPool ?? practiceKeys).join(", ") : "Fixed " + (config.key ?? "C"), [keyControls], true));
+            content.push(group("keys", "Practice key", config.keyMode === "random" ? "Random: " + (config.keyPool ?? practiceKeys).join(", ") : "Fixed " + (config.key ?? "C"), [el("p", "Enter your chords in C key below. Choose a fixed playback key, or Random key to draw from your selected keys for each question. Your C-key chords stay unchanged."), keyControls], true));
             const chords = nodes.filter(node => node.classList.contains("actions") && Array.from(node.querySelectorAll("input[aria-label]")).some(field => /^Chord \d+$/.test(field.getAttribute("aria-label"))));
             chords.forEach((row, i) => {
                 row.className = "chord-editor-row";
@@ -581,7 +581,7 @@ export function mountProgression(root, initialMode = progressionModes.degreeReco
                 row.setAttribute("aria-label", "Chord " + (i + 1) + " settings");
                 row.querySelectorAll("button").forEach(b => { b.setAttribute("aria-label", b.textContent); b.textContent = b.textContent?.startsWith("Move") ? "Up" : "Remove"; });
             });
-            content.push(group("template", "Template and key", config.chords.map(row => row.symbol).join(" → "), [template], true), group("chords", "Chord sequence", `${config.chords.length} chords · ${config.chords.map(row => row.beats).join(" / ")} beats`, [...chords, action("Add chord")], true));
+            content.push(group("template", "C-key template", config.chords.map(row => row.symbol).join(" → "), [template], true), group("chords", "Chord sequence", `${config.chords.length} chords · ${config.chords.map(row => row.beats).join(" / ")} beats`, [...chords, action("Add chord")], true));
         }
         if (settingsStep === "Target degrees") {
             content.push(el("p", "Choose the degrees to practise against each chord quality."));
