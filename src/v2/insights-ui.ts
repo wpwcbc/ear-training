@@ -1,7 +1,63 @@
 import {insightRecords,insightStats,insightPeriod,insightFilter,insightGroups,insightKeys,insightPriorities,insightConditionLabel,insightTrend,insightKeyComparison,insightEfficiency,insightEligible,insightStratum,insightSetupId,type InsightRecord,type InsightFamily,type InsightRun,type InsightFilters} from './insights.js';
 import {exerciseNames,modeForExercise} from './exercise-names.js';
 import type {Attempt,Session} from './model.js';
-import {insightConfusions} from './insights.js';
+import {insightConfusions,insightHeatmap} from './insights.js';
+
+function performanceSection(records:InsightRecord[],onSetup?: (record:InsightRecord,label:string,filters:InsightFilters)=>void){
+ const report=insightHeatmap(records),section=el('section','','insight-performance');
+ section.append(el('h2','Performance by chord degree'));
+ if(!report.cells.length){section.append(el('p','No recorded observations in this scope.'));return section;}
+ section.append(el('p','Recorded accuracy: 0–49%, 50–79%, 80–94%, 95–100%. L = limited sample; — = no observations, not a score.','insight-scope-note'));
+ const legend=el('div','','heatmap-legend');
+ for(const [band,text] of [['low','0–49%'],['mid','50–79%'],['high','80–94%'],['top','95–100%']]){const item=el('span',text),swatch=el('span','','heatmap-swatch');swatch.dataset.band=band;swatch.setAttribute('aria-hidden','true');item.prepend(swatch);legend.append(item);}section.append(legend);
+ if(view.family==='Overall')section.append(el('p','Mixed practice including self-ratings','insight-scope-note'));
+ const scroll=el('div','','table-scroll');scroll.tabIndex=0;scroll.setAttribute('role','region');scroll.setAttribute('aria-label','Chord degree performance');
+ const table=el('table'),head=el('thead'),tr=el('tr');table.append(el('caption','Chord quality × target degree'));
+ const corner=el('th','Chord quality');corner.scope='col';tr.append(corner);
+ for(const degree of report.degrees){const th=el('th',degree);th.scope='col';tr.append(th);}head.append(tr);table.append(head);
+ const body=el('tbody'),detail=el('section','','heatmap-evidence');detail.hidden=true;
+ let pending:string|null=null;
+ const scopeKey=JSON.stringify([view.family,view.context,view.days,view.key,view.root,view.quality,view.chord,view.degree,view.production,view.condition,view.setup]);
+ const stateKey='jazzEarLab:v2:heatmap:'+scopeKey;
+ const rememberReturn=()=>{try{sessionStorage.setItem(stateKey+':return','yes');}catch{/* Optional return focus. */}};
+ try{pending=sessionStorage.getItem(stateKey);}catch{/* Optional selection state. */}
+ for(const quality of report.qualities){
+  const row=el('tr'),th=el('th',quality);th.scope='row';row.append(th);
+  for(const degree of report.degrees){
+   const td=el('td'),cell=report.cells.find(c=>c.quality===quality&&c.degree===degree);
+   if(!cell){td.append(el('span','—'));td.setAttribute('aria-label',`${quality}, ${degree}: no observations`);row.append(td);continue;}
+   const label=`${quality}: ${degree}`,identity=JSON.stringify([quality,degree]);
+   const control=el('button',cell.rate===null?'Unassessed':Math.round(cell.rate*100)+'%','heatmap-cell');control.type='button';
+   const displayedRate=cell.rate===null?null:Math.round(cell.rate*100);
+   control.dataset.band=displayedRate===null?'none':displayedRate<50?'low':displayedRate<80?'mid':displayedRate<95?'high':'top';
+   control.append(el('small',`${cell.m.correct}/${cell.m.n}`),el('small',cell.status==='limited'?'L':cell.status==='unassessed'?'Not scored':''));
+   control.setAttribute('aria-label',`${label}, ${cell.rate===null?'unassessed':Math.round(cell.rate*100)+' percent'}, ${cell.m.correct} of ${cell.m.n} assessed notes, ${cell.m.questions} questions, ${cell.m.sessions} sessions, ${cell.status}`);
+   control.setAttribute('aria-pressed','false');
+   const selectCell=(focus=true)=>{
+    for(const b of Array.from(table.querySelectorAll('button')))b.setAttribute('aria-pressed',String(b===control));
+    control.setAttribute('aria-pressed','true');
+    try{sessionStorage.setItem(stateKey,identity);}catch{/* Optional selection state. */}
+    detail.hidden=false;detail.replaceChildren();const title=el('h3',`${label} · Recorded results`);title.tabIndex=-1;
+    detail.append(title,el('p',`${cell.m.correct} / ${cell.m.n} assessed notes · ${cell.m.questions} questions · ${cell.m.sessions} sessions · ${cell.m.unassessed} unassessed notes`),el('p',cell.status==='limited'?'Limited sample: not a reliable strength or weakness.':cell.status==='unassessed'?'No accuracy result yet.':'Recorded across the selected practice scope.'));
+    const evidence=details('Matching heatmap records');
+    for(const r of cell.items){const line=el('p'),link=el('a','Open containing session');link.href=r.href;link.onclick=rememberReturn;line.append(el('span',`${r.chordLabel} · ${r.degree} · ${r.a.firstCorrect===null?'Unassessed':r.a.firstCorrect?'Correct':'Incorrect'} · ${r.a.gradingSource==='self'?'Self-rated':'System graded'} · Question ${r.questionId} · Record ${r.a.id} `),link);evidence.append(line);}detail.append(evidence);
+    const sources=[...new Map(cell.items.filter(r=>r.sourceKnown).map(r=>[r.a.exercise+'|'+insightSetupId(r),r])).values()];
+    if(onSetup&&sources.length){const l=el('label','Practice source'),s=el('select');s.setAttribute('aria-label',`Practice source for ${label}`);
+     sources.forEach((r,i)=>{const c=r.source,levels='mode'in c?c.levels:c.voiceLevels??[1,1,1,1,1];const o=el('option',`${i+1}. ${exerciseNames[r.a.exercise]} · ${insightConditionLabel(r)} · Volume ${Math.round(c.volume*100)}% · Voices ${levels.map(v=>Math.round(v*100)+'%').join(', ')}`);o.value=String(i);s.append(o);});
+     const sourceKey=stateKey+':source:'+identity;try{const saved=sessionStorage.getItem(sourceKey);if(saved!==null&&sources[Number(saved)])s.value=saved;}catch{/* Optional source choice. */}
+     s.onchange=()=>{try{sessionStorage.setItem(sourceKey,s.value);}catch{/* Optional source choice. */}};
+     l.append(s);detail.append(l,el('p','One recorded setup, not every condition in this cell.','insight-scope-note'));
+     const action=el('button','Review practice setup');action.type='button';action.onclick=()=>{rememberReturn();onSetup(sources[Number(s.value)],label,{...(view.key?{key:view.key}:{}),...(view.root?{root:view.root}:{}),...(view.chord?{chord:view.chord}:{}),quality,degree});};detail.append(action);
+    }
+    const close=el('button','Back to heatmap','secondary');close.type='button';close.onclick=()=>{detail.hidden=true;control.setAttribute('aria-pressed','false');try{sessionStorage.removeItem(stateKey);}catch{/* Optional selection state. */}control.focus();};detail.append(close);
+    if(focus)title.focus();
+   };
+   control.onclick=()=>selectCell();td.append(control);row.append(td);
+   if(pending===identity){selectCell(false);try{if(sessionStorage.getItem(stateKey+':return')){sessionStorage.removeItem(stateKey+':return');requestAnimationFrame(()=>control.focus());}}catch{/* Optional return focus. */}}
+  }body.append(row);
+ }
+ table.append(body);scroll.append(table);section.append(scroll,detail);return section;
+}
 
 function confusionSection(records:InsightRecord[],onSetup?: (record:InsightRecord,label:string,filters:InsightFilters)=>void){
  const report=insightConfusions(records),section=el('section','','insight-confusions');
@@ -87,7 +143,7 @@ export function renderInsights(host:HTMLElement,sessions:Session[],runs:InsightR
    const active=Object.entries({key:view.key,root:view.root,quality:view.quality,chord:view.chord,degree:view.degree}).filter(([,value])=>value);if(active.length)host.append(el('p','Filters: '+active.map(([key,value])=>key+': '+value+(key==='key'?' (progression only)':'')).join(' · ')),button('Clear filters',reset));
    if(!scope.length){host.append(el('p',all.length?'No matching records in this period. Try a wider period.':'No V2 records in this browser. Choose an exercise to begin.'),button('Show all time',()=>{view.days=0;}));const link=el('a','Choose an exercise');link.href='#home';host.append(link);finish();return;}
    for(const family of families){const section=el('section','','insight-family');section.append(el('h3',family),el('p',family==='Degree Recognition'?'System graded':'Self-rated · not pitch-verified','insight-scope-note'));const grid=el('div','','insight-family-contexts');for(const context of ['Single Chord','Progression'] as const){const records=overviewRows.filter(r=>r.family===family&&r.context===context),block=outcome(records,context,true);const enter=button('View '+context+' · '+family,()=>changeScope(family,context));enter.setAttribute('aria-label','View '+context+' · '+family);enter.textContent='View '+context;block.append(enter);grid.append(block);}section.append(grid);host.append(section);}
-   host.append(confusionSection(overviewRows,onSetup),details('Combined degree accuracy',outcome(overviewRows,'Mixed practice including self-ratings')));
+   host.append(confusionSection(overviewRows,onSetup),performanceSection(overviewRows,onSetup),details('Combined degree accuracy',outcome(overviewRows,'Mixed practice including self-ratings')));
   }else{
    const mode=Object.entries(exerciseNames).find(([,name])=>name===view.context+' · '+view.family)![0];
    const allMode=all.filter(r=>r.a.exercise===mode).filter(r=>(!view.condition||insightStratum(r)===view.condition)&&(!view.setup||insightSetupId(r)===view.setup)).filter(r=>mode!=='m1'||view.production==='all'||(view.production==='played'?r.a.responseMethod==='played':['imagined','sung'].includes(r.a.responseMethod)));
@@ -116,7 +172,7 @@ export function renderInsights(host:HTMLElement,sessions:Session[],runs:InsightR
     const evidenceButton=button('View evidence: '+item.label,()=>{reset();Object.assign(view,item.filters);if(item.kind==='error')view.condition=insightStratum(item.basis)??'';else view.setup=insightSetupId(item.basis);view.dimension=item.filters.degree?'Degree':'Chord';});evidenceButton.setAttribute('aria-label','View evidence: '+item.label);evidenceButton.textContent='View evidence';row.append(evidenceButton);
     next.append(row);
    }const lead=el('div','','insight-lead'),performance=el('div');performance.append(result,trendSection);lead.append(performance,next);host.append(lead);
-   host.append(confusionSection(rows,onSetup));
+   host.append(confusionSection(rows,onSetup),performanceSection(rows,onSetup));
    const analysis=el('section','','insight-analysis');analysis.append(el('h2','Explore the music'));
    const tabs=el('div','','insight-tabs');
    for(const name of ['Key','Chord','Degree'])tabs.append(button(name==='Key'&&view.context==='Single Chord'?'Chord root':name,()=>{view.dimension=name;view.all=false;},view.dimension===name));analysis.append(tabs);

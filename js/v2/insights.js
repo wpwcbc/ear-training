@@ -258,6 +258,23 @@ export function insightEfficiency(records) {
     return { groups: [...values.values()].map(g => { g.values.sort((a, b) => a - b); const n = g.values.length; return { label: g.label, n, median: (g.values[Math.floor(n / 2)] + g.values[Math.floor((n - 1) / 2)]) / 2 }; }), excluded: [...excluded].map(([reason, n]) => ({ reason, n })) };
 }
 export function insightSetupId(r) { return stable(sourceConditions(r)); }
+export function insightHeatmap(records) {
+    const groups = new Map();
+    for (const r of new Map(records.map(r => [r.a.id, r])).values()) {
+        const key = JSON.stringify([r.quality, r.degree]), items = groups.get(key) ?? [];
+        items.push(r);
+        groups.set(key, items);
+    }
+    const cells = [...groups.values()].map(items => {
+        const m = insightStats(items);
+        return { quality: items[0].quality, degree: items[0].degree, items, m, rate: m.n ? m.correct / m.n : null,
+            status: !m.n ? 'unassessed' : insightEligible(items) ? 'recorded' : 'limited' };
+    });
+    const degreeOrder = (d) => d === 'maj7' ? 7 : Number(d.replace(/[#b]/g, ''));
+    return { cells, qualities: [...new Set(cells.map(c => c.quality))].sort(),
+        degrees: [...new Set(cells.map(c => c.degree))].sort((a, b) => degreeOrder(a) - degreeOrder(b) ||
+            ([...a].filter(c => c === '#').length - [...a].filter(c => c === 'b').length) - ([...b].filter(c => c === '#').length - [...b].filter(c => c === 'b').length) || a.localeCompare(b)) };
+}
 export function insightConfusions(records) {
     const unique = [...new Map(records.map(r => [r.a.id, r])).values()];
     const directions = new Map();

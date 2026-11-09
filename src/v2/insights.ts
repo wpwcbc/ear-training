@@ -173,6 +173,23 @@ export function insightEfficiency(records:InsightRecord[]){
 
 export function insightSetupId(r:InsightRecord){return stable(sourceConditions(r));}
 
+export function insightHeatmap(records:InsightRecord[]){
+ const groups=new Map<string,InsightRecord[]>();
+ for(const r of new Map(records.map(r=>[r.a.id,r])).values()){
+  const key=JSON.stringify([r.quality,r.degree]),items=groups.get(key)??[];
+  items.push(r);groups.set(key,items);
+ }
+ const cells=[...groups.values()].map(items=>{
+  const m=insightStats(items);
+  return {quality:items[0].quality,degree:items[0].degree,items,m,rate:m.n?m.correct/m.n:null,
+   status:!m.n?'unassessed':insightEligible(items)?'recorded':'limited'};
+ });
+ const degreeOrder=(d:string)=>d==='maj7'?7:Number(d.replace(/[#b]/g,''));
+ return {cells,qualities:[...new Set(cells.map(c=>c.quality))].sort(),
+  degrees:[...new Set(cells.map(c=>c.degree))].sort((a,b)=>degreeOrder(a)-degreeOrder(b)||
+   ([...a].filter(c=>c==='#').length-[...a].filter(c=>c==='b').length)-([...b].filter(c=>c==='#').length-[...b].filter(c=>c==='b').length)||a.localeCompare(b))};
+}
+
 export function insightConfusions(records:InsightRecord[]) {
  const unique=[...new Map(records.map(r=>[r.a.id,r])).values()];
  const directions=new Map<string,{quality:string;target:string;reported:string;items:InsightRecord[]}>();
