@@ -1,3 +1,4 @@
+import { exerciseNames } from "./exercise-names.js";
 import {
   qualities,
   degrees,
@@ -6,6 +7,7 @@ import {
   inRange,
   recognitionDegrees,
   chordToneDegrees,
+  chordNotes,
   type Quality,
   type Chord,
 } from "../jazz/theory.js";
@@ -18,6 +20,8 @@ export interface Config {
   qualities: Quality[];
   targetMode: "functional" | "exact";
   targets: string[];
+  targetPools?: Partial<Record<Quality, string[]>>;
+  voiceLevels?: number[];
   method: "imagined" | "sung" | "played";
   context: boolean;
   autoAdvance?: boolean;
@@ -44,7 +48,7 @@ const base: Config = {
 export const primaryPresets: Preset[] = [
   {
     id: "m1-general",
-    name: "M1 Audiation",
+    name: exerciseNames.m1,
     config: {
       ...base,
       exercise: "m1",
@@ -54,7 +58,7 @@ export const primaryPresets: Preset[] = [
   },
   {
     id: "m2-general",
-    name: "M2 Recognition",
+    name: exerciseNames.m2,
     config: { ...base, qualities: ["maj7", "m7", "7"], targets: [...roles] },
   },
 ];
@@ -116,7 +120,7 @@ export function validate(input: Config): Config {
   for (const [items, vocabulary, label] of [
     [c.roots, roots, "root"],
     [c.qualities, qualities, "chord quality"],
-    [c.targets, c.targetMode === "exact" ? degrees : roles, "target"],
+    ...(!c.targetPools ? [[c.targets, c.targetMode === "exact" ? degrees : roles, "target"] as const] : []),
   ] as const) {
     if (
       !Array.isArray(items) ||
@@ -139,13 +143,40 @@ export function validate(input: Config): Config {
     throw new Error(
       "Question count must be 0 (Unlimited) to 200; volume must be 0 to 1.",
     );
+  if (c.voiceLevels !== undefined && (!Array.isArray(c.voiceLevels) ||
+    c.voiceLevels.length !== 5 || c.voiceLevels.some(level => !Number.isFinite(level) || level < 0 || level > 2)))
+    throw new Error("Voice levels must contain five values from 0% to 200%.");
+  if (c.targetPools !== undefined) {
+    if (!c.targetPools || typeof c.targetPools !== "object" || Array.isArray(c.targetPools))
+      throw new Error("Invalid per-quality target pools.");
+    for (const [quality, pool] of Object.entries(c.targetPools))
+      if (!qualities.includes(quality as Quality) || !Array.isArray(pool) ||
+          pool.some(degree => !degrees.includes(degree)) || new Set(pool).size !== pool.length)
+        throw new Error(`Select supported target degrees for ${quality}, without duplicates.`);
+    for (const quality of c.qualities)
+      if (!c.targetPools[quality]?.length) throw new Error(`Select at least one target for ${quality}.`);
+  }
   for (const root of c.roots)
     for (const quality of c.qualities)
-      for (const requested of c.targets) {
+      for (const requested of targetsFor(c, quality)) {
         const chord = parseChord(root + quality),
-          degree = resolve(chord, requested, c.targetMode);
+          degree = requested;
         inRange(targetPc(chord, degree), 60, 83);
+        if (c.voiceLevels && !chordNotes(chord).some((note, i) =>
+          note % 12 !== targetPc(chord, degree) && c.voiceLevels![i] > 0))
+          throw new Error(`No non-target accompaniment remains for ${quality} / ${degree}. Adjust the voicing mix.`);
       }
+  return c;
+}
+// Resolve old presets lazily; never rewrite historical configuration snapshots.
+export function targetsFor(c: Config, quality: Quality): string[] {
+  if (c.targetPools) return [...(c.targetPools[quality] ?? [])];
+  return [...new Set(c.targets.map(target => resolve(parseChord("C" + quality), target, c.targetMode)))];
+}
+export function editableConfig(input: Config): Config {
+  const c = structuredClone(input);
+  c.targetPools ??= Object.fromEntries(c.qualities.map(quality => [quality, targetsFor(c, quality)]));
+  c.voiceLevels ??= [1, 1, 1, 1, 1];
   return c;
 }
 export interface Question {
@@ -182,27 +213,28 @@ export function stream(input: Config, seed: string): () => Question {
     }
     return items;
   };
-  const pairs = c.qualities.flatMap((quality) =>
-    [
-      ...new Set(
-        c.targets.map((t) =>
-          resolve(parseChord("C" + quality), t, c.targetMode),
-        ),
-      ),
-    ].map((degree) => ({ quality, degree })),
-  );
+  const pairs = c.qualities.flatMap(quality => targetsFor(c, quality).map(degree => ({quality, degree})));
+  let qualityBag: Quality[] = [];
+  const targetBags = new Map<Quality, string[]>();
   return () => {
     if (!bag.length) bag = shuffle([...pairs]);
     if (!rootBag.length) rootBag = shuffle([...c.roots]);
-    const pair = bag.pop()!,
-      chord = parseChord(rootBag.pop()! + pair.quality);
+    let pair = bag.pop()!;
+    if (c.targetPools) {
+      if (!qualityBag.length) qualityBag = shuffle([...c.qualities]);
+      const quality = qualityBag.pop()!;
+      let targets = targetBags.get(quality);
+      if (!targets?.length) targetBags.set(quality, targets = shuffle(targetsFor(c, quality)));
+      pair = {quality, degree: targets.pop()!};
+    }
+    const chord = parseChord(rootBag.pop()! + pair.quality);
     return {
       id: `${seed}:${index++}`,
       chord,
       degree: pair.degree,
       midi: inRange(targetPc(chord, pair.degree), 60, 83),
       options: optionsFor(chord, pair.degree),
-      generatorVersion: "v2-balanced-1",
+      generatorVersion: c.targetPools ? "v2-quality-balanced-4" : "v2-balanced-3",
     };
   };
 }
@@ -211,7 +243,7 @@ export interface Attempt {
   id: string;
   sessionId: string;
   questionId: string;
-  exercise: Config["exercise"];
+  exercise: keyof typeof exerciseNames;
   gradingSource: "self" | "automatic";
   responseMethod: string;
   configurationSnapshot: Config;
@@ -222,6 +254,10 @@ export interface Attempt {
   firstResponseMs: number | null;
   timingVersion: string;
   timingValidity: "valid" | "interrupted" | "unavailable";
+  replayQuestionId?: string;
+  replayEventsBefore?: number;
+  replayEventsAfter?: number;
+  progressionContext?: string;
   replaysBeforeFirst: number;
   replaysAfterFirst: number;
   retryCount: number;
@@ -279,7 +315,7 @@ export function answer(
   return correct;
 }
 export function rate(a: Attempt, correct: boolean, wrong?: string): void {
-  if (a.exercise !== "m1") throw new Error("Only M1 supports self-assessment.");
+  if (a.exercise !== "m1") throw new Error("Only single-chord degree audiation supports this self-assessment interface.");
   if (a.firstCorrect !== null) return;
   if (
     !correct &&
@@ -342,13 +378,38 @@ export function cohort(a: Attempt): string {
     c.targetMode,
     [...c.targets].sort(),
     a.exposure,
+    ...(c.targetPools || c.voiceLevels ? [
+      c.targetPools ? c.qualities.slice().sort().map(quality => [quality, targetsFor(c, quality).sort()]) : null,
+      c.voiceLevels ?? [1, 1, 1, 1, 1],
+    ] : []),
   ]);
 }
-export function metrics(rows: Attempt[]) {
+export function uniqueAttempts(rows: Attempt[]): Attempt[] {
+  const seen = new Set<string>();
+  return rows.filter(a => {
+    if (seen.has(a.id)) return false;
+    seen.add(a.id);
+    return true;
+  });
+}
+export function insightRows(input: Attempt[], module: "overall" | Attempt["exercise"] = "overall", production = "all"): Attempt[] {
+  return uniqueAttempts(input).filter(a => {
+    if (!Object.keys(exerciseNames).includes(a.exercise)) return false;
+    if (module !== "overall" && a.exercise !== module) return false;
+    if (module !== "m1" || production === "all") return true;
+    return production === "imagined-sung"
+      ? a.responseMethod === "imagined" || a.responseMethod === "sung"
+      : production === "played" && a.responseMethod === "played";
+  });
+}
+export function metrics(input: Attempt[]) {
+  const rows = uniqueAttempts(input);
+  const replayKeys=new Set<string>();
+  const eventRows=rows.filter(a=>{if(!a.replayQuestionId)return true;if(replayKeys.has(a.replayQuestionId))return false;replayKeys.add(a.replayQuestionId);return true;});
   const assessed = rows.filter((a) => a.firstCorrect !== null),
     correct = assessed.filter((a) => a.firstCorrect);
   const times = correct
-    .filter((a) => a.timingValidity === "valid" && a.firstResponseMs !== null)
+    .filter((a) => a.timingValidity === "valid" && a.firstResponseMs !== null && Number.isFinite(a.firstResponseMs) && a.firstResponseMs >= 0)
     .map((a) => a.firstResponseMs!)
     .sort((a, b) => a - b);
   const n = times.length,
@@ -360,9 +421,18 @@ export function metrics(rows: Attempt[]) {
     correct: correct.length,
     unassessed: rows.length - assessed.length,
     replayed: assessed.filter((a) => a.replaysBeforeFirst > 0).length,
-    before: rows.reduce((n, a) => n + a.replaysBeforeFirst, 0),
-    after: rows.reduce((n, a) => n + a.replaysAfterFirst, 0),
+    before: eventRows.reduce((n, a) => n + (a.replayEventsBefore ?? a.replaysBeforeFirst), 0),
+    after: eventRows.reduce((n, a) => n + (a.replayEventsAfter ?? a.replaysAfterFirst), 0),
     median,
     timed: n,
   };
 }
+
+// Public reporting seam shared by Insights and its behaviour-level checks.
+export {insightRecords, insightStats, insightPeriod} from './insights.js';
+export {insightFilter, insightGroups} from './insights.js';
+export {insightPriorities, insightStratum, insightEligible, insightConditionLabel} from './insights.js';
+
+export {insightPractice} from './insights.js';
+export {insightTrend, insightKeyComparison} from './insights.js';
+export {insightEfficiency} from './insights.js';

@@ -1,4 +1,10 @@
+import {insightPractice,type InsightPreview} from "./insights.js";
+import {renderInsights} from "./insights-ui.js";
+import { exerciseNames, progressionModes, progressionName } from "./exercise-names.js";
+import { configurationChapters, configurationGroup, rememberGroups, practiceSummary, type ConfigurationChapter } from "./configuration.js";
+import {mountProgression, progressionRuns, progressionEvidence} from "./progression-ui.js";
 import { AudioEngine } from "../jazz/audio.js";
+import { parseChord, chordNotes, chordToneDegrees, degreeForPc } from "../jazz/theory.js";
 import { QuestionLifecycle } from "./question.js";
 import {
   builtins,
@@ -6,15 +12,15 @@ import {
   roots,
   qualities,
   degrees,
-  roles,
   validate,
+  editableConfig,
+  targetsFor,
   stream,
   attempt,
   read,
   write,
   keys,
   metrics,
-  cohort,
   type Config,
   type Preset,
   type Question,
@@ -34,12 +40,13 @@ let presets: Preset[] = [],
 let session: Session | null = null,
   current: Attempt | null = null,
   generate: (() => Question) | null = null;
-let step = "Harmony",
-  dirty = false,
+const configGroups = new Map<string, boolean>();
+let step: ConfigurationChapter = "Harmony";
+let dirty = false,
   fatal = false;
-let selectedCohort = "",
-  rootFilter = "",
-  qualityFilter = "";
+let auditionQuality = "";
+let insightPreview:InsightPreview|null=null;
+const inInsightPreview=()=>location.hash==="#insight-setup"&&insightPreview?.kind==="single";
 let headingFocus = true, lastRoute = "", savedPresetId = "";
 let practiceSignature = "";
 
@@ -168,9 +175,12 @@ function load() {
       if (!Array.isArray(s.attempts)) throw new Error("Invalid saved session.");
     }
     presets = [
-      ...builtins.map((b) =>
-        structuredClone(saved.find((p) => p.id === b.id) ?? b),
-      ),
+      ...builtins.map((b) => {
+        const p = structuredClone(saved.find((p) => p.id === b.id) ?? b);
+        if ((p.id === "m1-general" && p.name === "M1 Audiation") ||
+            (p.id === "m2-general" && p.name === "M2 Recognition")) p.name = b.name;
+        return p;
+      }),
       ...saved.filter((p) => !builtins.some((b) => b.id === p.id)),
     ];
     activeId = read(keys.last, presets[0].id);
@@ -183,13 +193,19 @@ function load() {
   }
 }
 function describe(c: Config) {
-  return `${c.exercise.toUpperCase()} / ${c.roots.join(", ")} / ${c.qualities.join(", ")} / ${c.targets.join(", ")} (${c.targetMode}) / context ${c.context ? "on" : "off"} / ${c.count || "Unlimited"} questions${c.exercise === "m1" ? " / " + c.method : ""}`;
+  return `${exerciseNames[c.exercise]} / ${c.roots.join(", ")} / ${c.qualities.join(", ")} / ${c.qualities.map(q => q + ": " + targetsFor(c, q).join(", ")).join("; ")} / mix ${(c.voiceLevels ?? [1,1,1,1,1]).map(v => Math.round(v * 100) + "%").join(", ")} / context ${c.context ? "on" : "off"} / ${c.count || "Unlimited"} questions${c.exercise === "m1" ? " / " + c.method : ""}`;
 }
 function customize(p: Preset) {
   activeId = p.id;
-  draft = structuredClone(p.config);
+  draft = editableConfig(p.config);
   location.hash = "configure";
   if (location.hash === "#configure") render();
+}
+function exerciseTitle(name: string) {
+  const title = el("h2");
+  const [context, assessment] = name.split(" · ");
+  title.append(el("span", context, "exercise-context"), el("span", " · ", "sr-only"), el("span", assessment));
+  return title;
 }
 function home() {
   heading("Practice");
@@ -198,7 +214,7 @@ function home() {
   for (const definition of primaryPresets) {
     const p = presets.find((p) => p.id === definition.id)!;
     const card = el("article", "", "exercise");
-    const title = el("h2", definition.name);
+    const title = exerciseTitle(definition.name);
     title.id = definition.id;
     card.dataset.presetId = p.id;
     card.setAttribute("aria-labelledby", title.id);
@@ -210,6 +226,15 @@ function home() {
       ),
     );
     grid.append(card);
+  }
+  for(const mode of Object.values(progressionModes)){
+    const name = progressionName(mode);
+    const card=el("article","","exercise"),title=exerciseTitle(name);
+    title.id="progression-"+mode;card.setAttribute("aria-labelledby",title.id);
+    card.append(title,actions(
+      button("Start",()=>location.hash="progression/"+mode+"/start",false),
+      button("Customize",()=>location.hash="progression/"+mode),
+    ));grid.append(card);
   }
   host.append(grid);
   const secondary = el("section", "", "saved-presets");
@@ -260,7 +285,7 @@ function select<T extends string>(
   const l = el("label", label),
     s = el("select");
   options.forEach((v) => {
-    const o = el("option", v === "All selected roots" ? "All roots" : v === "All selected qualities" ? "All qualities" : v);
+    const o = el("option", v === "m1" || v === "m2" ? exerciseNames[v as Config["exercise"]] : v === "all" ? "All" : v === "imagined-sung" ? "Imagined / sung" : v === "played" ? "Instrumental playing" : v === "All selected roots" ? "All roots" : v === "All selected qualities" ? "All qualities" : v);
     o.value = v;
     s.append(o);
   });
@@ -272,9 +297,11 @@ function select<T extends string>(
   return l;
 }
 function autoSave() {
+  reviewOperation++; audio.stop();
   const status = document.getElementById("config-status")!;
   try {
     const c = validate(draft);
+    if(inInsightPreview()&&insightPreview?.kind==="single"){insightPreview.config=c;status.textContent="Independent draft · source preset unchanged";configRender();return;}
     preset().config = c;
     persist();
     status.textContent = dirty
@@ -286,17 +313,16 @@ function autoSave() {
     status.dataset.state = "invalid";
     status.textContent = `${(e as Error).message} Last valid saved preset unchanged.`;
   }
-  const summary = document.getElementById("config-summary");
-  if (summary) summary.textContent = describe(draft);
-  const overview = document.getElementById("config-overview");
-  if (overview) overview.replaceChildren(...configurationSummary());
+  configRender();
 }
 function configurationSummary() {
   return [
-    `Roots: ${draft.roots.length} / 12 selected`,
-    `Qualities: ${draft.qualities.join(", ") || "None selected"}`,
-    `Targets: ${draft.targets.join(", ") || "None selected"} (${draft.targetMode})`,
-  ].map((text) => el("p", text));
+    el("h3", "Harmony"), el("p", `Roots: ${draft.roots.join(", ") || "None selected"}`), el("p", `Qualities: ${draft.qualities.join(", ") || "None selected"}`),
+    el("h3", "Target degrees"), ...draft.qualities.map(q => el("p", q + ": " + (targetsFor(draft, q).join(", ") || "None selected"))),
+    el("h3", "Practice"), el("p", `${draft.count === 0 ? "Unlimited" : draft.count + " questions"} · Context ${draft.context ? "on" : "off"} · Auto Advance ${draft.autoAdvance !== false ? "on" : "off"}`),
+    ...(draft.exercise === "m1" ? [el("p", "Self-rated · " + draft.method)] : []),
+    el("h3", "Sound"), el("p", `Voice mix: ${(draft.voiceLevels ?? [1,1,1,1,1]).map(v => Math.round(v * 100) + "%").join(", ")}`), el("p", `Volume: ${Math.round(draft.volume * 100)}%`),
+  ];
 }
 function pool(
   label: string,
@@ -312,6 +338,7 @@ function pool(
       input = el("input");
     input.type = "checkbox";
     input.value = value;
+    input.dataset.focusKey = `pool:${label}:${value}`;
     input.checked = values.includes(value);
     input.onchange = () => {
       update(
@@ -326,212 +353,171 @@ function pool(
   }
   return f;
 }
-function config() {
-  heading("Customize " + preset().name);
-  const tabs = el("nav", "", "steps");
-  tabs.setAttribute("aria-label", "Configuration steps");
-  for (const name of ["Harmony", "Targets", "Practice"]) {
-    const b = button(name, () => {
-      step = name;
-      configRender();
-    });
-    b.setAttribute("aria-current", step === name ? "step" : "false");
-    tabs.append(b);
+function configIssue(): { chapter: ConfigurationChapter; group: string; message: string } | null {
+  try { validate(draft); return null; } catch (e) {
+    const message = (e as Error).message;
+    if (!draft.roots.length) return { chapter: "Harmony", group: "roots", message };
+    if (!draft.qualities.length) return { chapter: "Harmony", group: "qualities", message };
+    const missing = draft.qualities.find(q => !targetsFor(draft, q).length);
+    if (missing) return { chapter: "Target degrees", group: "pool:" + missing, message };
+    if (!Number.isInteger(draft.count) || draft.count < 0 || draft.count > 200)
+      return { chapter: "Practice", group: "length", message };
+    return { chapter: "Sound", group: !Number.isFinite(draft.volume) || draft.volume < 0 || draft.volume > 1 ? "volume" : "mix", message };
   }
-  host.append(tabs);
-  if (step === "Harmony")
-    host.append(
-      pool("Roots", roots, draft.roots, (v) => (draft.roots = v)),
-      button("All 12 Keys", () => {
-        draft.roots = [...roots];
-        autoSave();
-        configRender();
-      }),
-      pool(
-        "Chord qualities",
-        qualities,
-        draft.qualities,
-        (v) => (draft.qualities = v as Config["qualities"]),
-      ),
-    );
-  if (step === "Targets")
-    host.append(
-      select(
-        "Degree selection",
-        draft.targetMode,
-        ["functional", "exact"],
-        (v) => {
-          draft.targetMode = v;
-          draft.targets =
-            v === "functional" ? ["Third", "Seventh"] : ["3", "b7"];
-          autoSave();
-          configRender();
-        },
-      ),
-      pool(
-        "Target degrees",
-        draft.targetMode === "functional" ? roles : degrees,
-        draft.targets,
-        (v) => (draft.targets = v),
-      ),
-    );
-  if (step === "Practice") {
-    if (!primaryPresets.some((p) => p.id === activeId))
-      host.append(
-        select("Exercise", draft.exercise, ["m1", "m2"], (v) => {
-          draft.exercise = v;
-          autoSave();
-          configRender();
-        }),
-      );
-    if (draft.exercise === "m1")
-      host.append(
-        select(
-          "Response method (self-assessed)",
-          draft.method,
-          ["imagined", "sung", "played"],
-          (v) => {
-            draft.method = v;
-            autoSave();
-          },
-        ),
-      );
-    const l = el("label"),
-      check = el("input");
-    check.type = "checkbox";
-    check.checked = draft.context;
-    check.onchange = () => {
-      draft.context = check.checked;
-      autoSave();
-    };
-    l.append(check, el("span", " Audible chord context"));
-    const advanceLabel = el("label"),
-      advance = el("input");
-    advance.type = "checkbox";
-    advance.checked = draft.autoAdvance !== false;
-    advance.onchange = () => {
-      draft.autoAdvance = advance.checked;
-      autoSave();
-    };
-    advanceLabel.append(advance, el("span", " Auto Advance"));
-    host.append(actions(l, advanceLabel));
-    const countLabel = el("label", "Questions (0 = Unlimited)"),
-      count = el("input");
-    count.type = "number";
-    count.min = "0";
-    count.max = "200";
-    count.value = String(draft.count);
-    count.onchange = () => {
-      draft.count = count.value === "" ? NaN : Number(count.value);
-      autoSave();
-    };
-    countLabel.append(count);
-    host.append(countLabel);
-    const vl = el("label", "Volume"),
-      v = el("input"),
-      value = el("output", Math.round(draft.volume * 100) + "%");
-    v.id = "practice-volume";
-    v.setAttribute("aria-label", "Volume");
-    value.htmlFor = v.id;
-    v.type = "range";
-    v.min = "0";
-    v.max = "1";
-    v.step = "0.05";
-    v.value = String(draft.volume);
-    v.oninput = () => value.textContent = Math.round(Number(v.value) * 100) + "%";
-    v.onchange = () => {
-      draft.volume = Number(v.value);
-      autoSave();
-    };
-    vl.append(v, value);
-    host.append(vl);
-  }
-  const status = el("p", dirty ? "Not saved. Retry saving." : savedPresetId === activeId ? "Changes saved to this preset." : "Preset ready", "notice");
-  status.dataset.state = dirty ? "unsaved" : "saved";
-  status.id = "config-status";
-  status.setAttribute("role", "status");
-  const summary = el("p", describe(draft));
-  summary.id = "config-summary";
-  host.append(
-    status,
-    summary,
-    actions(
-      button(
-        "Start practice",
-        () => start({ ...preset(), config: validate(draft) }),
-        false,
-      ),
-      button("Back to presets", () => (location.hash = "home")),
-      ...(!primaryPresets.some((p) => p.id === activeId)
-        ? [
-            button("Rename", () => {
-              const name = prompt("Preset name", preset().name);
-              if (name?.trim()) {
-                preset().name = name.trim().slice(0, 100);
-                persist();
-                configRender();
-              }
-            }),
-          ]
-        : []),
-    ),
-  );
-  const original = builtins.find((p) => p.id === activeId);
-  host.append(
-    button(original ? "Restore Default" : "Delete preset", () => {
-      if (
-        !confirm(
-          original
-            ? "Restore this built-in preset?"
-            : "Delete this preset? Practice history will be kept.",
-        )
-      )
-        return;
-      if (original) {
-        const i = presets.findIndex((p) => p.id === activeId);
-        presets[i] = structuredClone(original);
-        draft = structuredClone(original.config);
-        persist();
-        configRender();
-      } else {
-        presets = presets.filter((p) => p.id !== activeId);
-        activeId = presets[0].id;
-        persist();
-        location.hash = "home";
-      }
-    }),
-  );
-  try {
-    validate(draft);
-  } catch (e) {
-    status.dataset.state = "invalid";
-    status.textContent =
-      (e as Error).message + " Last valid saved preset unchanged.";
-  }
-  const title = host.querySelector("h1")!, anchor = el("section", "", "config-anchor"),
-    work = el("section", "", "config-work"), overview = el("div");
-  overview.id = "config-overview";
-  overview.append(...configurationSummary());
-  anchor.append(title, status, overview, disclosure("Full configuration", summary));
-  const footer = host.querySelector<HTMLElement>(".actions:has(button[data-focus-key='Start practice'])")!;
-  footer.classList.add("config-actions");
-  const restore = Array.from(host.querySelectorAll<HTMLButtonElement>("button")).find((b) => b.textContent === "Restore Default" || b.textContent === "Delete preset")!;
-  footer.append(restore);
-  const controls = Array.from(host.children).filter((node) => node !== footer);
-  work.append(...controls, footer);
-  work.setAttribute("aria-label", "Preset settings");
-  host.replaceChildren(splitView(anchor, work, "configuration"));
 }
+function config() {
+  draft = editableConfig(draft);
+  const issue = configIssue();
+  const page = el("section", "", "config-page"), header = el("header", "", "config-header");
+  const modeName = exerciseNames[draft.exercise];
+  const title = heading(inInsightPreview()?"Customize "+modeName:"Customize " + preset().name + (preset().name === modeName ? "" : " — " + modeName));
+  header.append(title);
+  if(inInsightPreview())header.append(el("p","Insights practice: "+insightPreview!.label+". Independent draft; source presets unchanged."),button("Back to Insights",()=>location.hash="insights"));
+  const editor = el("section", "", "config-editor"), side = el("aside", "", "config-summary");
+  editor.setAttribute("aria-label", "Preset settings");
+  const tabs = el("nav", "", "steps config-tabs");
+  tabs.setAttribute("aria-label", "Configuration chapters");
+  for (const name of configurationChapters) {
+    const tab = button(name, () => { step = name; configRender(); });
+    if (step === name) tab.setAttribute("aria-current", "page");
+    tabs.append(tab);
+  }
+  editor.append(tabs);
+  const group = (key: string, label: string, selected: string, content: HTMLElement[], open = false) => {
+    const id = activeId + ":" + key;
+    if (issue?.group === key) configGroups.set(id, true);
+    const node = configurationGroup(configGroups, id, label, selected, content, open);
+    if (issue?.group === key) {
+      const error = el("p", issue.message + " Last valid saved preset unchanged.", "config-field-error");
+      error.id = "config-validation";
+      error.setAttribute("role", "alert");
+      node.lastElementChild!.prepend(error);
+      node.querySelectorAll("input,select,fieldset").forEach(control => {
+        control.setAttribute("aria-invalid", "true");
+        control.setAttribute("aria-describedby", error.id);
+      });
+    }
+    return node;
+  };
+  if (issue && issue.chapter !== step) {
+    editor.append(el("p", issue.message, "config-field-error"), button("Review invalid settings: " + issue.chapter, () => {
+      step = issue.chapter; configRender();
+      host.querySelector<HTMLElement>("input[aria-invalid='true'],select[aria-invalid='true']")?.focus();
+    }));
+  }
+  if (step === "Harmony") {
+    editor.append(group("roots", "Roots", `${draft.roots.join(", ") || "None selected"} · ${draft.roots.length} / 12 selected`, [
+      pool("Roots", roots, draft.roots, values => draft.roots = values),
+      button("All 12 Keys", () => { draft.roots = [...roots]; autoSave(); }),
+    ], true), group("qualities", "Chord qualities", draft.qualities.join(", ") || "None selected", [
+      pool("Chord qualities", qualities, draft.qualities, values => {
+        draft.qualities = values as Config["qualities"];
+        for (const q of draft.qualities) draft.targetPools![q] ??= chordToneDegrees(parseChord("C" + q));
+      }),
+    ]));
+  }
+  if (step === "Target degrees") {
+    editor.append(el("p", "Choose the degrees to practise against each chord quality.", "muted"));
+    draft.qualities.forEach((quality, i) => editor.append(group("pool:" + quality, quality, targetsFor(draft, quality).join(", ") || "None selected", [
+      pool(quality, degrees, targetsFor(draft, quality), values => draft.targetPools![quality] = values),
+    ], i === 0)));
+  }
+  if (step === "Practice") {
+    const countLabel = el("label", "Questions (0 = Unlimited)"), count = el("input");
+    count.type = "number"; count.min = "0"; count.max = "200";
+    count.value = Number.isNaN(draft.count) ? "" : String(draft.count);
+    count.dataset.focusKey = "question-count";
+    count.onchange = () => { draft.count = count.value === "" ? NaN : Number(count.value); autoSave(); };
+    countLabel.append(count);
+    editor.append(group("length", "Session length", draft.count === 0 ? "Unlimited" : `${Number.isNaN(draft.count) ? "Invalid" : draft.count} questions`, [countLabel], true));
+    const options: HTMLElement[] = [];
+    if (!inInsightPreview() && !primaryPresets.some(p => p.id === activeId)) options.push(select("Exercise", draft.exercise, ["m1", "m2"], value => { draft.exercise = value; autoSave(); }));
+    if (draft.exercise === "m1") options.push(select("Response method (self-assessed)", draft.method, ["imagined", "sung", "played"], value => { draft.method = value; autoSave(); }));
+    for (const [label, value, change] of [
+      ["Audible chord context", draft.context, (checked: boolean) => draft.context = checked],
+      ["Auto Advance", draft.autoAdvance !== false, (checked: boolean) => draft.autoAdvance = checked],
+    ] as const) {
+      const row = el("label", "", "check-row"), check = el("input");
+      check.type = "checkbox"; check.checked = value; check.dataset.focusKey = label;
+      check.onchange = () => { change(check.checked); autoSave(); };
+      row.append(check, el("span", label)); options.push(row);
+    }
+    editor.append(group("behavior", "Response and playback", `${draft.exercise === "m1" ? draft.method + " · Self-assessed · " : ""}Context ${draft.context ? "on" : "off"} · Auto Advance ${draft.autoAdvance !== false ? "on" : "off"}`, options, true));
+  }
+  if (step === "Sound") {
+    const label = el("label", "Volume", "voice-control"), input = el("input"), output = el("output", Math.round(draft.volume * 100) + "%");
+    input.type = "range"; input.min = "0"; input.max = "1"; input.step = "0.05"; input.value = String(draft.volume);
+    input.setAttribute("aria-label", "Volume"); input.dataset.focusKey = "volume";
+    input.oninput = () => output.textContent = Math.round(Number(input.value) * 100) + "%";
+    input.onchange = () => { draft.volume = Number(input.value); autoSave(); };
+    label.append(input, output);
+    editor.append(group("volume", "Overall volume", Math.round(draft.volume * 100) + "%", [label], true));
+    const controls: HTMLElement[] = [el("p", "Original voices, low to high. 0% mutes; 100% standard; 200% double nominal gain. Accompaniment only.", "muted")];
+    if (!draft.qualities.includes(auditionQuality as Config["qualities"][number])) auditionQuality = draft.qualities[0] ?? "";
+    if (auditionQuality && draft.roots.length) {
+      controls.push(select("Audition quality", auditionQuality, draft.qualities, value => { auditionQuality = value; configRender(); }));
+      const chord = parseChord(draft.roots[0] + auditionQuality), notes = chordNotes(chord);
+      controls.push(el("p", "Preview chord: " + chord.symbol));
+      for (let i = 0; i < 5; i++) {
+        const row = el("label", `Voice ${i + 1} · ${notes[i] === undefined ? "absent" : degreeForPc(chord, notes[i] % 12)}`, "voice-control"), voice = el("input"), value = el("output", Math.round(draft.voiceLevels![i] * 100) + "%");
+        voice.type = "range"; voice.min = "0"; voice.max = "200"; voice.step = "5"; voice.value = String(draft.voiceLevels![i] * 100);
+        voice.setAttribute("aria-label", `Voice ${i + 1} volume`); voice.dataset.focusKey = "voice-" + i;
+        voice.oninput = () => value.textContent = voice.value + "%";
+        voice.onchange = () => { draft.voiceLevels![i] = Number(voice.value) / 100; autoSave(); };
+        row.append(voice, value); controls.push(row);
+      }
+      controls.push(button("Audition " + chord.symbol, async () => {
+        const c = validate(draft), token = ++reviewOperation;
+        audio.stop(); await audio.ready();
+        if (token !== reviewOperation || location.hash !== "#configure") return;
+        audio.playSingle(chord, null, c.volume, true, { voiceLevels: c.voiceLevels });
+      }), el("p", "Full accompaniment only · no practice record", "muted"));
+    }
+    editor.append(group("mix", "Voicing mix", draft.voiceLevels!.map(v => Math.round(v * 100) + "%").join(", "), controls));
+  }
+  const overview = el("div"); overview.id = "config-overview"; overview.append(...configurationSummary());
+  const full = el("p", describe(draft)); full.id = "config-summary";
+  side.append(practiceSummary(configGroups, activeId + ":overview", [el("h2", "This practice"), overview, disclosure("Full configuration", full)]));
+  const mobileSummary = el("p", `${draft.roots.length} roots · ${draft.qualities.join(", ") || "No qualities"} · ${draft.count === 0 ? "Unlimited" : draft.count + " questions"}`, "config-mobile-overview");
+  header.append(mobileSummary);
+  const status = el("p", issue ? "Invalid settings. Review the highlighted group." : dirty ? "Not saved. Retry saving." : savedPresetId === activeId ? "Changes saved to this preset." : "Preset ready", "notice");
+  status.id = "config-status"; status.dataset.state = issue ? "invalid" : dirty ? "unsaved" : "saved"; status.setAttribute("role", "status");
+  const launch = el("div", "", "config-launch");
+  launch.append(button("Start practice", () => {if(inInsightPreview()){const p={id:crypto.randomUUID(),name:"Insights: "+insightPreview!.label,config:validate(draft)};presets.push(p);return start(p);}else return start({ ...preset(), config: validate(draft) });}, false, Boolean(issue)), status);
+  if(inInsightPreview())status.textContent="Independent draft · source preset unchanged";
+  side.append(launch);
+  const management = disclosure("Preset actions", button("Back to presets", () => location.hash = "home"));
+  if (!primaryPresets.some(p => p.id === activeId)) management.append(button("Rename", () => {
+    const name = prompt("Preset name", preset().name);
+    if (name?.trim()) { preset().name = name.trim().slice(0, 100); persist(); configRender(); }
+  }));
+  const original = builtins.find(p => p.id === activeId);
+  management.append(button(original ? "Restore Default" : "Delete preset", () => {
+    if (!confirm(original ? "Restore this built-in preset?" : "Delete this preset? Practice history will be kept.")) return;
+    if (original) { presets[presets.findIndex(p => p.id === activeId)] = structuredClone(original); draft = editableConfig(original.config); persist(); configRender(); }
+    else { presets = presets.filter(p => p.id !== activeId); activeId = presets[0].id; persist(); location.hash = "home"; }
+  }));
+  if(!inInsightPreview())side.append(management);
+  else side.append(button("Save as new preset",()=>{const p={id:crypto.randomUUID(),name:"Insights: "+insightPreview!.label,config:validate(draft)};presets.push(p);persist();}));
+  const layout = el("div", "", "config-layout"); layout.append(editor, side);
+  page.append(header, layout); host.replaceChildren(page);
+}
+
 function configRender() {
+  reviewOperation++; audio.stop();
   const key = (document.activeElement as HTMLElement)?.dataset.focusKey;
   headingFocus = false;
+  rememberGroups(host, configGroups);
+  const scroll = window.scrollY;
   host.replaceChildren();
   config();
   restoreControl(key);
+  window.scrollTo(0, scroll);
 }
 async function start(p: Preset) {
   if (session) return;
-  const c = validate(p.config);
+  reviewOperation++; audio.stop();
+  const c = validate(editableConfig(p.config));
   activeId = p.id;
   session = {
     id: crypto.randomUUID(),
@@ -626,7 +612,7 @@ function renderPractice() {
     a = current;
   const top = el("div", "", "session-top");
   top.append(
-    el("h1", c.exercise === "m1" ? "M1 Audiation" : "M2 Recognition"),
+    el("h1", exerciseNames[c.exercise]),
     button("Stop", finish),
   );
   host.append(top);
@@ -756,7 +742,7 @@ function renderPractice() {
         busy || !ready,
       ),
     );
-  const workspace = el("div", "", "practice-workspace"),
+  const workspace = el("div", "", "practice-workspace harmonic-workspace single-chord"),
     response = el("section", "", "response-area"),
     settings = el("details", "", "session-settings");
   response.setAttribute("aria-label", "Response");
@@ -821,7 +807,7 @@ function confusions(rows: Attempt[]) {
     list.append(item);
   }
   section.append(mistakes.size ? list : el("p", "No recorded first-response confusions."));
-  if (unknown) section.append(el("p", `Unknown imagined degree: ${unknown}. No specific wrong degree was reported.`));
+  if (unknown) section.append(el("p", `Unknown / Don’t know: ${unknown}. No specific wrong degree was reported.`));
   return section;
 }
 function summary(rows: Attempt[], c: Config, showConfusions = true) {
@@ -871,13 +857,13 @@ function results(id: string) {
       button("Practice again", () => start({ id: s.presetId, name: "Similar practice", config: s.config }), false),
       button("Customize", () => {
         activeId = presets.some((p) => p.id === s.presetId) ? s.presetId : presets[0].id;
-        draft = structuredClone(s.config); location.hash = "configure";
+        draft = editableConfig(s.config); location.hash = "configure";
       }),
       button("Presets", () => location.hash = "home"),
     ));
     return block;
   };
-  host.append(el("p", `${s.config.exercise === "m1" ? "M1 Audiation / Self-rated " + s.config.method : "M2 Recognition / First answers"} · ${s.attempts.length} ${s.attempts.length === 1 ? "record" : "records"}`, "results-context"),
+  host.append(el("p", `${exerciseNames[s.config.exercise]} / ${s.config.exercise === "m1" ? "Self-rated " + s.config.method : "First answers"} · ${s.attempts.length} ${s.attempts.length === 1 ? "record" : "records"}`, "results-context"),
     disclosure("Session conditions", el("p", describe(s.config))), overview());
   const review = disclosure("Question review");
   review.className = "question-review";
@@ -891,7 +877,7 @@ function results(id: string) {
       try {
         await audio.ready();
         if (token !== reviewOperation || location.hash !== "#results/" + s.id) return;
-        audio.playReference(a.target.chord, a.target.midi, s.config.volume);
+        audio.playReference(a.target.chord, a.target.midi, s.config.volume, null, s.config.voiceLevels);
         a.replaysAfterFirst++; a.revealedReference = true; persist();
         host.querySelector(".evidence-summary")?.replaceWith(overview());
       } catch (e) { if (token === reviewOperation) throw e; }
@@ -901,137 +887,18 @@ function results(id: string) {
   }
   host.append(review);
 }
-function customizeFocus(items: Attempt[], key: string) {
-  const config: Config = {
-    ...structuredClone(items[0].configurationSnapshot),
-    qualities: [items[0].target.chord.quality],
-    targetMode: "exact",
-    targets: [items[0].target.degree],
-  };
-  if (rootFilter) config.roots = [rootFilter];
-  let focus = presets.find((p) => !builtins.some((b) => b.id === p.id) && JSON.stringify(p.config) === JSON.stringify(config));
-  if (!focus) {
-    focus = { id: crypto.randomUUID(), name: `Focus: ${config.exercise.toUpperCase()} ${key}${rootFilter ? " / " + rootFilter : ""}`, config };
-    presets.push(focus);
-  }
-  persist();
-  customize(focus);
-}
 function insights() {
   heading("Insights");
-  const all = sessions.flatMap((s) => s.attempts), groups = [...new Set(all.map(cohort))];
-  if (!groups.length) {
-    host.append(el("p", "Not enough comparable data. Start an M1 or M2 preset."),
-      actions(button("Practice", () => location.hash = "home", false)));
-    return;
-  }
-  if (!groups.includes(selectedCohort)) selectedCohort = groups[groups.length - 1];
-  const labels = groups.map((g, i) => {
-    const a = all.find((a) => cohort(a) === g)!, c = a.configurationSnapshot;
-    return `${i + 1}. ${a.exercise.toUpperCase()} / ${c.context ? "Context on" : "Context off"} / ${a.exposure === "fresh" ? "Fresh" : "Previously seen"}${a.exercise === "m1" ? " / " + c.method : ""}`;
-  });
-  const scope = el("section", "", "insight-scope");
-  const condition = select("Comparable practice conditions", labels[groups.indexOf(selectedCohort)], labels, (value) => {
-    selectedCohort = groups[labels.indexOf(value)];
-    rootFilter = ""; qualityFilter = ""; render();
-  });
-  condition.querySelector("select")!.setAttribute("aria-describedby", "comparison-description");
-  scope.append(condition);
-  let rows = all.filter((a) => cohort(a) === selectedCohort);
-  const c = rows[0].configurationSnapshot, sample = rows[0], description = el("p", "", "scope-description");
-  description.id = "comparison-description";
-  description.textContent = c.exercise === "m1" ? "Self-rated / " + c.method : "First-answer evidence";
-  scope.append(description);
-  const conditions = disclosure("Full comparison conditions",
-    el("p", describe(c)), el("p", `Timing: ${sample.timingVersion}. Generator: ${sample.target.generatorVersion}. Answer policy: 12 pitch-class choices with exact target spelling.`));
-  scope.append(conditions);
-  const filters = el("div", "", "insight-filters");
-  filters.append(
-    select("Root", rootFilter || "All selected roots", ["All selected roots", ...new Set(rows.map((a) => a.target.chord.root))], (value) => {
-      rootFilter = value === "All selected roots" ? "" : value; render();
-    }),
-    select("Chord quality", qualityFilter || "All selected qualities", ["All selected qualities", ...new Set(rows.map((a) => a.target.chord.quality))], (value) => {
-      qualityFilter = value === "All selected qualities" ? "" : value; render();
-    }),
-  );
-  host.append(scope, filters);
-  rows = rows.filter((a) => (!rootFilter || a.target.chord.root === rootFilter) && (!qualityFilter || a.target.chord.quality === qualityFilter));
-  if (!rows.length) {
-    host.append(el("p", "Not enough comparable data for these filters."),
-      button("Clear filters", () => { rootFilter = ""; qualityFilter = ""; render(); }));
-    return;
-  }
-  const dates = sessions.filter((s) => rows.some((a) => a.sessionId === s.id)).map((s) => s.startedAt.slice(0, 10)).sort();
-  if (dates.length) {
-    const range = dates[0] === dates[dates.length - 1] ? dates[0] : `${dates[0]} to ${dates[dates.length - 1]}`;
-    scope.append(el("p", `Recorded ${range} · All matching sessions`, "scope-date"));
-  }
-  const cells = [...new Set(rows.map((a) => `${a.target.chord.quality}/${a.target.degree}`))].map((key) => {
-    const items = rows.filter((a) => `${a.target.chord.quality}/${a.target.degree}` === key);
-    return { key, items, m: metrics(items) };
-  });
-  const supported = cells.filter((cell) => cell.m.n >= 10).sort((a, b) => a.m.correct / a.m.n - b.m.correct / b.m.n);
-  const overview = summary(rows, c, false), body = overview.querySelector(".evidence-body")!;
-  const patterns = el("section", "", "patterns");
-  patterns.append(el("h2", "Patterns worth attention"));
-  if (supported.length > 1 && supported[0].m.correct / supported[0].m.n < supported[supported.length - 1].m.correct / supported[supported.length - 1].m.n) {
-    patterns.append(el("p", "Descriptive, not a diagnosis. At least 10 assessed responses per group; roots and replay use may differ.", "pattern-caution"));
-    for (const [i, cell] of [supported[0], supported[supported.length - 1]].entries()) {
-      const row = el("article", "", "pattern-row"), rate = cell.m.correct / cell.m.n;
-      row.append(el("h3", cell.key.replace("/", " / ")));
-      const bar = el("div", "", "evidence-bar"), fill = el("span");
-      fill.style.width = `${rate * 100}%`;
-      bar.setAttribute("aria-hidden", "true");
-      bar.append(fill);
-      row.append(bar, el("strong", Math.round(rate * 100) + "%"), el("span", `${cell.m.correct} / ${cell.m.n} assessed`),
-        el("small", `Replay-assisted ${cell.m.replayed} / ${cell.m.n}`),
-        button("Customize focus", () => customizeFocus(cell.items, cell.key), i !== 0));
-      patterns.append(row);
-    }
-  } else {
-    patterns.append(el("p", "Not enough comparable data to identify distinct strongest/weakest patterns. Explore individual observations below."));
-  }
-  const notes = body.querySelector<HTMLElement>(".evidence-notes")!;
-  body.append(patterns);
-  const table = el("table"), head = el("tr");
-  table.append(el("caption", "Chord Quality × Degree"));
-  for (const name of ["Quality / degree", "Correct / assessed", "Replay-assisted", "Correct median (n)", "Practice"]) {
-    const th = el("th", name); th.scope = "col"; head.append(th);
-  }
-  const thead = el("thead"); thead.append(head); table.append(thead);
-  const tbody = el("tbody");
-  for (const cell of cells) {
-    const tr = el("tr"), m = cell.m;
-    tr.append(el("td", cell.key), el("td", `${m.correct}/${m.n}`), el("td", `${m.replayed}/${m.n}`),
-      el("td", `${m.median === null ? "Unavailable" : (m.median / 1000).toFixed(2) + "s"} (${m.timed})`));
-    const td = el("td");
-    td.append(button("Customize focus", () => customizeFocus(cell.items, cell.key)));
-    tr.append(td); tbody.append(tr);
-  }
-  table.append(tbody);
-  const scroll = el("div", "", "table-scroll");
-  scroll.tabIndex = 0; scroll.setAttribute("role", "region");
-  scroll.setAttribute("aria-label", "Chord quality and degree breakdown"); scroll.append(table);
-  const detail = disclosure("Detailed breakdown", scroll, confusions(rows), notes);
-  detail.className = "insight-detail";
-  const history = el("ul", "", "session-history");
-  for (const s of sessions.slice().reverse()) {
-    const item = el("li"), link = el("a", `${s.startedAt.slice(0, 10)} · ${s.config.exercise.toUpperCase()} · ${s.attempts.length} records${s.endedAt ? "" : " (interrupted)"}`);
-    link.href = "#results/" + s.id; item.append(link); history.append(item);
-  }
-  const latest = sessions.slice().reverse().find((s) => rows.some((a) => a.sessionId === s.id));
-  if (latest) {
-    const link = el("a", "View latest matching session", "session-link");
-    link.href = "#results/" + latest.id;
-    const item = el("li");
-    item.append(link);
-    history.prepend(item);
-  }
-  host.append(overview, detail, disclosure("Sessions", history));
+  const work=el("div");host.append(work);
+  try {renderInsights(work,sessions,progressionRuns(),progressionEvidence(),(record,label,filters)=>{insightPreview=insightPractice(record,filters,label);if(insightPreview.kind==="single")draft=editableConfig(insightPreview.config);step="Harmony";location.hash="insight-setup";});}
+  catch(e){work.append(el("p","Insights records could not be read. Existing history was preserved."),button("Retry Insights",()=>{clearError();render();}));report(e);}
 }
+let disposeProgression: (()=>void) | undefined;
 function render() {
+  disposeProgression?.(); disposeProgression=undefined;
   if (fatal) return;
   const route = location.hash.slice(1) || "home";
+  if (route !== "practice") document.getElementById("practice-announcement")!.textContent = "";
   if (session && route !== "practice") {
     finish(route);
     return;
@@ -1055,7 +922,10 @@ function render() {
     audio.stop();
   }
   host.replaceChildren();
-  if (route === "practice" && session) renderPractice();
+  if(route==="insight-setup"&&insightPreview){if(insightPreview.kind==="progression")disposeProgression=mountProgression(host,insightPreview.config.mode,false,undefined,insightPreview);else config();}
+  else if(route==="insight-setup"){host.append(el("p","This temporary draft is no longer available. Return to its Insights evidence."),button("Back to Insights",()=>location.hash="insights"));}
+  else if (route === "progression" || route.startsWith("progression/")) { try {disposeProgression=mountProgression(host,Object.values(progressionModes).find(mode => mode === route.split("/")[1]) ?? progressionModes.degreeRecognition,route.endsWith("/start"),route.split("/")[2] === "results" ? decodeURIComponent(route.split("/")[3] ?? "") : undefined);} catch(e){report(e);} }
+  else if (route === "practice" && session) renderPractice();
   else if (route === "configure") config();
   else if (route === "insights") insights();
   else if (route.startsWith("results/")) results(route.slice(8));

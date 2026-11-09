@@ -10,3 +10,8 @@ The approved Signal Route identity calls for a readable humanist sans. The
 automatic font matcher could not resolve its browser and returned an unrelated
 catalog-only face; Source Sans 3 follows the user-approved humanist direction
 rather than treating that fallback ranking as a visual requirement.
+
+
+V2 preloads only the regular (400) face used by body text. Other real weights
+remain demand-loaded through CSS; all use `font-display: swap`. The typeset pass
+retains the approved family and tests readable fallback with font requests blocked.

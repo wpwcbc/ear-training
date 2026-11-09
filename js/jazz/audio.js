@@ -46,7 +46,15 @@ export class AudioEngine {
     playSingle(chord, midi, volume, context, options = {}) {
         if (!this.context || this.context.state !== "running")
             throw new Error("Audio unavailable. Press Retry audio.");
+        if (options.voiceLevels !== undefined && (!Array.isArray(options.voiceLevels) ||
+            options.voiceLevels.length !== 5 || options.voiceLevels.some(level => !Number.isFinite(level) || level < 0 || level > 2)))
+            throw new Error("Voice levels must contain five values from 0% to 200%.");
         this.stop();
+        const notes = chordNotes(chord).map((note, index) => ({ note, level: options.voiceLevels?.[index] ?? 1 }));
+        // Reserve the independent target's nominal peak even before M1 Done, so
+        // continuing references never need to reattack or rebalance a live chord.
+        const nominalPeak = (context ? notes.reduce((sum, voice) => sum + voice.level * 0.09, 0) : 0) + 0.24;
+        const headroom = 1 / Math.max(1, nominalPeak / 0.95);
         const ctx = this.context, dispatch = ctx.currentTime, start = dispatch + 0.04, readyMs = midi === null
             ? context
                 ? options.excludeTarget !== undefined
@@ -157,7 +165,7 @@ export class AudioEngine {
             const referenceReady = new Promise((resolve) => {
                 signalReferenceReady = resolve;
             });
-            schedule(target, onset, level * 0.24);
+            schedule(target, onset, level * 0.24 * headroom);
             const checkReferenceReady = () => {
                 if (settled || fading) {
                     signalReferenceReady?.(false);
@@ -186,18 +194,18 @@ export class AudioEngine {
         };
         try {
             if (context)
-                chordNotes(chord)
-                    .filter((note) => {
+                notes
+                    .filter(({ note, level }) => {
                     const excluded = options.fullReference
                         ? midi
                         : options.excludeTarget;
                     return (excluded === undefined ||
                         excluded === null ||
-                        note % 12 !== excluded % 12);
+                        note % 12 !== excluded % 12) && level > 0;
                 })
-                    .forEach((note) => schedule(note, start, volume * 0.09));
+                    .forEach(({ note, level }) => schedule(note, start, volume * 0.09 * level * headroom));
             if (midi !== null)
-                schedule(midi, start + (options.fullReference ? 0 : 0.08), volume * 0.24);
+                schedule(midi, start + (options.fullReference ? 0 : 0.08), volume * 0.24 * headroom);
         }
         catch (e) {
             this.stop();
@@ -219,7 +227,7 @@ export class AudioEngine {
             settle("completed");
         return playback;
     }
-    playReference(chord, midi, volume, continuing) {
+    playReference(chord, midi, volume, continuing, voiceLevels) {
         if (!this.context || this.context.state !== "running")
             throw new Error("Audio unavailable. Press Retry audio.");
         if (continuing && continuing === this.single) {
@@ -227,7 +235,86 @@ export class AudioEngine {
             if (reference)
                 return reference;
         }
-        return this.playSingle(chord, midi, volume, true, { fullReference: true });
+        return this.playSingle(chord, midi, volume, true, { fullReference: true, voiceLevels });
+    }
+    playSequence(events, countInBeat, duration) {
+        if (!this.context || this.context.state !== "running")
+            throw new Error("Audio unavailable. Retry playback.");
+        this.stop();
+        const ctx = this.context, start = ctx.currentTime + 0.04;
+        this.playbackStart = start;
+        let resolve, ended = false;
+        const completed = new Promise((r) => (resolve = r));
+        const voices = new Set();
+        const settle = (end) => {
+            if (!ended) {
+                ended = true;
+                ctx.removeEventListener("statechange", changed);
+                resolve(end);
+            }
+        };
+        const cancel = () => {
+            for (const voice of voices) {
+                try {
+                    voice.source.stop();
+                }
+                catch { }
+            }
+            voices.clear();
+            settle("cancelled");
+        };
+        const changed = () => {
+            if (ctx.state !== "running") {
+                settle("interrupted");
+                this.stop();
+            }
+        };
+        ctx.addEventListener("statechange", changed);
+        const plan = {
+            readyMs: 40,
+            durationMs: duration * 1000 + 40,
+            get activeVoices() {
+                return voices.size;
+            },
+            ready: Promise.resolve(true),
+            completed,
+            cancel,
+            fadeOut: async () => {
+                cancel();
+                return "cancelled";
+            },
+        };
+        this.single = plan;
+        try {
+            for (let i = 0; i < 4; i++)
+                this.click(start + i * countInBeat, 0.08);
+            const sentinel = this.tone(60, start, duration, 0, false, true, () => {
+                voices.delete(sentinel);
+                if (!voices.size)
+                    settle("completed");
+            });
+            voices.add(sentinel);
+            for (const event of events) {
+                const voice = this.tone(event.midi, start + event.start, event.duration, event.level, false, true, () => {
+                    voices.delete(voice);
+                    if (!voices.size)
+                        settle("completed");
+                });
+                voices.add(voice);
+            }
+        }
+        catch (error) {
+            this.stop();
+            throw error;
+        }
+        if (!voices.size)
+            settle("completed");
+        return plan;
+    }
+    close() {
+        this.stop();
+        void this.context?.close();
+        this.context = null;
     }
     stop() {
         this.single?.cancel();
@@ -248,7 +335,10 @@ export class AudioEngine {
         oscillator.frequency.value = 440 * 2 ** ((midi - 69) / 12);
         gain.gain.setValueAtTime(0, start);
         gain.gain.linearRampToValueAtTime(volume, start + (pad ? 0.12 : 0.015));
-        gain.gain.exponentialRampToValueAtTime(Math.max(volume * (natural ? 0.04 : 0.35), 0.0001), start + duration * (natural ? 0.75 : 0.8));
+        if (volume === 0)
+            gain.gain.linearRampToValueAtTime(0, start + duration * .75);
+        else
+            gain.gain.exponentialRampToValueAtTime(Math.max(volume * (natural ? 0.04 : 0.35), 0.0001), start + duration * (natural ? 0.75 : 0.8));
         gain.gain.linearRampToValueAtTime(0, start + duration);
         oscillator.connect(gain);
         gain.connect(ctx.destination);

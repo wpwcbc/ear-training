@@ -121,7 +121,7 @@ try {
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false);
   }
   await page.setViewportSize({ width: 390, height: 844 });
-  await button("Targets").click();
+  await button("Target degrees").click();
   await capture("targets-mobile");
   await page.getByRole("group", { name: "Target degrees", exact: true }).getByRole("checkbox", { name: "b13", exact: true }).check();
   assert.match(await page.locator("#config-status").textContent(), /Changes saved/);

@@ -1,6 +1,6 @@
 ---
 name: "Jazz Ear Lab V2 - Signal Route"
-description: "Flat humanist controls and a Split Desk workspace for harmonic listening practice."
+description: "Flat humanist controls, harmonic practice boards and chaptered configuration for listening practice."
 colors:
   signal: "#f8d808"
   signal-hover: "#edbd00"
@@ -17,57 +17,57 @@ colors:
 typography:
   chord:
     fontFamily: '"Source Sans 3", "Segoe UI", sans-serif'
-    fontSize: "72px"
+    fontSize: "4rem"
     fontWeight: 700
     lineHeight: 1
     letterSpacing: "0"
   target:
     fontFamily: '"Source Sans 3", "Segoe UI", sans-serif'
-    fontSize: "54px"
+    fontSize: "3.375rem"
     fontWeight: 600
     lineHeight: 1.1
     letterSpacing: "0"
   outcome:
     fontFamily: '"Source Sans 3", "Segoe UI", sans-serif'
-    fontSize: "72px"
+    fontSize: "4.5rem"
     fontWeight: 700
     lineHeight: 1
     letterSpacing: "0"
   headline:
     fontFamily: '"Source Sans 3", "Segoe UI", sans-serif'
-    fontSize: "28px"
+    fontSize: "1.75rem"
     fontWeight: 700
     lineHeight: 1.2
     letterSpacing: "0"
   title:
     fontFamily: '"Source Sans 3", "Segoe UI", sans-serif'
-    fontSize: "22px"
+    fontSize: "1.375rem"
     fontWeight: 700
     lineHeight: 1.25
     letterSpacing: "0"
   subheading:
     fontFamily: '"Source Sans 3", "Segoe UI", sans-serif'
-    fontSize: "18px"
+    fontSize: "1.125rem"
     fontWeight: 700
     lineHeight: 1.3
     letterSpacing: "0"
   body:
     fontFamily: '"Source Sans 3", "Segoe UI", sans-serif'
-    fontSize: "16px"
+    fontSize: "1rem"
     fontWeight: 400
-    lineHeight: 1.4
+    lineHeight: 1.5
     letterSpacing: "0"
   label:
     fontFamily: '"Source Sans 3", "Segoe UI", sans-serif'
-    fontSize: "16px"
+    fontSize: "1rem"
     fontWeight: 600
-    lineHeight: 1.4
+    lineHeight: 1.5
     letterSpacing: "0"
   support:
     fontFamily: '"Source Sans 3", "Segoe UI", sans-serif'
-    fontSize: "14px"
+    fontSize: "0.875rem"
     fontWeight: 400
-    lineHeight: 1.4
+    lineHeight: 1.5
     letterSpacing: "0"
 rounded:
   control: "2px"
@@ -147,13 +147,13 @@ components:
 
 Signal Route makes the listening task legible through black navigation, yellow task/action emphasis and humanist text. A cool open ground separates white paper controls without enclosing whole screens in cards. The repeated visual signature is a task or outcome anchor beside the working response or evidence area.
 
-Split Desk carries that relationship through entry, customization, practice, Results and Insights. Desktop separates anchor and work; mobile stacks the same semantic order. Large musical symbols and accuracy figures lead, while timing, playback status and disclosed detail stay subordinate. Materials are flat and changes of state are immediate; no decorative raster plates or animation are owed.
+Split Desk retains that relationship in entry, Results and Insights. The approved 2026-10-27 extension uses A harmonic boards for practice and C+B chaptered editors for customization. Practice groups the actual music with its responses; configuration separates the broad editor from its summary on desktop and stacks them on mobile. Large musical symbols and accuracy figures lead, while timing, playback status and disclosed detail stay subordinate. Materials are flat and changes of state are immediate; no decorative raster plates or animation are owed.
 
 **Key Characteristics:**
 - Black navigation and restrained yellow wayfinding.
 - Cool open ground, white controls and gray structural rules.
 - Humanist Source Sans 3 with zero tracking.
-- Desktop anchor/work split and mobile semantic stack.
+- Harmonic practice groups, chaptered configuration and evidence anchor/work splits with a mobile semantic stack.
 - Accuracy-led evidence and equal-weight M1 self-rating.
 
 ### Scope and Sources
@@ -227,13 +227,13 @@ Local files provide regular, medium, semibold and bold weights (400/500/600/700)
 
 ## Layout
 
-The reusable desktop grid is `minmax(230px, 1fr) minmax(0, 3fr)` with the section gap from frontmatter. At a 1440px viewport the main outer box is capped (1344px), its side insets are (24px), and usable content is (1296px). The grid therefore resolves to an anchor (318px), gap (24px) and work area (954px). This is the delivered 1:3 track ratio, not the direction brief's approximate one-third/two-thirds composition.
+On entry and evidence surfaces, the reusable desktop grid is `minmax(230px, 1fr) minmax(0, 3fr)` with the section gap from frontmatter. At a 1440px viewport the main outer box is capped (1344px), its side insets are (24px), and usable content is (1296px). The grid therefore resolves to an anchor (318px), gap (24px) and work area (954px). This is the delivered 1:3 track ratio, not the direction brief's approximate one-third/two-thirds composition.
 
 Desktop main padding is (28px 24px 48px). The header's content aligns to the same content edges; its minimum height is (50px). Session bands bleed to the main box edges, with a minimum height (49px). Headings, feedback and controls retain predictable places rather than floating panels. Repeated exercise items alone have an outline; saved presets and page sections are unframed rows/regions.
 
 At the compact breakpoint (max-width 700px), the header wraps the brand above navigation and main padding becomes (24px 16px 40px). Anchor/work and evidence grids become one column. At the observed phone width (390px), content is (358px). The M2 grid changes from six equal columns/two rows (85px-high choices, 10px gap) to four columns/three rows (56px-high choices, 8px gap). Chord/prompt precede controls; no answer choices disappear.
 
-Configuration uses three equal independently accessible step controls. Pool grids auto-fit minimum tracks (84px desktop, 72px mobile). The mobile action region is fixed to the bottom, white, with two columns, a full-width Start and safe-area inset. The page reserves bottom space `calc(220px + env(safe-area-inset-bottom))`; long quality lists stay in ordinary page flow. A full-page screenshot's compositor placement does not establish that content is unreachable.
+Configuration uses four independently accessible chapters: Harmony, Target degrees, Practice and Sound. The desktop editor/summary grid is `minmax(0, 3fr) minmax(250px, 1fr)` with a 32px gap. Native disclosure groups show selected conditions while closed and retain their expansion while editing. Pool grids auto-fit minimum tracks (84px desktop, 72px mobile). At 700px and below, the summary becomes a disclosure and the Start/status area attaches to the viewport bottom. Reserved bottom space, scroll padding and control scroll margins keep final fields reachable. Long quality/chord lists stay in ordinary page flow. A full-page screenshot's compositor placement does not establish that content is unreachable.
 
 Insights keeps scope above two filters, then primary outcome and supporting evidence. At desktop the filters use two tracks capped (220px); mobile keeps two equal tracks. Compact scope uses a remaining-width track plus a disclosure track (130px), with its label and assessment source spanning both. Pattern rows become stacked labels, bar, counts and full-width action. Only the labelled detailed table region scrolls horizontally; its table minimum width is (620px).
 
@@ -265,7 +265,7 @@ White native selects/number fields use the field tokens, control-gray strokes an
 
 ### Navigation
 
-The black header contains the brand and icon-plus-text Practice, Insights and Legacy links. Active location uses a yellow bottom rule and semibold text; hover uses navigation-hover. Desktop links have minimum height (50px); mobile links (44px). Current state uses `aria-current`, not color alone. Configuration steps use native buttons with `aria-current="step"`, quiet active fill and the same square yellow underline, not a forced wizard.
+The black header contains the brand and icon-plus-text Practice, Insights and Legacy links. Active location uses a yellow bottom rule and semibold text; hover uses navigation-hover. Desktop links have minimum height (50px); mobile links (44px). Current state uses `aria-current`, not color alone. Configuration chapters use native buttons with `aria-current="page"`, quiet active fill and the same square yellow underline. Every chapter is independently accessible.
 
 ### Repeated Items
 
@@ -273,7 +273,7 @@ Only M1/M2 exercise entries are outlined compact items with title, Start and Cus
 
 ### Practice Workspace
 
-The task anchor contains known chord, prompt and M1 target/method where applicable. M2 provides the stable twelve-choice grid. Feedback reserves a line (24px minimum); the separate playback status reports actual sounding audio. M1's reference-ready empty-feedback fallback is **Rate your response**, independently of **Reference playing**. Incorrect reveals the native non-target/Unknown selector only in its existing state. Replay, Reveal and manual Next/Finish keep their established applicability. These visual patterns do not redefine readiness, first evidence, synthesis or automatic progression; see [UX principles](../UX_PRINCIPLES.md) and [lifecycle ownership](../V2_QUESTION_LIFECYCLE.md).
+A compact task band precedes the A harmonic board. Single-chord practice is centered and bounded at 960px: known chord, prompt and M1 target/method precede the response. M2 provides the stable twelve-choice grid. Progression practice uses three chord-occurrence columns on desktop; each chord heading owns its ordered note positions. Mobile stacks chord groups and keeps neighbouring notes in two columns. Recognition retains selected/correct degrees at their original positions after checking; Guided Singing retains each target beside its self-rating. Long progressions scroll without pagination. Feedback reserves a line (24px minimum); the separate playback status reports actual sounding audio. M1's reference-ready empty-feedback fallback is **Rate your response**, independently of **Reference playing**. Incorrect reveals the native non-target/Unknown selector only in its existing state. Replay, Reveal and manual Next/Finish keep their established applicability. These visual patterns do not redefine readiness, first evidence, synthesis or automatic progression; see [UX principles](../UX_PRINCIPLES.md) and [lifecycle ownership](../V2_QUESTION_LIFECYCLE.md).
 
 ### Evidence and Disclosure
 
@@ -302,3 +302,129 @@ The sidecar's ten self-contained, `ds-`-scoped examples sample these delivered p
 - **Don't** treat generated comp text, glyphs or example numbers as domain truth.
 - **Don't** use these visual tokens to redefine metrics, lifecycle behavior or Release 1 scope.
 - **Don't** treat captures, component previews or a limited fix verdict as whole-surface accessibility certification.
+
+## Target pools, voicing mix and Overall extension (2026-10-26)
+
+The user approved the voice-mix desktop/mobile compositions. The implementation
+extends the existing Signal Route system: per-quality checkbox groups, labeled
+original-voice range controls and unrecorded audition in Targets; Overall/M1/M2
+navigation, primary degree/confusion evidence and subordinate timing/replay in
+Insights. Existing typography, colors, controls and Split Desk breakpoints remain.
+Desktop/mobile captures were inspected and the module navigation spans the scope
+width on mobile. This extension does not replace tokens or the visual identity.
+
+## Progression extension (2026-10-26)
+
+The user approved Recognition, Guided Singing and review compositions. Runtime
+uses the incumbent Split Desk proportions and mobile semantic stack, neutral
+self-rating controls, visible keyboard focus and yellow task actions. Progression
+settings group harmony, practice timing, quality pools and disclosed mix controls;
+mobile Start remains viewport-attached. Recognition presents all positions on one
+answer surface, independent of fill order. Source/Spec review and desktop/mobile
+runtime captures were checked; this extends the system without replacing tokens.
+
+Progression homepage entries use the same `.exercise` rows as M1/M2, including
+identical yellow Start and secondary Customize actions with the existing sliders
+icon. Start launches that mode directly; Customize opens its configuration.
+
+The progression consistency repair reuses the actual M1/M2 configuration steps,
+yellow session bar, musical anchor/response workspace and accuracy-led result
+summary. Answers stay grouped by chord, disclosed mix controls use the shared
+label/range/value rows, and detailed per-note outcomes live in expandable review
+tables with local horizontal scrolling. Desktop/mobile runtime evidence and check
+limits are recorded in `.impeccable/critique/2026-10-26-progression-consistency.md`.
+
+The whole-V2 critique follow-up keeps sung targets in compact chord groups before
+Done; the default phrase is visible together on narrow screens. Progression actions
+restore keyboard position and use the persistent live announcer. Result replay
+retains disclosed note evidence and exposes playback/stop controls. Insights links
+back to matching progression runs and formats stored conditions as musical text,
+with technical versions separately disclosed. See `../V2_CRITIQUE_FIXES.md` for
+runtime evidence, verification coverage and limits.
+
+
+## 2026-10-27 layout delivery
+
+The approved [layout specification](../V2_LAYOUT_REDESIGN_SPEC.md) supersedes older Split Desk configuration/practice composition notes above and in historical extensions below. It retains the Signal Route identity, model, audio scheduling and first-evidence contracts. Authority: [A practice brief](.impeccable/surfaces/v2-practice-layout.md) and [C+B configuration brief](.impeccable/surfaces/v2-config-layout.md). See the [implementation and verification report](../V2_LAYOUT_REDESIGN_IMPLEMENTATION.md) for runtime captures, acceptance coverage, independent reviews and remaining validation limits. The earlier Evidence Boundary describes the prior documentation pass; the new report records this implementation's browser verification.
+
+
+## Exercise names
+
+The two assessment families are **Degree Audiation** (self-rated) and
+**Degree Recognition** (system-graded); each has **Single Chord** and
+**Progression** contexts. Home entries show the context as secondary text and
+the assessment family as the main title. Configuration, practice, Results,
+Insights and history use the complete contextual name from
+`src/v2/exercise-names.ts`. See [the glossary](../GLOSSARY.md) for terminology
+and the compatibility boundary around historical stored IDs.
+
+
+## Typeset refinement — 2026-10-27
+
+Source Sans 3 remains the single family, with its existing real 400/500/600/700
+weights and zero tracking. Purpose-based CSS roles now use rem: 1rem body and
+fields, .875rem support, 1.125rem subheadings, 1.375rem section titles and 1.75rem
+page headings. Compact task bands and musical/data display roles retain their
+existing scale differences; they also follow the root text preference. Ordinary
+body leading is 1.5; heading leading remains 1.2–1.3. Controls use 1.35 and fields
+1.4. Evidence prose is bounded at 72ch rather than stretching across the desk.
+
+Headings balance natural line breaks with emergency word wrapping. Home mode
+contexts remain subordinate; their separator is screen-reader-only when rendered
+on separate lines. Small support text has a .875rem floor. Numeric fields, tempo,
+counts and durations join the existing tabular result figures. Chapter labels stay
+at 1rem on phones; their grid reflows when user text size grows. Degree buttons
+grow vertically with text. Mobile navigation can wrap under enlarged text, while
+normal 320px navigation keeps all three links together. The attached action reserve
+uses rem so enlarged text does not cover the final config field.
+
+The existing TTF assets remain self-hosted with `font-display: swap`; only the
+regular face is preloaded. Fallback remains Segoe UI / sans-serif, with no invented
+metric overrides or additional family. See [runtime evidence and verification](../.impeccable/review/v2-typeset/README.md).
+
+
+## Progression keys and Play by Ear delivery
+
+Progression Harmony now distinguishes the editable C-source from the actual
+practice key: Fixed or Random, with a native twelve-key checkbox pool and All.
+Key policy and selected values remain visible in configuration summaries.
+
+Two additional entries share the existing exercise naming hierarchy: Single Chord
+· Play by Ear and Progression · Play by Ear. They use the existing harmonic board
+with hidden target-position placeholders during demonstration/performance, then
+reveal degrees and native Incorrect checkboxes for explicit bulk self-assessment.
+Single-chord instrumental boards are bounded at960px; progression preserves the
+three-column desktop and stacked-chord mobile layout. Replay remains secondary;
+Done follows the board and is gated by natural accompaniment completion.
+
+Instrumental Results and module Insights show whole-question post-accompaniment
+completion delay separately from existing response time. Timing descriptions and
+counts remain subordinate to self-rated accuracy, use existing type roles and
+tabular numerals, and do not claim measured motor/rhythmic performance. No new
+family, color palette, decorative motion or raster runtime assets are introduced.
+See the [implementation report](../V2_KEYS_AND_PLAY_BY_EAR_IMPLEMENTATION.md) and
+[actual captures](../.impeccable/review/v2-keys-play-by-ear/README.md).
+
+
+## Actionable Insights delivery — 2026-10-29
+
+Insights now uses compact family/context and local-period scope, recent accuracy
+and sample counts, up to three evidence-based practice priorities, progressive
+Key/Chord/Degree exploration, applicable efficiency and disclosed full evidence.
+Desktop places the main result and priorities alongside each other; mobile keeps
+the same reading order. Overall shows three families with independent contexts,
+compact empty states and a secondary combined mixed-practice total.
+
+The existing Signal Route black/yellow/light ground, Source Sans 3 roles, flat
+rules and native controls are retained. Yellow marks active context/dimension and
+the Setup practice action; descriptive empty keys do not masquerade as failures.
+Keyboard drill-down moves to the new analysis heading when the prior control
+disappears; compatible musical scope is retained and incompatible removal stated.
+
+Actual practice key, chord root, full chord and degree remain distinct. Original
+spellings survive canonical grouping, and question-level instrumental delay is
+never rendered as per-chord or per-degree speed. Independent setup drafts preserve
+source presets. See [delivery and review](../V2_ACTIONABLE_INSIGHTS_IMPLEMENTATION.md)
+and [synthetic-fixture runtime captures](../.impeccable/review/v2-actionable-insights/README.md).
+This extension changes no design tokens or Legacy identity; it is not a claim of
+Safari/iOS, human screen-reader or learning-efficacy certification.

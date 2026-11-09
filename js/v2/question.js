@@ -214,8 +214,8 @@ export class QuestionLifecycle {
             if (!active())
                 return false;
             const plan = reference
-                ? this.audio.playReference(a.target.chord, a.target.midi, c.volume, c.exercise === "m1" && !replay ? this.playback : null)
-                : this.audio.playSingle(a.target.chord, c.exercise === "m2" ? a.target.midi : null, c.volume, c.context, c.exercise === "m1" ? { excludeTarget: a.target.midi } : {});
+                ? this.audio.playReference(a.target.chord, a.target.midi, c.volume, c.exercise === "m1" && !replay ? this.playback : null, c.voiceLevels)
+                : this.audio.playSingle(a.target.chord, c.exercise === "m2" ? a.target.midi : null, c.volume, c.context, { ...(c.exercise === "m1" ? { excludeTarget: a.target.midi } : {}), voiceLevels: c.voiceLevels });
             this.playback = plan;
             void plan.completed.then((end) => {
                 if (end === "interrupted" && active())

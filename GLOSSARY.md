@@ -66,3 +66,50 @@ _Avoid_: Stored response method (imagined and sung remain distinct raw values).
 The total first-correct results divided by total assessed questions from the
 contributing V2 modules, accepting self-ratings and selection grades equally.
 _Avoid_: Average module accuracy (module percentages are not averaged).
+
+**Progression question**:
+A harmonic-hearing task spanning a known sequence of chords and its ordered
+melodic targets, heard or performed as a complete progression.
+_Avoid_: Session (a session may contain multiple progression questions).
+
+**Target position**:
+One ordered melodic-note position within a particular chord occurrence of a
+progression question; its degree is relative to that occurrence's chord.
+_Avoid_: Voicing voice (a target position belongs to the melody, not accompaniment).
+
+**Progression answer board**:
+The single response surface containing all target positions of a progression
+question, allowing answers to be filled in any order before joint submission.
+_Avoid_: Per-note question screen.
+
+**Progression note outcome**:
+The result for one target position: a recognition selection grade or a degree
+audiation self-rating, distinct from a whole-progression summary.
+_Avoid_: Whole-run rating (one overall rating cannot establish separate note outcomes).
+
+
+**Degree Audiation**:
+Attempt a requested chord degree, then compare with the reference and self-rate.
+The two harmonic contexts are **Single Chord · Degree Audiation** (M1) and
+**Progression · Degree Audiation** (formerly Guided Singing). Singing is a
+production method, not a separate assessment family; results remain self-assessed.
+_Avoid_: Guided Singing as the progression module name.
+
+**Degree Recognition**:
+Hear a target and identify its degree relative to the known current chord, with
+system grading. The two contexts are **Single Chord · Degree Recognition** (M2)
+and **Progression · Degree Recognition**. The latter identifies melodic degrees
+through changing harmony; it does not ask the user to identify the progression.
+_Avoid_: Recognition without its target, or Progression Recognition as a module name.
+
+**Stable exercise IDs**:
+Existing stored IDs (`m1`, `m2`, `singing`, `progression-singing` and their
+recognition counterparts) remain unchanged to preserve presets, records and
+links. Application code uses `exerciseNames` and `progressionModes.degreeAudiation`
+from `src/v2/exercise-names.ts` for the current vocabulary. Historical specification
+and screenshot names describe their original delivery.
+
+
+Confirmed key and instrumental-reproduction terms from the completed interview
+are recorded in [CONTEXT.md](CONTEXT.md). Existing Degree Audiation and Degree
+Recognition retain their definitions above.
