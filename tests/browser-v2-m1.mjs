@@ -155,13 +155,13 @@ try {
   );
   assert.notEqual(history.cohorts[0], history.cohorts[1]);
   await page.goto(`${url}#insights`);
-  assert.equal(
-    await page
-      .getByLabel("Comparable practice conditions")
-      .locator("option")
-      .count(),
-    2,
-  );
+  await page.getByLabel("Practice family", { exact: true }).selectOption("Degree Audiation");
+  await page.getByLabel("Period", { exact: true }).selectOption("All time");
+  await page.getByText("Source conditions", { exact: true }).click();
+  await page.getByText("Technical versions", { exact: true }).click();
+  const technical = await page.locator('details').filter({has:page.locator('summary').filter({hasText:/^Technical versions$/})}).last().textContent();
+  assert.ok(technical.includes(history.old.attempts[0].timingVersion));
+  assert.ok(technical.includes(currentAttempt.timingVersion));
 
   await page.setViewportSize({ width: 390, height: 844 });
   await start({ context: false, method: "sung", autoAdvance: false });

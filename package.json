@@ -14,13 +14,13 @@
 		"test:redesign": "node tests/browser-redesign.mjs",
 		"test:critique": "node tests/browser-critique-fixes.mjs",
 		"test:quality": "node tests/browser-quality.mjs",
-		"test:v2": "node tests/browser-v2.mjs && node tests/browser-v2-homepage.mjs && node tests/browser-v2-auto-advance.mjs && node tests/browser-v2-reveal.mjs && node tests/browser-v2-m1.mjs && node tests/browser-v2-m1-grading.mjs && node tests/browser-v2-lifecycle.mjs && node tests/browser-v2-split-desk.mjs",
+		"test:v2": "node tests/browser-v2.mjs && node tests/browser-v2-current-homepage.mjs && node tests/browser-v2-auto-advance.mjs && node tests/browser-v2-reveal.mjs && node tests/browser-v2-m1.mjs && node tests/browser-v2-m1-grading.mjs && node tests/browser-v2-lifecycle.mjs && npm run test:v2:layout && npm run test:v2:insights",
 		"test:v2:layout": "node tests/browser-v2-layout.mjs && node tests/browser-v2-layout-state.mjs",
 		"test:v2:keys-play": "node tests/browser-v2-key-play.mjs && node tests/browser-v2-key-play-state.mjs",
 		"test:v2:critique": "node tests/browser-v2-critique.mjs",
 		"test:entry": "node tests/browser-entry.mjs",
 		"benchmark:summary": "node scripts/benchmark-summary.mjs",
 		"watch": "tsc -p . -w",
-		"test:v2:insights": "node tests/browser-v2-actionable-insights.mjs && node tests/browser-v2-actionable-insights-state.mjs"
+		"test:v2:insights": "node tests/browser-v2-actionable-insights.mjs && node tests/browser-v2-actionable-insights-state.mjs && node tests/browser-v2-confusions.mjs && node tests/browser-v2-heatmap.mjs && node tests/browser-v2-practice-summary.mjs && node tests/browser-v2-insights-integration.mjs"
 	}
 }

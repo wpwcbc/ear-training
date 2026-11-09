@@ -1,5 +1,5 @@
 import {metrics, targetsFor, editableConfig, validate as validateSingle, type Attempt, type Session, type Config} from './model.js';
-import {pitchClass,parseChord} from '../jazz/theory.js';
+import {pitchClass,parseChord,degrees} from '../jazz/theory.js';
 import {exerciseNames} from './exercise-names.js';
 import {validate as validateProgression,type ProgressionConfig,type ProgressionQuestion} from './progression.js';
 export type InsightFamily = 'Degree Recognition' | 'Degree Audiation' | 'Play by Ear';
@@ -173,4 +173,68 @@ export function insightEfficiency(records:InsightRecord[]){
 
 export function insightSetupId(r:InsightRecord){return stable(sourceConditions(r));}
 
+export function insightHeatmap(records:InsightRecord[]){
+ const groups=new Map<string,InsightRecord[]>();
+ for(const r of new Map(records.map(r=>[r.a.id,r])).values()){
+  const key=JSON.stringify([r.quality,r.degree]),items=groups.get(key)??[];
+  items.push(r);groups.set(key,items);
+ }
+ const cells=[...groups.values()].map(items=>{
+  const m=insightStats(items);
+  return {quality:items[0].quality,degree:items[0].degree,items,m,rate:m.n?m.correct/m.n:null,
+   status:!m.n?'unassessed':insightEligible(items)?'recorded':'limited'};
+ });
+ const degreeOrder=(d:string)=>d==='maj7'?7:Number(d.replace(/[#b]/g,''));
+ return {cells,qualities:[...new Set(cells.map(c=>c.quality))].sort(),
+  degrees:[...new Set(cells.map(c=>c.degree))].sort((a,b)=>degreeOrder(a)-degreeOrder(b)||
+   ([...a].filter(c=>c==='#').length-[...a].filter(c=>c==='b').length)-([...b].filter(c=>c==='#').length-[...b].filter(c=>c==='b').length)||a.localeCompare(b))};
+}
+
+export function insightConfusions(records:InsightRecord[]) {
+ const unique=[...new Map(records.map(r=>[r.a.id,r])).values()];
+ const directions=new Map<string,{quality:string;target:string;reported:string;items:InsightRecord[]}>();
+ let unknown=0,unspecified=0;
+ for(const r of unique.filter(r=>r.a.firstCorrect===false)){
+  const reported=r.a.gradingSource==='self'?r.a.imaginedWrongDegree:r.a.firstAnswer;
+  if(!reported){unspecified++;continue;}
+  if(reported==='unknown'){unknown++;continue;}
+  const key=JSON.stringify([r.quality,r.degree,reported]);
+  const group=directions.get(key)??{quality:r.quality,target:r.degree,reported,items:[]};
+  group.items.push(r);directions.set(key,group);
+ }
+ const groups=[...directions.values()].map(g=>{
+  const population=unique.filter(r=>r.quality===g.quality&&r.degree===g.target);
+  const roots=new Map<string,{labels:Set<string>;count:number}>();
+  for(const r of g.items){const root=roots.get(r.root)??{labels:new Set<string>(),count:0};root.labels.add(r.chordLabel);root.count++;roots.set(r.root,root);}
+  return {...g,count:g.items.length,assessed:insightStats(population).n,
+   questions:new Set(g.items.map(r=>r.questionId)).size,sessions:new Set(g.items.map(r=>r.sessionId)).size,
+   roots:[...roots.values()].map(({labels,count})=>({label:[...labels].sort().join(' / '),count})).sort((a,b)=>b.count-a.count||a.label.localeCompare(b.label))};
+ }).sort((a,b)=>b.count-a.count||a.quality.localeCompare(b.quality)||a.target.localeCompare(b.target)||a.reported.localeCompare(b.reported));
+ return {groups,unknown,unspecified,unassessed:insightStats(unique).unassessed};
+}
+
 function latestAssessed(records:InsightRecord[]){return records.reduce((latest,r)=>r.a.firstCorrect!==null?Math.max(latest,r.time??0):latest,0);}
+
+export function insightConfusionMatrix(report:ReturnType<typeof insightConfusions>,quality:string){
+ const groups=report.groups.filter(g=>g.quality===quality&&g.target!==g.reported);
+ return {groups,degrees:[...new Set(groups.flatMap(g=>[g.target,g.reported]))].sort((a,b)=>{
+  const ai=degrees.indexOf(a),bi=degrees.indexOf(b);
+  return (ai<0?Infinity:ai)-(bi<0?Infinity:bi)||a.localeCompare(b);
+ })};
+}
+
+export function insightPracticeSummary(records:InsightRecord[]){
+ const cells=insightHeatmap(records).cells,confusions=insightConfusions(records),m=insightStats(records);
+ const supported=cells.filter(c=>c.status==='recorded').sort((a,b)=>(a.rate??0)-(b.rate??0)||b.m.n-a.m.n||a.quality.localeCompare(b.quality)||a.degree.localeCompare(b.degree));
+ const findings:{kind:'strength'|'attention'|'confusion';label:string;text:string;items:InsightRecord[];m:ReturnType<typeof insightStats>;quality:string;degree:string}[]=[];
+ const used=new Set<string>(),key=(quality:string,degree:string)=>JSON.stringify([quality,degree]);
+ const recurrent=confusions.groups.find(g=>g.count>=3&&g.sessions>=2&&supported.some(c=>c.quality===g.quality&&c.degree===g.target));
+ if(recurrent){const cell=supported.find(c=>c.quality===recurrent.quality&&c.degree===recurrent.target)!;
+  findings.push({kind:'confusion',label:`${cell.quality}: ${cell.degree} → ${recurrent.reported}`,text:`${cell.quality}: target ${cell.degree} was reported as ${recurrent.reported} in ${recurrent.count} first errors. Practise this sound relationship next.`,items:recurrent.items,m:cell.m,quality:cell.quality,degree:cell.degree});used.add(key(cell.quality,cell.degree));}
+ const attention=supported.find(c=>!used.has(key(c.quality,c.degree))&&c.m.n-c.m.correct>=3&&new Set(c.items.filter(r=>r.a.firstCorrect===false).map(r=>r.sessionId)).size>=2);
+ if(attention){findings.push({kind:'attention',label:`${attention.quality}: ${attention.degree}`,text:`${attention.quality}: degree ${attention.degree} deserves more attention in these recorded results (${attention.m.correct}/${attention.m.n} correct).`,items:attention.items,m:attention.m,quality:attention.quality,degree:attention.degree});used.add(key(attention.quality,attention.degree));}
+ const strongest=supported.slice().reverse().find(c=>!used.has(key(c.quality,c.degree))&&(c.m.correct===c.m.n||supported.some(other=>other.rate!<c.rate!)));
+ if(strongest)findings.unshift({kind:'strength',label:`${strongest.quality}: ${strongest.degree}`,text:strongest.m.correct===strongest.m.n?`All ${strongest.m.n} assessed notes for ${strongest.quality}: degree ${strongest.degree} were correct in this scope.`:`${strongest.quality}: degree ${strongest.degree} is among your stronger recorded results (${strongest.m.correct}/${strongest.m.n} correct).`,items:strongest.items,m:strongest.m,quality:strongest.quality,degree:strongest.degree});
+ const message=!cells.length?'No recorded observations in this scope.':!m.n?`${m.unassessed} unassessed recorded notes; no accuracy result yet.`:!supported.length?'Early observations: more distinct questions and sessions are needed before highlighting strengths or recurrent errors.':m.correct===m.n?'All assessed notes were correct in this scope. This is a description of recorded practice, not mastery.':!findings.length?'No recurrent pattern meets the evidence thresholds. Explore the recorded results below.':'';
+ return {findings:findings.slice(0,3),message,unknown:confusions.unknown,unspecified:confusions.unspecified};
+}
