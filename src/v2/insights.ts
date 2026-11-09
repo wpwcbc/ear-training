@@ -173,4 +173,27 @@ export function insightEfficiency(records:InsightRecord[]){
 
 export function insightSetupId(r:InsightRecord){return stable(sourceConditions(r));}
 
+export function insightConfusions(records:InsightRecord[]) {
+ const unique=[...new Map(records.map(r=>[r.a.id,r])).values()];
+ const directions=new Map<string,{quality:string;target:string;reported:string;items:InsightRecord[]}>();
+ let unknown=0,unspecified=0;
+ for(const r of unique.filter(r=>r.a.firstCorrect===false)){
+  const reported=r.a.gradingSource==='self'?r.a.imaginedWrongDegree:r.a.firstAnswer;
+  if(!reported){unspecified++;continue;}
+  if(reported==='unknown'){unknown++;continue;}
+  const key=JSON.stringify([r.quality,r.degree,reported]);
+  const group=directions.get(key)??{quality:r.quality,target:r.degree,reported,items:[]};
+  group.items.push(r);directions.set(key,group);
+ }
+ const groups=[...directions.values()].map(g=>{
+  const population=unique.filter(r=>r.quality===g.quality&&r.degree===g.target);
+  const roots=new Map<string,{labels:Set<string>;count:number}>();
+  for(const r of g.items){const root=roots.get(r.root)??{labels:new Set<string>(),count:0};root.labels.add(r.chordLabel);root.count++;roots.set(r.root,root);}
+  return {...g,count:g.items.length,assessed:insightStats(population).n,
+   questions:new Set(g.items.map(r=>r.questionId)).size,sessions:new Set(g.items.map(r=>r.sessionId)).size,
+   roots:[...roots.values()].map(({labels,count})=>({label:[...labels].sort().join(' / '),count})).sort((a,b)=>b.count-a.count||a.label.localeCompare(b.label))};
+ }).sort((a,b)=>b.count-a.count||a.quality.localeCompare(b.quality)||a.target.localeCompare(b.target)||a.reported.localeCompare(b.reported));
+ return {groups,unknown,unspecified,unassessed:insightStats(unique).unassessed};
+}
+
 function latestAssessed(records:InsightRecord[]){return records.reduce((latest,r)=>r.a.firstCorrect!==null?Math.max(latest,r.time??0):latest,0);}

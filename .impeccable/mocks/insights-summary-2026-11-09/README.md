@@ -3,9 +3,9 @@
 Parent specification: https://github.com/wpwcbc/ear-training/issues/26
 Design ticket: https://github.com/wpwcbc/ear-training/issues/27
 
-Status: overview direction accepted; detail and state boards awaiting approval.
+Status: overview, detail and state boards approved by the user in this chat.
 These are generated composition previews, not implemented UI or validated
-responsive screenshots. Ticket 27 remains open. No exercise logic changed.
+responsive screenshots. The design approval gate is satisfied. No exercise logic changed by these boards.
 
 ## Boards
 

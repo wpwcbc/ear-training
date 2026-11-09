@@ -1,5 +1,76 @@
 import { insightRecords, insightStats, insightPeriod, insightFilter, insightGroups, insightKeys, insightPriorities, insightConditionLabel, insightTrend, insightKeyComparison, insightEfficiency, insightEligible, insightStratum, insightSetupId } from './insights.js';
 import { exerciseNames, modeForExercise } from './exercise-names.js';
+import { insightConfusions } from './insights.js';
+function confusionSection(records, onSetup) {
+    const report = insightConfusions(records), section = el('section', '', 'insight-confusions');
+    section.append(el('h2', 'Degree confusions'), el('p', 'Target degree → Reported degree · First errors', 'insight-scope-note'));
+    if (view.family === 'Overall')
+        section.append(el('p', 'Mixed practice: system-graded and self-rated results', 'insight-scope-note'));
+    if (!report.groups.length)
+        section.append(el('p', 'No specific first-error directions recorded in this scope.'));
+    for (const group of report.groups) {
+        const label = `${group.quality}: ${group.target} → ${group.reported}`;
+        const rememberFocus = () => { try {
+            sessionStorage.setItem('jazzEarLab:v2:confusionReturn', label);
+        }
+        catch { /* Optional return focus. */ } };
+        const row = details(`${label} · ${group.count} errors`);
+        row.append(el('p', `${group.count} confusions / ${group.assessed} assessed target notes · ${group.questions} questions · ${group.sessions} sessions`));
+        const roots = el('ul');
+        for (const root of group.roots)
+            roots.append(el('li', `${root.label}: ${root.count}`));
+        row.append(roots);
+        const evidence = details('View matching records');
+        for (const r of group.items) {
+            const line = el('div'), link = el('a', 'Open containing session');
+            link.href = r.href;
+            link.onclick = rememberFocus;
+            line.append(el('p', `${r.chordLabel} · target ${r.degree} → reported ${group.reported} · ${exerciseNames[r.a.exercise]} · ${r.a.gradingSource === 'self' ? 'Self-rated' : 'System graded'}`), el('p', `${r.time === null ? 'Date not recorded' : new Date(r.time).toLocaleString()} · Question ${r.questionId} · Record ${r.a.id}`, 'insight-scope-note'), link);
+            evidence.append(line);
+        }
+        row.append(evidence);
+        const sources = [...new Map(group.items.filter(r => r.sourceKnown).map(r => [r.a.exercise + '|' + insightSetupId(r), r])).values()];
+        if (onSetup && sources.length) {
+            const sourceLabel = el('label', 'Practice source'), select = el('select');
+            select.setAttribute('aria-label', `Practice source for ${label}`);
+            sources.forEach((r, i) => { const option = el('option', `${i + 1}. ${exerciseNames[r.a.exercise]} · ${insightConditionLabel(r)}`); option.value = String(i); select.append(option); });
+            sourceLabel.append(select);
+            row.append(sourceLabel);
+            const settings = el('p', '', 'insight-scope-note');
+            const describeSource = () => { const c = sources[Number(select.value)].source; settings.textContent = 'Voice levels: ' + ('mode' in c ? c.levels : c.voiceLevels ?? [1, 1, 1, 1, 1]).map(n => Math.round(n * 100) + '%').join(', ') + ' · Volume: ' + Math.round(c.volume * 100) + '%'; };
+            select.onchange = describeSource;
+            describeSource();
+            row.append(settings);
+            row.append(el('p', 'This recorded setup is one source of these results.', 'insight-scope-note'));
+            const action = el('button', 'Review practice setup');
+            action.type = 'button';
+            action.setAttribute('aria-label', `Review practice setup for ${label}`);
+            action.onclick = () => { rememberFocus(); onSetup(sources[Number(select.value)], label, { ...(view.key ? { key: view.key } : {}), ...(view.root ? { root: view.root } : {}), ...(view.chord ? { chord: view.chord } : {}), quality: group.quality, degree: group.target }); };
+            row.append(action);
+        }
+        else
+            row.append(el('p', 'Original practice setup unavailable; review the records instead.'));
+        const stateKey = 'jazzEarLab:v2:confusion:' + JSON.stringify([view.family, view.context, view.days, view.key, view.root, view.chord, label]);
+        try {
+            row.open = sessionStorage.getItem(stateKey) === 'open';
+        }
+        catch { /* Optional disclosure state. */ }
+        row.ontoggle = () => { try {
+            sessionStorage.setItem(stateKey, row.open ? 'open' : 'closed');
+        }
+        catch { /* Optional disclosure state. */ } };
+        section.append(row);
+        try {
+            if (sessionStorage.getItem('jazzEarLab:v2:confusionReturn') === label) {
+                sessionStorage.removeItem('jazzEarLab:v2:confusionReturn');
+                requestAnimationFrame(() => row.querySelector('summary')?.focus());
+            }
+        }
+        catch { /* Optional return focus. */ }
+    }
+    section.append(el('p', `Unknown: ${report.unknown} · Incorrect without annotation: ${report.unspecified} · Unassessed notes: ${report.unassessed}`, 'insight-scope-note'));
+    return section;
+}
 const families = ['Degree Recognition', 'Degree Audiation', 'Play by Ear'];
 const initial = { family: 'Overall', context: 'Single Chord', days: 28, dimension: 'Key', key: '', root: '', quality: '', chord: '', degree: '', production: 'all', sort: 'Errors', all: false, baseline: '', chordView: 'Chord quality', comparable: false, condition: '', setup: '' };
 let view = { ...initial };
@@ -120,7 +191,7 @@ export function renderInsights(host, sessions, runs, evidence, onSetup) {
                 section.append(grid);
                 host.append(section);
             }
-            host.append(details('Combined degree accuracy', outcome(overviewRows, 'Mixed practice including self-ratings')));
+            host.append(confusionSection(overviewRows, onSetup), details('Combined degree accuracy', outcome(overviewRows, 'Mixed practice including self-ratings')));
         }
         else {
             const mode = Object.entries(exerciseNames).find(([, name]) => name === view.context + ' · ' + view.family)[0];
@@ -192,6 +263,7 @@ export function renderInsights(host, sessions, runs, evidence, onSetup) {
             performance.append(result, trendSection);
             lead.append(performance, next);
             host.append(lead);
+            host.append(confusionSection(rows, onSetup));
             const analysis = el('section', '', 'insight-analysis');
             analysis.append(el('h2', 'Explore the music'));
             const tabs = el('div', '', 'insight-tabs');
@@ -266,20 +338,6 @@ export function renderInsights(host, sessions, runs, evidence, onSetup) {
                 }
                 if (groups.length > 5)
                     analysis.append(button(view.all ? 'Show fewer' : 'All ' + (view.dimension === 'Chord' ? 'chords' : 'degrees'), () => { view.all = !view.all; }));
-                const wrong = rows.filter(r => r.a.firstCorrect === false), confusions = new Map();
-                let unknown = 0, unspecified = 0;
-                for (const r of wrong) {
-                    const answer = r.a.gradingSource === 'self' ? r.a.imaginedWrongDegree : r.a.firstAnswer;
-                    if (!answer)
-                        unspecified++;
-                    else if (answer === 'unknown')
-                        unknown++;
-                    else {
-                        const label = r.chordLabel + ' · ' + r.degree + ' → ' + answer;
-                        confusions.set(label, (confusions.get(label) || 0) + 1);
-                    }
-                }
-                analysis.append(details('Degree confusions', ...Array.from(confusions).sort((a, b) => b[1] - a[1]).map(([label, count]) => el('p', label + ' · ' + count)), el('p', `Unknown: ${unknown} · Incorrect without annotation: ${unspecified} · Unassessed: ${insightStats(rows).unassessed}`)));
             }
             host.append(analysis);
             if (view.context === 'Single Chord' || view.family === 'Play by Ear') {

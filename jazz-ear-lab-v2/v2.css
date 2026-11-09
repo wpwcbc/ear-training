@@ -469,3 +469,9 @@ input[type="number"], output, .session-count, .assessment-count, .unassessed,
 .insight-family .metric-number{font-size:2rem;}
 .insight-family .insight-outcome{padding:12px 0 16px;}
 .insight-priority button{white-space:normal;}
+.insight-confusions{margin:24px 0;border-top:1px solid #d4d9df;padding-top:16px;}
+.insight-confusions>details{border-bottom:1px solid #d4d9df;padding:12px 0;}
+.insight-confusions summary{cursor:pointer;font-weight:600;overflow-wrap:anywhere;}
+.insight-confusions select{max-width:100%;width:100%;min-width:0;}
+.insight-confusions p,.insight-confusions a{overflow-wrap:anywhere;}
+.insight-confusions button{white-space:normal;}
