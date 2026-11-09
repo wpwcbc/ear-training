@@ -23,3 +23,27 @@ Independent standards/spec reviews found source ambiguity, absent source labels
 in mixed evidence, root spelling grouping and insufficient evidence identity.
 These were corrected. Added unit/browser assertions cover the new totals and
 workflow; broader integration remains ticket #32.
+
+## Matrix extension (#30)
+
+Added an explicit List/Matrix presentation. Matrix is quality-specific, uses
+the existing first-error groups by reference, and opens the same evidence and
+practice action as the list. Unknown/unspecified/unassessed are scope totals
+outside its cells. Diagonals are not correctness values. Matrix selection and
+quality survive practice return independently of list disclosure preferences.
+Mobile starts list-first; explicitly opened matrix/evidence are reordered
+with the evidence/list ahead of the grid and bounded table scrolling.
+
+Build and 177 Node tests passed. Four Insights browser suites passed after the
+extension. New checks cover keyboard opening from a closed disclosure,
+quality switching, sparse/diagonal cells, active Root filtering, matrix/list
+count agreement, selected practice return and no page overflow. Reporting
+tests include duplicates, missing qualities, empty population, deliberate
+#11/b5 spellings and filtered counts. Screenshots now include the matrix.
+
+Standards/spec review identified simultaneous duplicate presentations, matrix
+actions overwriting list preferences, mobile ordering and missing test cases.
+The mode behavior, separate preferences and mobile ordering were corrected;
+focused tests were expanded and rerun. Exhaustive six-mode, large-matrix,
+physical-device, screen-reader and 200% zoom checks remain #32. The prior full
+V2 Roots timeout is not represented as fixed by this reporting-only change.

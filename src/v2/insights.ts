@@ -1,5 +1,5 @@
 import {metrics, targetsFor, editableConfig, validate as validateSingle, type Attempt, type Session, type Config} from './model.js';
-import {pitchClass,parseChord} from '../jazz/theory.js';
+import {pitchClass,parseChord,degrees} from '../jazz/theory.js';
 import {exerciseNames} from './exercise-names.js';
 import {validate as validateProgression,type ProgressionConfig,type ProgressionQuestion} from './progression.js';
 export type InsightFamily = 'Degree Recognition' | 'Degree Audiation' | 'Play by Ear';
@@ -214,3 +214,11 @@ export function insightConfusions(records:InsightRecord[]) {
 }
 
 function latestAssessed(records:InsightRecord[]){return records.reduce((latest,r)=>r.a.firstCorrect!==null?Math.max(latest,r.time??0):latest,0);}
+
+export function insightConfusionMatrix(report:ReturnType<typeof insightConfusions>,quality:string){
+ const groups=report.groups.filter(g=>g.quality===quality&&g.target!==g.reported);
+ return {groups,degrees:[...new Set(groups.flatMap(g=>[g.target,g.reported]))].sort((a,b)=>{
+  const ai=degrees.indexOf(a),bi=degrees.indexOf(b);
+  return (ai<0?Infinity:ai)-(bi<0?Infinity:bi)||a.localeCompare(b);
+ })};
+}

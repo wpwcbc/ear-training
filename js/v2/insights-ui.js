@@ -1,6 +1,6 @@
 import { insightRecords, insightStats, insightPeriod, insightFilter, insightGroups, insightKeys, insightPriorities, insightConditionLabel, insightTrend, insightKeyComparison, insightEfficiency, insightEligible, insightStratum, insightSetupId } from './insights.js';
 import { exerciseNames, modeForExercise } from './exercise-names.js';
-import { insightConfusions, insightHeatmap } from './insights.js';
+import { insightConfusions, insightHeatmap, insightConfusionMatrix } from './insights.js';
 function performanceSection(records, onSetup) {
     const report = insightHeatmap(records), section = el('section', '', 'insight-performance');
     section.append(el('h2', 'Performance by chord degree'));
@@ -152,6 +152,107 @@ function confusionSection(records, onSetup) {
         section.append(el('p', 'Mixed practice: system-graded and self-rated results', 'insight-scope-note'));
     if (!report.groups.length)
         section.append(el('p', 'No specific first-error directions recorded in this scope.'));
+    const list = el('div', '', 'confusion-list'), matrix = el('div', '', 'confusion-matrix');
+    const rows = new Map();
+    const matrixState = 'jazzEarLab:v2:matrix:' + JSON.stringify([view.family, view.context, view.days, view.key, view.root, view.quality, view.chord, view.degree, view.production, view.condition, view.setup]);
+    let presentation = 'List', quality = report.groups[0]?.quality ?? '', matrixSelection = '';
+    const listPreferences = new Map();
+    try {
+        const saved = JSON.parse(sessionStorage.getItem(matrixState) ?? 'null');
+        if (saved) {
+            presentation = saved.presentation === 'Matrix' ? 'Matrix' : 'List';
+            matrixSelection = typeof saved.selection === 'string' ? saved.selection : '';
+            if (report.groups.some(g => g.quality === saved.quality))
+                quality = saved.quality;
+        }
+    }
+    catch { /* Optional matrix view. */ }
+    const controls = el('div', '', 'insight-tabs');
+    const modeButtons = new Map();
+    const renderMatrix = () => {
+        try {
+            sessionStorage.setItem(matrixState, JSON.stringify({ presentation, quality, selection: matrixSelection }));
+        }
+        catch { /* Optional matrix view. */ }
+        for (const [key, row] of rows) {
+            row.hidden = presentation === 'Matrix' && key !== matrixSelection;
+            row.open = presentation === 'List' ? (listPreferences.get(row) ?? false) : key === matrixSelection;
+        }
+        matrix.hidden = presentation !== 'Matrix';
+        for (const [name, b] of modeButtons)
+            b.setAttribute('aria-pressed', String(name === presentation));
+        matrix.replaceChildren();
+        if (matrix.hidden)
+            return;
+        const label = el('label', 'Matrix chord quality'), select = el('select');
+        select.setAttribute('aria-label', 'Matrix chord quality');
+        for (const q of [...new Set(report.groups.map(g => g.quality))]) {
+            const option = el('option', q);
+            option.value = q;
+            select.append(option);
+        }
+        select.value = quality;
+        select.onchange = () => { quality = select.value; matrixSelection = ''; renderMatrix(); matrix.querySelector('select')?.focus(); };
+        label.append(select);
+        matrix.append(label);
+        const projection = insightConfusionMatrix(report, quality), maximum = Math.max(1, ...projection.groups.map(g => g.count));
+        matrix.append(el('p', `Recorded first errors: 0 to ${maximum}. Darker cells mean more errors. Rows: target degree; columns: reported degree. Diagonal: not an error direction.`, 'insight-scope-note'));
+        const scroll = el('div', '', 'table-scroll');
+        scroll.tabIndex = 0;
+        scroll.setAttribute('role', 'region');
+        scroll.setAttribute('aria-label', 'Degree confusion matrix');
+        const table = el('table'), head = el('thead'), header = el('tr'), corner = el('th', 'Target ↓ / Reported →');
+        corner.scope = 'col';
+        header.append(corner);
+        table.append(el('caption', `${quality} · First-error directions`));
+        for (const degree of projection.degrees) {
+            const th = el('th', degree);
+            th.scope = 'col';
+            header.append(th);
+        }
+        head.append(header);
+        table.append(head);
+        const body = el('tbody');
+        for (const target of projection.degrees) {
+            const tr = el('tr'), th = el('th', target);
+            th.scope = 'row';
+            tr.append(th);
+            for (const reported of projection.degrees) {
+                const td = el('td'), group = projection.groups.find(g => g.target === target && g.reported === reported);
+                if (target === reported) {
+                    td.textContent = '—';
+                    td.setAttribute('aria-label', 'Not an error direction');
+                }
+                else if (!group) {
+                    td.textContent = '0';
+                    td.setAttribute('aria-label', `${quality}: target ${target}, reported ${reported}, 0 recorded errors`);
+                }
+                else {
+                    const button = el('button', String(group.count), 'confusion-cell');
+                    button.type = 'button';
+                    button.dataset.intensity = group.count / maximum > .66 ? 'high' : group.count / maximum > .33 ? 'medium' : 'low';
+                    button.setAttribute('aria-label', `${quality}: target ${target}, reported ${reported}, ${group.count} errors`);
+                    button.onclick = () => { matrixSelection = JSON.stringify([quality, target, reported]); renderMatrix(); rows.get(matrixSelection)?.querySelector('summary')?.focus(); };
+                    td.append(button);
+                }
+                tr.append(td);
+            }
+            body.append(tr);
+        }
+        table.append(body);
+        scroll.append(table);
+        matrix.append(scroll);
+    };
+    if (report.groups.length) {
+        for (const mode of ['List', 'Matrix']) {
+            const b = el('button', mode, 'secondary');
+            b.type = 'button';
+            b.onclick = () => { presentation = mode; renderMatrix(); };
+            modeButtons.set(mode, b);
+            controls.append(b);
+        }
+        section.append(controls, matrix);
+    }
     for (const group of report.groups) {
         const label = `${group.quality}: ${group.target} → ${group.reported}`;
         const rememberFocus = () => { try {
@@ -199,11 +300,16 @@ function confusionSection(records, onSetup) {
             row.open = sessionStorage.getItem(stateKey) === 'open';
         }
         catch { /* Optional disclosure state. */ }
-        row.ontoggle = () => { try {
-            sessionStorage.setItem(stateKey, row.open ? 'open' : 'closed');
-        }
-        catch { /* Optional disclosure state. */ } };
-        section.append(row);
+        listPreferences.set(row, row.open);
+        row.ontoggle = () => { if (presentation === 'List') {
+            listPreferences.set(row, row.open);
+            try {
+                sessionStorage.setItem(stateKey, row.open ? 'open' : 'closed');
+            }
+            catch { /* Optional disclosure state. */ }
+        } };
+        rows.set(JSON.stringify([group.quality, group.target, group.reported]), row);
+        list.append(row);
         try {
             if (sessionStorage.getItem('jazzEarLab:v2:confusionReturn') === label) {
                 sessionStorage.removeItem('jazzEarLab:v2:confusionReturn');
@@ -212,6 +318,8 @@ function confusionSection(records, onSetup) {
         }
         catch { /* Optional return focus. */ }
     }
+    section.append(list);
+    renderMatrix();
     section.append(el('p', `Unknown: ${report.unknown} · Incorrect without annotation: ${report.unspecified} · Unassessed notes: ${report.unassessed}`, 'insight-scope-note'));
     return section;
 }

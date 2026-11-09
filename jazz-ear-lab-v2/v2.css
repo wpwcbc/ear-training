@@ -496,3 +496,17 @@ input[type="number"], output, .session-count, .assessment-count, .unassessed,
 .heatmap-swatch[data-band=mid]{background:#e4efd9;}
 .heatmap-swatch[data-band=high]{background:#a8e4d4;}
 .heatmap-swatch[data-band=top]{background:#62cdb7;}
+.confusion-list>details{border-bottom:1px solid #d4d9df;padding:12px 0;}
+.confusion-matrix .table-scroll{max-width:100%;overflow-x:auto;}
+.confusion-matrix table{width:max-content;min-width:min(100%,640px);}
+.confusion-matrix select{max-width:100%;}
+.confusion-matrix .confusion-cell{min-width:48px;min-height:48px;color:#111;font-variant-numeric:tabular-nums;}
+.confusion-cell[data-intensity=high]{background:#62cdb7;}
+.confusion-cell[data-intensity=medium]{background:#a8e4d4;}
+.confusion-cell[data-intensity=low]{background:#e0f5ee;}
+@media(max-width:600px){
+ .insight-confusions{display:flex;flex-direction:column;}
+ .insight-confusions .confusion-list{order:1;}
+ .insight-confusions .confusion-matrix{order:2;}
+ .insight-confusions>p:last-child{order:3;}
+}

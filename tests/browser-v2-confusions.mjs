@@ -14,6 +14,7 @@ try{
    a.target.chord={...a.target.chord,root,quality:'m7',symbol:root+'m7'};a.target.degree='5';
    a.firstCorrect=false;a.firstAnswer='1';a.gradingSource='automatic';s.attempts.push(a);
   }
+  for(let i=0;i<3;i++){const a=attempt(c,next(),s.id,'fresh');a.exercise='m2';a.gradingSource='automatic';a.target.chord={root:'C',quality:'7',symbol:'C7'};a.target.degree='#11';a.firstAnswer='b5';a.firstCorrect=false;s.attempts.push(a);}
   localStorage.setItem('jazzEarLab:v2:sessions',JSON.stringify([s]));
   sessionStorage.clear();
  });
@@ -25,10 +26,25 @@ try{
  await section.getByText('Dm7: 7',{exact:true}).waitFor();
  await section.getByText('Am7: 1',{exact:true}).waitFor();
  await section.getByText('Gm7: 1',{exact:true}).waitFor();
- await section.locator('summary').filter({hasText:'View matching records'}).click();
- assert.equal(await section.getByRole('link',{name:'Open containing session'}).count(),9);
+ await summary.click();
+ await section.getByRole('button',{name:'Matrix',exact:true}).click();
+ const matrix=section.getByRole('table',{name:'m7 · First-error directions'});
+ await matrix.waitFor();
+ const direction=matrix.getByRole('button',{name:'m7: target 5, reported 1, 9 errors'});
+ await direction.focus();await page.keyboard.press('Enter');
+ assert.ok((await page.evaluate(()=>document.activeElement.textContent)).includes('m7: 5 → 1'));
+ assert.notEqual(await section.locator('.confusion-list>details').filter({hasText:'m7: 5 → 1'}).getAttribute('open'),null);
+ assert.equal(await matrix.getByRole('button').count(),1);
+ const listRow=section.locator('.confusion-list>details').filter({has:page.locator('summary').filter({hasText:'m7: 5 → 1'})});
+ await listRow.locator('summary').filter({hasText:'View matching records'}).click();
+ assert.equal(await listRow.getByRole('link',{name:'Open containing session'}).count(),9);
+ await section.getByLabel('Matrix chord quality',{exact:true}).selectOption('7');
+ await section.getByRole('button',{name:'7: target #11, reported b5, 3 errors'}).waitFor();
+ assert.equal(await listRow.getAttribute('open'),null);
+ await section.getByLabel('Matrix chord quality',{exact:true}).selectOption('m7');
+ await section.getByRole('button',{name:'m7: target 5, reported 1, 9 errors'}).click();
  assert.ok((await section.innerText()).includes('Question '));
- assert.ok((await section.getByRole('combobox').locator('option').first().innerText()).includes('Recognition'));
+ assert.ok((await section.getByRole('combobox',{name:'Practice source for m7: 5 → 1',exact:true}).locator('option').first().innerText()).includes('Recognition'));
  await mkdir('.impeccable/review/v2-confusions',{recursive:true});
  for(const width of [1440,390,320]){
   await page.setViewportSize({width,height:900});
@@ -40,6 +56,12 @@ try{
  await page.waitForURL(/insight-setup/);
  await page.goto('http://127.0.0.1:4173/jazz-ear-lab-v2/#insights');
  await section.getByText('Dm7: 7',{exact:true}).waitFor();
+ assert.equal(await section.getByRole('button',{name:'Matrix',exact:true}).getAttribute('aria-pressed'),'true');
  assert.equal(await page.evaluate(()=>localStorage.getItem('jazzEarLab:v2:sessions')),before);
+ await page.getByLabel('Practice family',{exact:true}).selectOption('Degree Recognition');
+ await page.locator('summary').filter({hasText:/^More filters$/}).click();await page.getByLabel('Root',{exact:true}).selectOption('D');
+ await section.getByRole('button',{name:'Matrix',exact:true}).click();
+ await section.getByRole('button',{name:'m7: target 5, reported 1, 7 errors'}).waitFor();
+ assert.equal(await section.getByRole('button',{name:/target #11/}).count(),0);
  console.log('PASS confusion totals, keyboard disclosure, responsive widths, setup and return history preservation');
 }finally{await browser.close();}

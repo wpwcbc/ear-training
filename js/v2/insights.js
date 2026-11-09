@@ -1,5 +1,5 @@
 import { metrics, targetsFor, editableConfig, validate as validateSingle } from './model.js';
-import { pitchClass, parseChord } from '../jazz/theory.js';
+import { pitchClass, parseChord, degrees } from '../jazz/theory.js';
 import { exerciseNames } from './exercise-names.js';
 import { validate as validateProgression } from './progression.js';
 export const insightKeys = 'C C# D Eb E F F# G Ab A Bb B'.split(' ');
@@ -310,3 +310,10 @@ export function insightConfusions(records) {
     return { groups, unknown, unspecified, unassessed: insightStats(unique).unassessed };
 }
 function latestAssessed(records) { return records.reduce((latest, r) => r.a.firstCorrect !== null ? Math.max(latest, r.time ?? 0) : latest, 0); }
+export function insightConfusionMatrix(report, quality) {
+    const groups = report.groups.filter(g => g.quality === quality && g.target !== g.reported);
+    return { groups, degrees: [...new Set(groups.flatMap(g => [g.target, g.reported]))].sort((a, b) => {
+            const ai = degrees.indexOf(a), bi = degrees.indexOf(b);
+            return (ai < 0 ? Infinity : ai) - (bi < 0 ? Infinity : bi) || a.localeCompare(b);
+        }) };
+}
