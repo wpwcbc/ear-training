@@ -4,7 +4,7 @@ import { insightConfusions, insightHeatmap, insightConfusionMatrix, insightPract
 function recordedSources(records) { return [...new Map(records.filter(r => r.sourceKnown).map(r => [r.a.exercise + '|' + insightSetupId(r), r])).values()]; }
 function sourceOptionLabel(r, i) { const c = r.source, levels = 'mode' in c ? c.levels : c.voiceLevels ?? [1, 1, 1, 1, 1]; return `${i + 1}. ${exerciseNames[r.a.exercise]} · ${insightConditionLabel(r)} · Volume ${Math.round(c.volume * 100)}% · Voices ${levels.map(v => Math.round(v * 100) + '%').join(', ')}`; }
 function practiceSummarySection(records, onSetup) {
-    const report = insightPracticeSummary(records), section = el('section', '', 'practice-summary');
+    const report = insightPracticeSummary(records), section = el('section', '', 'insight-practice-summary');
     section.append(el('h2', 'Your practice focus'));
     if (view.family === 'Overall')
         section.append(el('p', 'Mixed practice, including system-graded and self-rated results', 'insight-scope-note'));
@@ -411,6 +411,7 @@ catch { /* View preferences never block history. */ }
 function el(tag, text = '', cls = '') { const n = document.createElement(tag); n.textContent = text; n.className = cls; return n; }
 function details(title, ...nodes) { const n = el('details'); n.append(el('summary', title), ...nodes); return n; }
 const percent = (m) => m.n ? Math.round(100 * m.correct / m.n) + '%' : '—';
+function musicalOverview(records, onSetup) { const n = el('div', '', 'insight-musical-overview'); n.append(confusionSection(records, onSetup), performanceSection(records, onSetup)); return n; }
 export function renderInsights(host, sessions, runs, evidence, onSetup) {
     const all = insightRecords(sessions, runs, evidence);
     function render() {
@@ -484,6 +485,11 @@ export function renderInsights(host, sessions, runs, evidence, onSetup) {
             host.append(el('p', 'Some older records use session-start dates. Exact question dates were not recorded.', 'insight-scope-note'));
         if (all.some(r => r.time === null))
             host.append(el('p', `${all.filter(r => r.time === null).length} records have no usable date; available in All time.`, 'insight-scope-note'));
+        const currentScope = el('div', '', 'insight-current-scope');
+        host.append(currentScope);
+        const scopeFilters = Object.entries({ key: view.key, root: view.root, quality: view.quality, chord: view.chord, degree: view.degree }).filter(([, value]) => value);
+        if (scopeFilters.length)
+            currentScope.append(el('p', 'Filters: ' + scopeFilters.map(([key, value]) => key + ': ' + value + (key === 'key' && view.family === 'Overall' ? ' (progression only)' : '')).join(' · ')));
         const outcome = (records, title, compact = false) => { const m = insightStats(records), block = el('section', '', 'insight-outcome'); block.setAttribute('aria-label', title); if (compact && !m.questions) {
             block.append(el('h2', title), el('p', 'No records in this period', 'insight-scope-note'));
             return block;
@@ -491,10 +497,11 @@ export function renderInsights(host, sessions, runs, evidence, onSetup) {
             block.append(el('p', `Replay-assisted first responses: ${m.replayed} / ${m.n}`, 'insight-scope-note')); block.dataset.assessed = String(m.n); block.dataset.correct = String(m.correct); return block; };
         if (view.family === 'Overall') {
             const overviewRows = insightFilter(scope, { root: view.root, quality: view.quality, chord: view.chord, degree: view.degree }).filter(r => !view.key || r.context === 'Single Chord' || r.key === view.key);
-            host.append(practiceSummarySection(overviewRows, onSetup), el('h2', 'Recent performance'));
-            const active = Object.entries({ key: view.key, root: view.root, quality: view.quality, chord: view.chord, degree: view.degree }).filter(([, value]) => value);
-            if (active.length)
-                host.append(el('p', 'Filters: ' + active.map(([key, value]) => key + ': ' + value + (key === 'key' ? ' (progression only)' : '')).join(' · ')), button('Clear filters', reset));
+            const total = insightStats(overviewRows);
+            host.append(el('p', `Mixed practice including self-ratings · ${percent(total)} · ${total.correct}/${total.n} assessed notes · ${total.questions} questions · ${total.sessions} sessions`, 'insight-total-line'));
+            host.append(practiceSummarySection(overviewRows, onSetup), musicalOverview(overviewRows, onSetup), el('h2', 'Recent performance'));
+            if (scopeFilters.length)
+                currentScope.append(button('Clear filters', reset));
             if (!scope.length) {
                 host.append(el('p', all.length ? 'No matching records in this period. Try a wider period.' : 'No V2 records in this browser. Choose an exercise to begin.'), button('Show all time', () => { view.days = 0; }));
                 const link = el('a', 'Choose an exercise');
@@ -518,7 +525,7 @@ export function renderInsights(host, sessions, runs, evidence, onSetup) {
                 section.append(grid);
                 host.append(section);
             }
-            host.append(confusionSection(overviewRows, onSetup), performanceSection(overviewRows, onSetup), details('Combined degree accuracy', outcome(overviewRows, 'Mixed practice including self-ratings')));
+            host.append(details('Combined degree accuracy', outcome(overviewRows, 'Mixed practice including self-ratings')));
         }
         else {
             const mode = Object.entries(exerciseNames).find(([, name]) => name === view.context + ' · ' + view.family)[0];
@@ -528,9 +535,9 @@ export function renderInsights(host, sessions, runs, evidence, onSetup) {
             if (mode === 'm1' && view.production !== 'all')
                 rows = rows.filter(r => view.production === 'played' ? r.a.responseMethod === 'played' : ['imagined', 'sung'].includes(r.a.responseMethod));
             host.append(el('h2', view.context + ' · ' + view.family), el('p', view.family === 'Degree Recognition' ? 'System graded' : 'Self-rated · not pitch-verified', 'insight-assessment'));
-            host.append(practiceSummarySection(rows, onSetup));
             const result = outcome(rows, view.family === 'Degree Recognition' ? 'First-answer accuracy' : 'Self-rated accuracy');
             host.append(result);
+            host.append(practiceSummarySection(rows, onSetup));
             if (!modeRows.length || !rows.length) {
                 host.append(el('p', Object.entries({ key: view.key, root: view.root, quality: view.quality, chord: view.chord, degree: view.degree }).filter(([, value]) => value).map(([key, value]) => key + ': ' + value).join(' · '), 'insight-scope-note'));
                 host.append(el('p', !rows.length && modeRows.length ? 'No records match these filters.' : all.some(r => r.a.exercise === mode) ? 'No matching records in this period. Try a wider period.' : 'No records for this exercise yet.'), button('Show all time', () => { view.days = 0; }), button('Clear filters', () => { reset(); view.production = 'all'; }), button('Practice ' + exerciseNames[mode], () => { const progression = modeForExercise(mode); location.hash = progression ? 'progression/' + progression : 'home'; }));
@@ -591,10 +598,9 @@ export function renderInsights(host, sessions, runs, evidence, onSetup) {
             }
             next.append(coverage);
             const lead = el('div', '', 'insight-lead'), performance = el('div');
-            performance.append(result, trendSection);
+            performance.append(trendSection);
             lead.append(performance, next);
-            host.append(lead);
-            host.append(confusionSection(rows, onSetup), performanceSection(rows, onSetup));
+            host.append(musicalOverview(rows, onSetup), lead);
             const analysis = el('section', '', 'insight-analysis');
             analysis.append(el('h2', 'Explore the music'));
             const tabs = el('div', '', 'insight-tabs');
@@ -611,7 +617,7 @@ export function renderInsights(host, sessions, runs, evidence, onSetup) {
                     chips.append(button(name + ': ' + view[name] + ' · remove', () => { view[name] = ''; }));
             if (chips.children.length)
                 chips.append(button('Clear filters', reset));
-            analysis.append(chips);
+            currentScope.replaceChildren(chips);
             const filters = el('div', '', 'insight-filters');
             filters.append(select('Root', view.root || 'All roots', ['All roots', ...new Set(modeRows.map(r => r.root))], v => { view.root = v === 'All roots' ? '' : v; }), select('Chord quality', view.quality || 'All qualities', ['All qualities', ...new Set(modeRows.map(r => r.quality))], v => { view.quality = v === 'All qualities' ? '' : v; }));
             if (mode === 'm1')

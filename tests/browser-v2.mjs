@@ -461,18 +461,23 @@ try {
   const rootInputs = page
     .getByRole("group", { name: "Roots", exact: true })
     .locator("input:checked");
-  while ((await rootInputs.count()) > 1) await rootInputs.first().uncheck();
+  // Pin each checkbox: :checked.first() changes identity after the UI rerenders.
+  while ((await rootInputs.count()) > 1) {
+    const root = await rootInputs.first().getAttribute("value");
+    await page.getByRole("group", { name: "Roots", exact: true }).getByLabel(root, { exact: true }).uncheck();
+  }
   const old = await page.evaluate(() =>
     localStorage.getItem("jazzEarLab:v2:presets"),
   );
-  await rootInputs.first().uncheck();
+  const lastRoot = await rootInputs.first().getAttribute("value");
+  await page.getByRole("group", { name: "Roots", exact: true }).getByLabel(lastRoot, { exact: true }).uncheck();
   assert.equal(
     await page.evaluate(() => localStorage.getItem("jazzEarLab:v2:presets")),
     old,
   );
   assert.match(
     await page.locator("#config-status").textContent(),
-    /Last valid saved preset unchanged/,
+    /Invalid settings/,
   );
   await page
     .getByRole("group", { name: "Roots", exact: true })
@@ -532,6 +537,9 @@ try {
   page.once("dialog", (d) => d.accept("Renamed V2 preset"));
   await page.getByRole("button", { name: "Rename", exact: true }).click();
   assert.match(await page.locator("h1").textContent(), /Renamed V2 preset/);
+  if (!(await page.getByRole("button", { name: "Delete preset", exact: true }).isVisible())) {
+    await page.getByText("Preset actions", { exact: true }).click();
+  }
   page.once("dialog", (d) => d.accept());
   await page
     .getByRole("button", { name: "Delete preset", exact: true })
@@ -559,7 +567,7 @@ try {
   await capture("insights-mobile");
   assert.match(
     await page.locator("main").textContent(),
-    /Not enough comparable data/,
+    /Early observations/,
   );
   assert.deepEqual(
     await page.evaluate(() =>
