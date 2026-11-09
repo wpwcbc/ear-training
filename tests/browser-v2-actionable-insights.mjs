@@ -76,6 +76,7 @@ try{
  // An independent Single Chord draft must not persist edits into the source preset.
  await page.getByLabel('Practice family',{exact:true}).selectOption('Degree Recognition');await page.getByRole('button',{name:'Single Chord',exact:true}).click();
  const singlePresets=await page.evaluate(()=>localStorage.getItem('jazzEarLab:v2:presets'));
+ await page.locator('summary').filter({hasText:/^Practice coverage$/}).click();
  await page.getByRole('button',{name:/^Setup practice:/}).first().click();
  await page.getByRole('heading',{name:'Customize Single Chord · Degree Recognition',exact:true}).waitFor();
  await page.getByRole('button',{name:'Practice',exact:true}).click();

@@ -1,6 +1,81 @@
 import { insightRecords, insightStats, insightPeriod, insightFilter, insightGroups, insightKeys, insightPriorities, insightConditionLabel, insightTrend, insightKeyComparison, insightEfficiency, insightEligible, insightStratum, insightSetupId } from './insights.js';
 import { exerciseNames, modeForExercise } from './exercise-names.js';
-import { insightConfusions, insightHeatmap, insightConfusionMatrix } from './insights.js';
+import { insightConfusions, insightHeatmap, insightConfusionMatrix, insightPracticeSummary } from './insights.js';
+function recordedSources(records) { return [...new Map(records.filter(r => r.sourceKnown).map(r => [r.a.exercise + '|' + insightSetupId(r), r])).values()]; }
+function sourceOptionLabel(r, i) { const c = r.source, levels = 'mode' in c ? c.levels : c.voiceLevels ?? [1, 1, 1, 1, 1]; return `${i + 1}. ${exerciseNames[r.a.exercise]} · ${insightConditionLabel(r)} · Volume ${Math.round(c.volume * 100)}% · Voices ${levels.map(v => Math.round(v * 100) + '%').join(', ')}`; }
+function practiceSummarySection(records, onSetup) {
+    const report = insightPracticeSummary(records), section = el('section', '', 'practice-summary');
+    section.append(el('h2', 'Your practice focus'));
+    if (view.family === 'Overall')
+        section.append(el('p', 'Mixed practice, including system-graded and self-rated results', 'insight-scope-note'));
+    if (report.message)
+        section.append(el('p', report.message));
+    if (report.findings.length)
+        section.append(el('p', 'Recorded results across the current scope; practice settings may differ.', 'insight-scope-note'));
+    for (const finding of report.findings) {
+        const item = el('article', '', 'summary-finding');
+        item.append(el('p', finding.text, 'summary-text'));
+        item.append(el('p', `${finding.m.correct}/${finding.m.n} correct assessed target notes · ${finding.m.assessedQuestions} assessed questions · ${finding.m.assessedSessions} assessed sessions`, 'insight-scope-note'));
+        const evidence = details('View evidence: ' + finding.label), stateKey = 'jazzEarLab:v2:summary:' + JSON.stringify([view.family, view.context, view.days, view.key, view.root, view.quality, view.chord, view.degree, view.production, view.condition, view.setup, finding.label]);
+        const remember = () => { try {
+            sessionStorage.setItem(stateKey, 'open');
+            sessionStorage.setItem('jazzEarLab:v2:summaryReturn', stateKey);
+        }
+        catch { /* Optional return state. */ } };
+        evidence.append(el('p', `${finding.items.length} matching ${finding.kind === 'confusion' ? 'first-error' : 'target-note'} records`));
+        const list = el('ul');
+        for (const r of finding.items) {
+            const line = el('li'), link = el('a', 'Open containing session');
+            link.href = r.href;
+            link.onclick = remember;
+            line.append(el('span', `${r.chordLabel} · ${r.degree} · ${r.a.firstCorrect === true ? 'Correct' : r.a.firstCorrect === false ? 'Incorrect' : 'Unassessed'} · ${exerciseNames[r.a.exercise]} · ${r.a.gradingSource === 'self' ? 'Self-rated' : 'System graded'} · Question ${r.questionId} · Record ${r.a.id} `), link);
+            list.append(line);
+        }
+        evidence.append(list);
+        const sources = recordedSources(finding.items);
+        if (onSetup && sources.length) {
+            const label = el('label', 'Practice source'), select = el('select');
+            select.setAttribute('aria-label', 'Summary practice source: ' + finding.label);
+            sources.forEach((r, i) => { const option = el('option', sourceOptionLabel(r, i)); option.value = String(i); select.append(option); });
+            try {
+                const saved = sessionStorage.getItem(stateKey + ':source');
+                if (saved !== null && sources[Number(saved)])
+                    select.value = saved;
+            }
+            catch { /* Optional source choice. */ }
+            select.onchange = () => { try {
+                sessionStorage.setItem(stateKey + ':source', select.value);
+            }
+            catch { /* Optional source choice. */ } };
+            label.append(select);
+            evidence.append(label, el('p', 'One recorded setup, not every condition in this finding.', 'insight-scope-note'));
+            const action = el('button', 'Review practice setup');
+            action.type = 'button';
+            action.onclick = () => { remember(); onSetup(sources[Number(select.value)], finding.label, { ...(view.key ? { key: view.key } : {}), ...(view.root ? { root: view.root } : {}), ...(view.chord ? { chord: view.chord } : {}), quality: finding.quality, degree: finding.degree }); };
+            evidence.append(action);
+        }
+        try {
+            evidence.open = sessionStorage.getItem(stateKey) === 'open';
+        }
+        catch { /* Optional disclosure state. */ }
+        evidence.ontoggle = () => { try {
+            sessionStorage.setItem(stateKey, evidence.open ? 'open' : 'closed');
+        }
+        catch { /* Optional disclosure state. */ } };
+        item.append(evidence);
+        section.append(item);
+        try {
+            if (sessionStorage.getItem('jazzEarLab:v2:summaryReturn') === stateKey) {
+                sessionStorage.removeItem('jazzEarLab:v2:summaryReturn');
+                requestAnimationFrame(() => evidence.querySelector('summary')?.focus());
+            }
+        }
+        catch { /* Optional return focus. */ }
+    }
+    if (report.unknown || report.unspecified)
+        section.append(el('p', `Incorrect notes without a specific direction: Unknown ${report.unknown}; without annotation ${report.unspecified}. These count in accuracy, not directed confusions.`, 'insight-scope-note'));
+    return section;
+}
 function performanceSection(records, onSetup) {
     const report = insightHeatmap(records), section = el('section', '', 'insight-performance');
     section.append(el('h2', 'Performance by chord degree'));
@@ -91,11 +166,11 @@ function performanceSection(records, onSetup) {
                     evidence.append(line);
                 }
                 detail.append(evidence);
-                const sources = [...new Map(cell.items.filter(r => r.sourceKnown).map(r => [r.a.exercise + '|' + insightSetupId(r), r])).values()];
+                const sources = recordedSources(cell.items);
                 if (onSetup && sources.length) {
                     const l = el('label', 'Practice source'), s = el('select');
                     s.setAttribute('aria-label', `Practice source for ${label}`);
-                    sources.forEach((r, i) => { const c = r.source, levels = 'mode' in c ? c.levels : c.voiceLevels ?? [1, 1, 1, 1, 1]; const o = el('option', `${i + 1}. ${exerciseNames[r.a.exercise]} · ${insightConditionLabel(r)} · Volume ${Math.round(c.volume * 100)}% · Voices ${levels.map(v => Math.round(v * 100) + '%').join(', ')}`); o.value = String(i); s.append(o); });
+                    sources.forEach((r, i) => { const o = el('option', sourceOptionLabel(r, i)); o.value = String(i); s.append(o); });
                     const sourceKey = stateKey + ':source:' + identity;
                     try {
                         const saved = sessionStorage.getItem(sourceKey);
@@ -274,11 +349,11 @@ function confusionSection(records, onSetup) {
             evidence.append(line);
         }
         row.append(evidence);
-        const sources = [...new Map(group.items.filter(r => r.sourceKnown).map(r => [r.a.exercise + '|' + insightSetupId(r), r])).values()];
+        const sources = recordedSources(group.items);
         if (onSetup && sources.length) {
             const sourceLabel = el('label', 'Practice source'), select = el('select');
             select.setAttribute('aria-label', `Practice source for ${label}`);
-            sources.forEach((r, i) => { const option = el('option', `${i + 1}. ${exerciseNames[r.a.exercise]} · ${insightConditionLabel(r)}`); option.value = String(i); select.append(option); });
+            sources.forEach((r, i) => { const option = el('option', sourceOptionLabel(r, i)); option.value = String(i); select.append(option); });
             sourceLabel.append(select);
             row.append(sourceLabel);
             const settings = el('p', '', 'insight-scope-note');
@@ -416,7 +491,7 @@ export function renderInsights(host, sessions, runs, evidence, onSetup) {
             block.append(el('p', `Replay-assisted first responses: ${m.replayed} / ${m.n}`, 'insight-scope-note')); block.dataset.assessed = String(m.n); block.dataset.correct = String(m.correct); return block; };
         if (view.family === 'Overall') {
             const overviewRows = insightFilter(scope, { root: view.root, quality: view.quality, chord: view.chord, degree: view.degree }).filter(r => !view.key || r.context === 'Single Chord' || r.key === view.key);
-            host.append(el('h2', 'Recent performance'));
+            host.append(practiceSummarySection(overviewRows, onSetup), el('h2', 'Recent performance'));
             const active = Object.entries({ key: view.key, root: view.root, quality: view.quality, chord: view.chord, degree: view.degree }).filter(([, value]) => value);
             if (active.length)
                 host.append(el('p', 'Filters: ' + active.map(([key, value]) => key + ': ' + value + (key === 'key' ? ' (progression only)' : '')).join(' · ')), button('Clear filters', reset));
@@ -453,6 +528,7 @@ export function renderInsights(host, sessions, runs, evidence, onSetup) {
             if (mode === 'm1' && view.production !== 'all')
                 rows = rows.filter(r => view.production === 'played' ? r.a.responseMethod === 'played' : ['imagined', 'sung'].includes(r.a.responseMethod));
             host.append(el('h2', view.context + ' · ' + view.family), el('p', view.family === 'Degree Recognition' ? 'System graded' : 'Self-rated · not pitch-verified', 'insight-assessment'));
+            host.append(practiceSummarySection(rows, onSetup));
             const result = outcome(rows, view.family === 'Degree Recognition' ? 'First-answer accuracy' : 'Self-rated accuracy');
             host.append(result);
             if (!modeRows.length || !rows.length) {
@@ -472,10 +548,12 @@ export function renderInsights(host, sessions, runs, evidence, onSetup) {
             host.append(trendSection);
             const priorities = insightPriorities(rows, view.baseline, { key: view.key, root: view.root, quality: view.quality, chord: view.chord, degree: view.degree }), next = el('section', '', 'insight-priorities');
             next.append(el('h2', 'What to practise next'));
+            next.append(el('p', 'Additional suggestions under matching practice conditions. The summary above describes the full selected scope.', 'insight-scope-note'));
             if (!priorities.errors.length)
-                next.append(el('p', insightEligible(rows) ? 'No recurrent error pattern meets the evidence thresholds.' : 'Not enough evidence to identify recurrent errors. Small samples are not weaknesses.'));
+                next.append(el('p', 'No additional matching-condition error recommendation meets the evidence thresholds. Coverage gaps below are not weaknesses.'));
             if (priorities.stratum)
                 next.append(el('p', 'Recurrent errors within: ' + insightConditionLabel(priorities.stratum[0]), 'insight-scope-note'));
+            const coverage = details('Practice coverage');
             if (priorities.baselines.length > 1) {
                 const l = el('label', 'Coverage setup'), s = el('select');
                 s.setAttribute('aria-label', 'Coverage setup');
@@ -488,10 +566,10 @@ export function renderInsights(host, sessions, runs, evidence, onSetup) {
                 s.value = priorities.baseline.a.id;
                 s.onchange = () => { view.baseline = s.value; render(); };
                 l.append(s);
-                next.append(l);
+                coverage.append(l);
             }
             else if (priorities.baseline)
-                next.append(details('Coverage setup', el('p', insightConditionLabel(priorities.baseline))));
+                coverage.append(details('Coverage setup', el('p', insightConditionLabel(priorities.baseline))));
             for (const item of [...priorities.errors, ...priorities.gaps]) {
                 const row = el('article', '', 'insight-priority');
                 row.append(el('h3', item.label), el('p', item.kind === 'error' ? 'Repeated first-response errors' : 'Coverage gap · insufficient practice, not a weakness'), el('p', item.m.questions ? `${item.m.correct} / ${item.m.n} assessed · ${item.m.questions} questions · ${item.m.sessions} sessions` : 'No assessed records under this setup'));
@@ -509,8 +587,9 @@ export function renderInsights(host, sessions, runs, evidence, onSetup) {
                 evidenceButton.setAttribute('aria-label', 'View evidence: ' + item.label);
                 evidenceButton.textContent = 'View evidence';
                 row.append(evidenceButton);
-                next.append(row);
+                (item.kind === 'gap' ? coverage : next).append(row);
             }
+            next.append(coverage);
             const lead = el('div', '', 'insight-lead'), performance = el('div');
             performance.append(result, trendSection);
             lead.append(performance, next);

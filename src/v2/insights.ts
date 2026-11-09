@@ -222,3 +222,19 @@ export function insightConfusionMatrix(report:ReturnType<typeof insightConfusion
   return (ai<0?Infinity:ai)-(bi<0?Infinity:bi)||a.localeCompare(b);
  })};
 }
+
+export function insightPracticeSummary(records:InsightRecord[]){
+ const cells=insightHeatmap(records).cells,confusions=insightConfusions(records),m=insightStats(records);
+ const supported=cells.filter(c=>c.status==='recorded').sort((a,b)=>(a.rate??0)-(b.rate??0)||b.m.n-a.m.n||a.quality.localeCompare(b.quality)||a.degree.localeCompare(b.degree));
+ const findings:{kind:'strength'|'attention'|'confusion';label:string;text:string;items:InsightRecord[];m:ReturnType<typeof insightStats>;quality:string;degree:string}[]=[];
+ const used=new Set<string>(),key=(quality:string,degree:string)=>JSON.stringify([quality,degree]);
+ const recurrent=confusions.groups.find(g=>g.count>=3&&g.sessions>=2&&supported.some(c=>c.quality===g.quality&&c.degree===g.target));
+ if(recurrent){const cell=supported.find(c=>c.quality===recurrent.quality&&c.degree===recurrent.target)!;
+  findings.push({kind:'confusion',label:`${cell.quality}: ${cell.degree} → ${recurrent.reported}`,text:`${cell.quality}: target ${cell.degree} was reported as ${recurrent.reported} in ${recurrent.count} first errors. Practise this sound relationship next.`,items:recurrent.items,m:cell.m,quality:cell.quality,degree:cell.degree});used.add(key(cell.quality,cell.degree));}
+ const attention=supported.find(c=>!used.has(key(c.quality,c.degree))&&c.m.n-c.m.correct>=3&&new Set(c.items.filter(r=>r.a.firstCorrect===false).map(r=>r.sessionId)).size>=2);
+ if(attention){findings.push({kind:'attention',label:`${attention.quality}: ${attention.degree}`,text:`${attention.quality}: degree ${attention.degree} deserves more attention in these recorded results (${attention.m.correct}/${attention.m.n} correct).`,items:attention.items,m:attention.m,quality:attention.quality,degree:attention.degree});used.add(key(attention.quality,attention.degree));}
+ const strongest=supported.slice().reverse().find(c=>!used.has(key(c.quality,c.degree))&&(c.m.correct===c.m.n||supported.some(other=>other.rate!<c.rate!)));
+ if(strongest)findings.unshift({kind:'strength',label:`${strongest.quality}: ${strongest.degree}`,text:strongest.m.correct===strongest.m.n?`All ${strongest.m.n} assessed notes for ${strongest.quality}: degree ${strongest.degree} were correct in this scope.`:`${strongest.quality}: degree ${strongest.degree} is among your stronger recorded results (${strongest.m.correct}/${strongest.m.n} correct).`,items:strongest.items,m:strongest.m,quality:strongest.quality,degree:strongest.degree});
+ const message=!cells.length?'No recorded observations in this scope.':!m.n?`${m.unassessed} unassessed recorded notes; no accuracy result yet.`:!supported.length?'Early observations: more distinct questions and sessions are needed before highlighting strengths or recurrent errors.':m.correct===m.n?'All assessed notes were correct in this scope. This is a description of recorded practice, not mastery.':!findings.length?'No recurrent pattern meets the evidence thresholds. Explore the recorded results below.':'';
+ return {findings:findings.slice(0,3),message,unknown:confusions.unknown,unspecified:confusions.unspecified};
+}
