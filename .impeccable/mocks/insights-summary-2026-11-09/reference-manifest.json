@@ -5,7 +5,7 @@
   "deviceScaleFactor": 1,
   "viewportRule": "Overview viewport equals crop width and height. Other crops are panel references, not full-page viewport approvals.",
   "coordinateSystem": "Original board pixels; crop rectangles are [x,y,width,height], never rescaled.",
-  "status": "Reference inventory only; browser fixtures and comparison evidence remain required.",
+  "status": "Reference inventory with raster measurements and reproducible rejected-build comparison evidence; not UI acceptance.",
   "screens": [
     {"id":"overview-desktop","board":"01-overview.png","crop":[20,50,1084,956],"role":"complete overview","regions":{"navigation":[0,0,1084,59],"scope":[26,88,1037,183],"summary":[26,271,1037,221],"confusions":[26,492,464,334],"performance":[537,492,526,334],"secondary":[26,851,1037,78]}},
     {"id":"overview-mobile","board":"01-overview.png","crop":[1138,50,379,956],"role":"complete overview","regions":{"navigation":[0,0,379,38],"scope":[21,48,340,172],"summary":[21,220,340,174],"confusions":[21,394,340,240],"performance":[21,634,340,242],"secondary":[21,876,340,63]}},

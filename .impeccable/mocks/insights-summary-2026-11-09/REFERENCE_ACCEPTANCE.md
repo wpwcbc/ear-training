@@ -1,7 +1,7 @@
 # Reference acceptance inventory
 
-Parent: #34. Delivery ticket: #35. This is a partial reference inventory, not
-completion of #35 and not acceptance of the current implementation.
+Parent: #34. Delivery ticket: #35. This package establishes the reference and
+rejected-build baseline. It is not acceptance of the current implementation.
 
 ## Authority
 
@@ -28,21 +28,21 @@ PNG references plus SHA-256 source provenance under `references/`.
 The extraction command passed for all twelve crops. Build and the existing
 178 unit tests passed. These checks do not certify visual fidelity.
 
-## Outstanding work before this ticket can close
+## Baseline evidence
 
 - All twelve extracted crops have been visually inspected; panel boundaries
   retain the original content without the surrounding board headings.
-- Measure text sizes, weights, line heights, control geometry and detail/state
-  regions. Raster estimates must be identified as estimates, not source CSS.
-- Freeze isolated synthetic record fixtures at the existing browser boundary.
-  Map summary/heatmap/confusion values to traceable records. The illustrative
-  matrix is not a complete dataset; do not falsify data to reproduce it.
-- Capture the current build at reference-native dimensions and device scale,
-  then at 1440, 390 and 320 pixels. Retain full viewport occupancy.
-- Generate same-size side-by-side, overlay and difference images, with separate
-  text-region comparisons. Do not crop failures out of the actual capture.
-- Produce per-region mismatch findings for layout and visible copy. All current
-  mismatches remain failures, regardless of green functional tests.
+- `MEASUREMENTS.md` records raster geometry, text estimates, controls and panel
+  regions, explicitly distinguishing observed glyph heights from source CSS.
+- `tests/fixtures/insights-reference.mjs` defines isolated overview and data-state
+  records. Mapping limitations are documented in the comparison README.
+- `tests/browser-v2-reference-baseline.mjs` generates native overview captures,
+  pair/overlay/difference and region images, 1440/390/320 captures and state
+  observations. It checks totals, directed root contributions and preservation
+  of stored history through existing browser/reporting boundaries.
+- `.impeccable/review/insights-reference-baseline/` contains generated evidence,
+  actual region bounds/text and the per-region mismatch ledger. All current
+  UI mismatches remain failures assigned to #36-40.
 
 ## Gate for subsequent implementation
 
@@ -63,6 +63,6 @@ approval of these source boards is not acceptance of the later code.
 
 Independent Standards review found no actionable documentation issues. Spec
 review correctly identified incomplete dynamic-copy coverage and missing
-viewport metadata; those fields were expanded. Fine geometry, fixtures and
-current-build comparisons remain outstanding. This review is not a pass for
-the full ticket and #35 must stay open.
+viewport metadata; those fields were expanded. The continuation adds geometry,
+fixtures and current-build comparisons. Passing the baseline workflow is not
+visual acceptance of the application; #34 remains open.
