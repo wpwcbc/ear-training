@@ -898,6 +898,10 @@ function render() {
   disposeProgression?.(); disposeProgression=undefined;
   if (fatal) return;
   const route = location.hash.slice(1) || "home";
+  const navigationButton=document.getElementById('insights-navigation')!,navigation=document.getElementById('primary-navigation')!;
+  navigationButton.setAttribute('aria-expanded','false');navigation.classList.remove('is-open');
+  navigationButton.onclick=()=>{const open=navigationButton.getAttribute('aria-expanded')!=='true';navigationButton.setAttribute('aria-expanded',String(open));navigation.classList.toggle('is-open',open);};
+  navigation.onkeydown=e=>{if(e.key==='Escape'){navigation.classList.remove('is-open');navigationButton.setAttribute('aria-expanded','false');navigationButton.focus();}};
   if (route !== "practice") document.getElementById("practice-announcement")!.textContent = "";
   if (session && route !== "practice") {
     finish(route);

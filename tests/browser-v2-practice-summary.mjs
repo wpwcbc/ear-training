@@ -14,9 +14,10 @@ try{
  });
  await page.goto(url+'#insights');await page.reload();
  const summary=page.locator('.insight-practice-summary');
+ await summary.locator('.summary-evidence > summary').click();
  await summary.getByText(/reported as 1 in 6 first errors/).waitFor();
  assert.equal(await summary.locator('.summary-finding').count(),2);
- const detail=summary.locator('details').filter({has:page.locator('summary').filter({hasText:'View evidence: m7: 5 → 1'})});
+ const detail=summary.locator('.summary-finding > details').filter({has:page.locator('summary').filter({hasText:'View evidence: m7: 5 → 1'})});
  await detail.locator('summary').click();
  assert.equal(await detail.getByRole('link',{name:'Open containing session'}).count(),6);
  assert.equal(await detail.getByRole('combobox').locator('option').count(),2);

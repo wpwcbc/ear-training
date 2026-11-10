@@ -1,0 +1,463 @@
+[
+  {
+    "screen": "overview-desktop",
+    "viewport": {
+      "width": 1084,
+      "height": 956
+    },
+    "regions": {
+      "summary": {
+        "bounds": {
+          "x": 24,
+          "y": 465.09375,
+          "width": 1036,
+          "height": 625.5
+        },
+        "text": "Your practice focus\n\nRecorded results across the current scope; practice settings may differ.\n\nAll 90 assessed notes for maj7: degree 5 were correct in this scope.\n\n90/90 correct assessed target notes · 90 assessed questions · 21 assessed sessions\n\nView evidence: maj7: 5\n\nm7: target 5 was reported as 1 in 9 first errors. Practise this sound relationship next.\n\n121/137 correct assessed target notes · 137 assessed questions · 21 assessed sessions\n\nView evidence: m7: 5 → 1\n\n7: degree 9 deserves more attention in these recorded results (29/36 correct).\n\n29/36 correct assessed target notes · 36 assessed questions · 21 assessed sessions\n\nView evidence: 7: 9\n\nIncorrect notes without a specific direction: Unknown 17; without annotation 0. These count in accuracy, not directed confusions."
+      },
+      "confusions": {
+        "bounds": {
+          "x": 24,
+          "y": 1142.59375,
+          "width": 460,
+          "height": 1683.5
+        },
+        "text": "Degree confusions\n\nTarget degree → Reported degree · First errors\n\nList\nMatrix\nm7: 5 → 1 · 9 errors\n\n9 confusions / 137 assessed target notes · 9 questions · 9 sessions\n\nDm7: 7\nAm7: 1\nGm7: 1\nView matching records\nPractice source\n1. Progression · Play by Ear · Dm7 (4 beats) → G7 (4 beats) → Cmaj7 (4 beats) · 80 BPM · 2 notes/chord · Random: C, G, F · Volume 60% · Voices 100%, 100%, 100%, 100%, 100%\n\nVoice levels: 100%, 100%, 100%, 100%, 100% · Volume: 60%\n\nThis recorded setup is one source of these results.\n\nReview practice setup\nm7: b7 → b3 · 5 errors\nm7: b3 → b7 · 4 errors\n7: 9 → 1 · 3 errors\nm7: 1 → 5 · 3 errors\nm7: b7 → 1 · 3 errors\n7: 5 → 3 · 2 errors\n7: 3 → #11 · 1 errors\n7: 5 → 13 · 1 errors\n7: 5 → b7 · 1 errors\n7: 9 → 3 · 1 errors\nm7: 5 → b7 · 1 errors\nmaj7: 3 → #11 · 1 errors\n\nUnknown: 17 · Incorrect without annotation: 0 · Unassessed notes: 24"
+      },
+      "performance": {
+        "bounds": {
+          "x": 508,
+          "y": 1142.59375,
+          "width": 552,
+          "height": 1683.5
+        },
+        "text": "Performance by chord degree\n\nRecorded accuracy: 0–49%, 50–79%, 80–94%, 95–100%. L = limited sample; — = no observations, not a score.\n\n0–49%\n50–79%\n80–94%\n95–100%\nChord quality × target degree\nChord quality\t1\tb3\t3\t5\tb7\tmaj7\t9\n7\t\n97%\n100/103\n\t—\t\n98%\n104/106\n\t\n94%\n81/86\n\t\n100%\n111/111\n\t—\t\n81%\n29/36\n\nm7\t\n96%\n109/114\n\t\n96%\n88/92\n\t—\t\n88%\n121/137\n\t\n91%\n90/99\n\t—\t—\nmaj7\t\n100%\n90/90\n\t—\t\n99%\n155/156\n\t\n100%\n90/90\n\t—\t\n100%\n106/106\n\t—"
+      },
+      "secondary": {
+        "bounds": {
+          "x": 24,
+          "y": 2850.09375,
+          "width": 1036,
+          "height": 816.671875
+        },
+        "text": "Comparable recorded change\n\nNot enough matching-condition evidence to compare periods.\n\nWhat to practise next\n\nAdditional suggestions under matching practice conditions. The summary above describes the full selected scope.\n\nRecurrent errors within: Dm7 (4 beats) → G7 (4 beats) → Cmaj7 (4 beats) · 80 BPM · 2 notes/chord · Random: C, G, F\n\nC key · G7 · 9\n\nRepeated first-response errors\n\n27 / 34 assessed · 34 questions · 21 sessions\n\nSetup practiceView evidence\nC key · Dm7 · 5\n\nRepeated first-response errors\n\n121 / 135 assessed · 135 questions · 21 sessions\n\nSetup practiceView evidence\nC key · Dm7 · b7\n\nRepeated first-response errors\n\n88 / 97 assessed · 97 questions · 21 sessions\n\nSetup practiceView evidence\nPractice coverage"
+      }
+    },
+    "status": "MISMATCH: current build is not the approved reference"
+  },
+  {
+    "screen": "overview-mobile",
+    "viewport": {
+      "width": 379,
+      "height": 956
+    },
+    "regions": {
+      "summary": {
+        "bounds": {
+          "x": 16,
+          "y": 595.09375,
+          "width": 347,
+          "height": 811.5
+        },
+        "text": "Your practice focus\n\nRecorded results across the current scope; practice settings may differ.\n\nAll 90 assessed notes for maj7: degree 5 were correct in this scope.\n\n90/90 correct assessed target notes · 90 assessed questions · 21 assessed sessions\n\nView evidence: maj7: 5\n\nm7: target 5 was reported as 1 in 9 first errors. Practise this sound relationship next.\n\n121/137 correct assessed target notes · 137 assessed questions · 21 assessed sessions\n\nView evidence: m7: 5 → 1\n\n7: degree 9 deserves more attention in these recorded results (29/36 correct).\n\n29/36 correct assessed target notes · 36 assessed questions · 21 assessed sessions\n\nView evidence: 7: 9\n\nIncorrect notes without a specific direction: Unknown 17; without annotation 0. These count in accuracy, not directed confusions."
+      },
+      "confusions": {
+        "bounds": {
+          "x": 16,
+          "y": 1458.59375,
+          "width": 347,
+          "height": 1752.5
+        },
+        "text": "Degree confusions\n\nTarget degree → Reported degree · First errors\n\nList\nMatrix\nm7: 5 → 1 · 9 errors\n\n9 confusions / 137 assessed target notes · 9 questions · 9 sessions\n\nDm7: 7\nAm7: 1\nGm7: 1\nView matching records\nPractice source\n1. Progression · Play by Ear · Dm7 (4 beats) → G7 (4 beats) → Cmaj7 (4 beats) · 80 BPM · 2 notes/chord · Random: C, G, F · Volume 60% · Voices 100%, 100%, 100%, 100%, 100%\n\nVoice levels: 100%, 100%, 100%, 100%, 100% · Volume: 60%\n\nThis recorded setup is one source of these results.\n\nReview practice setup\nm7: b7 → b3 · 5 errors\nm7: b3 → b7 · 4 errors\n7: 9 → 1 · 3 errors\nm7: 1 → 5 · 3 errors\nm7: b7 → 1 · 3 errors\n7: 5 → 3 · 2 errors\n7: 3 → #11 · 1 errors\n7: 5 → 13 · 1 errors\n7: 5 → b7 · 1 errors\n7: 9 → 3 · 1 errors\nm7: 5 → b7 · 1 errors\nmaj7: 3 → #11 · 1 errors\n\nUnknown: 17 · Incorrect without annotation: 0 · Unassessed notes: 24"
+      },
+      "performance": {
+        "bounds": {
+          "x": 16,
+          "y": 3283.09375,
+          "width": 347,
+          "height": 564.5
+        },
+        "text": "Performance by chord degree\n\nRecorded accuracy: 0–49%, 50–79%, 80–94%, 95–100%. L = limited sample; — = no observations, not a score.\n\n0–49%\n50–79%\n80–94%\n95–100%\nChord quality × target degree\nChord quality\t1\tb3\t3\t5\tb7\tmaj7\t9\n7\t\n97%\n100/103\n\t—\t\n98%\n104/106\n\t\n94%\n81/86\n\t\n100%\n111/111\n\t—\t\n81%\n29/36\n\nm7\t\n96%\n109/114\n\t\n96%\n88/92\n\t—\t\n88%\n121/137\n\t\n91%\n90/99\n\t—\t—\nmaj7\t\n100%\n90/90\n\t—\t\n99%\n155/156\n\t\n100%\n90/90\n\t—\t\n100%\n106/106\n\t—"
+      },
+      "secondary": {
+        "bounds": {
+          "x": 16,
+          "y": 3871.59375,
+          "width": 347,
+          "height": 944.46875
+        },
+        "text": "Comparable recorded change\n\nNot enough matching-condition evidence to compare periods.\n\nWhat to practise next\n\nAdditional suggestions under matching practice conditions. The summary above describes the full selected scope.\n\nRecurrent errors within: Dm7 (4 beats) → G7 (4 beats) → Cmaj7 (4 beats) · 80 BPM · 2 notes/chord · Random: C, G, F\n\nC key · G7 · 9\n\nRepeated first-response errors\n\n27 / 34 assessed · 34 questions · 21 sessions\n\nSetup practiceView evidence\nC key · Dm7 · 5\n\nRepeated first-response errors\n\n121 / 135 assessed · 135 questions · 21 sessions\n\nSetup practiceView evidence\nC key · Dm7 · b7\n\nRepeated first-response errors\n\n88 / 97 assessed · 97 questions · 21 sessions\n\nSetup practiceView evidence\nPractice coverage"
+      }
+    },
+    "status": "MISMATCH: current build is not the approved reference"
+  },
+  {
+    "screen": "matrix",
+    "viewport": {
+      "width": 971,
+      "height": 503
+    },
+    "regions": {
+      "summary": {
+        "bounds": {
+          "x": 24,
+          "y": 465.09375,
+          "width": 923,
+          "height": 625.5
+        },
+        "text": "Your practice focus\n\nRecorded results across the current scope; practice settings may differ.\n\nAll 90 assessed notes for maj7: degree 5 were correct in this scope.\n\n90/90 correct assessed target notes · 90 assessed questions · 21 assessed sessions\n\nView evidence: maj7: 5\n\nm7: target 5 was reported as 1 in 9 first errors. Practise this sound relationship next.\n\n121/137 correct assessed target notes · 137 assessed questions · 21 assessed sessions\n\nView evidence: m7: 5 → 1\n\n7: degree 9 deserves more attention in these recorded results (29/36 correct).\n\n29/36 correct assessed target notes · 36 assessed questions · 21 assessed sessions\n\nView evidence: 7: 9\n\nIncorrect notes without a specific direction: Unknown 17; without annotation 0. These count in accuracy, not directed confusions."
+      },
+      "confusions": {
+        "bounds": {
+          "x": 24,
+          "y": 1142.59375,
+          "width": 923,
+          "height": 707.5
+        },
+        "text": "Degree confusions\n\nTarget degree → Reported degree · First errors\n\nList\nMatrix\nMatrix chord quality\nm7\n7\nmaj7\n\nRecorded first errors: 0 to 9. Darker cells mean more errors. Rows: target degree; columns: reported degree. Diagonal: not an error direction.\n\nm7 · First-error directions\nTarget ↓ / Reported →\t1\tb3\t5\tb7\n1\t—\t0\t3\t0\nb3\t0\t—\t0\t4\n5\t9\t0\t—\t1\nb7\t3\t5\t0\t—\n\nUnknown: 17 · Incorrect without annotation: 0 · Unassessed notes: 24"
+      },
+      "performance": {
+        "bounds": {
+          "x": 24,
+          "y": 1922.09375,
+          "width": 923,
+          "height": 564.5
+        },
+        "text": "Performance by chord degree\n\nRecorded accuracy: 0–49%, 50–79%, 80–94%, 95–100%. L = limited sample; — = no observations, not a score.\n\n0–49%\n50–79%\n80–94%\n95–100%\nChord quality × target degree\nChord quality\t1\tb3\t3\t5\tb7\tmaj7\t9\n7\t\n97%\n100/103\n\t—\t\n98%\n104/106\n\t\n94%\n81/86\n\t\n100%\n111/111\n\t—\t\n81%\n29/36\n\nm7\t\n96%\n109/114\n\t\n96%\n88/92\n\t—\t\n88%\n121/137\n\t\n91%\n90/99\n\t—\t—\nmaj7\t\n100%\n90/90\n\t—\t\n99%\n155/156\n\t\n100%\n90/90\n\t—\t\n100%\n106/106\n\t—"
+      },
+      "secondary": {
+        "bounds": {
+          "x": 24,
+          "y": 2510.59375,
+          "width": 923,
+          "height": 816.671875
+        },
+        "text": "Comparable recorded change\n\nNot enough matching-condition evidence to compare periods.\n\nWhat to practise next\n\nAdditional suggestions under matching practice conditions. The summary above describes the full selected scope.\n\nRecurrent errors within: Dm7 (4 beats) → G7 (4 beats) → Cmaj7 (4 beats) · 80 BPM · 2 notes/chord · Random: C, G, F\n\nC key · G7 · 9\n\nRepeated first-response errors\n\n27 / 34 assessed · 34 questions · 21 sessions\n\nSetup practiceView evidence\nC key · Dm7 · 5\n\nRepeated first-response errors\n\n121 / 135 assessed · 135 questions · 21 sessions\n\nSetup practiceView evidence\nC key · Dm7 · b7\n\nRepeated first-response errors\n\n88 / 97 assessed · 97 questions · 21 sessions\n\nSetup practiceView evidence\nPractice coverage"
+      }
+    },
+    "status": "MISMATCH: current build is not the approved reference"
+  },
+  {
+    "screen": "evidence",
+    "viewport": {
+      "width": 448,
+      "height": 503
+    },
+    "regions": {
+      "summary": {
+        "bounds": {
+          "x": 16,
+          "y": 563.09375,
+          "width": 416,
+          "height": 769.5
+        },
+        "text": "Your practice focus\n\nRecorded results across the current scope; practice settings may differ.\n\nAll 90 assessed notes for maj7: degree 5 were correct in this scope.\n\n90/90 correct assessed target notes · 90 assessed questions · 21 assessed sessions\n\nView evidence: maj7: 5\n\nm7: target 5 was reported as 1 in 9 first errors. Practise this sound relationship next.\n\n121/137 correct assessed target notes · 137 assessed questions · 21 assessed sessions\n\nView evidence: m7: 5 → 1\n\n7: degree 9 deserves more attention in these recorded results (29/36 correct).\n\n29/36 correct assessed target notes · 36 assessed questions · 21 assessed sessions\n\nView evidence: 7: 9\n\nIncorrect notes without a specific direction: Unknown 17; without annotation 0. These count in accuracy, not directed confusions."
+      },
+      "confusions": {
+        "bounds": {
+          "x": 16,
+          "y": 1384.59375,
+          "width": 416,
+          "height": 1731.5
+        },
+        "text": "Degree confusions\n\nTarget degree → Reported degree · First errors\n\nList\nMatrix\nm7: 5 → 1 · 9 errors\n\n9 confusions / 137 assessed target notes · 9 questions · 9 sessions\n\nDm7: 7\nAm7: 1\nGm7: 1\nView matching records\nPractice source\n1. Progression · Play by Ear · Dm7 (4 beats) → G7 (4 beats) → Cmaj7 (4 beats) · 80 BPM · 2 notes/chord · Random: C, G, F · Volume 60% · Voices 100%, 100%, 100%, 100%, 100%\n\nVoice levels: 100%, 100%, 100%, 100%, 100% · Volume: 60%\n\nThis recorded setup is one source of these results.\n\nReview practice setup\nm7: b7 → b3 · 5 errors\nm7: b3 → b7 · 4 errors\n7: 9 → 1 · 3 errors\nm7: 1 → 5 · 3 errors\nm7: b7 → 1 · 3 errors\n7: 5 → 3 · 2 errors\n7: 3 → #11 · 1 errors\n7: 5 → 13 · 1 errors\n7: 5 → b7 · 1 errors\n7: 9 → 3 · 1 errors\nm7: 5 → b7 · 1 errors\nmaj7: 3 → #11 · 1 errors\n\nUnknown: 17 · Incorrect without annotation: 0 · Unassessed notes: 24"
+      },
+      "performance": {
+        "bounds": {
+          "x": 16,
+          "y": 3188.09375,
+          "width": 416,
+          "height": 564.5
+        },
+        "text": "Performance by chord degree\n\nRecorded accuracy: 0–49%, 50–79%, 80–94%, 95–100%. L = limited sample; — = no observations, not a score.\n\n0–49%\n50–79%\n80–94%\n95–100%\nChord quality × target degree\nChord quality\t1\tb3\t3\t5\tb7\tmaj7\t9\n7\t\n97%\n100/103\n\t—\t\n98%\n104/106\n\t\n94%\n81/86\n\t\n100%\n111/111\n\t—\t\n81%\n29/36\n\nm7\t\n96%\n109/114\n\t\n96%\n88/92\n\t—\t\n88%\n121/137\n\t\n91%\n90/99\n\t—\t—\nmaj7\t\n100%\n90/90\n\t—\t\n99%\n155/156\n\t\n100%\n90/90\n\t—\t\n100%\n106/106\n\t—"
+      },
+      "secondary": {
+        "bounds": {
+          "x": 16,
+          "y": 3776.59375,
+          "width": 416,
+          "height": 923.46875
+        },
+        "text": "Comparable recorded change\n\nNot enough matching-condition evidence to compare periods.\n\nWhat to practise next\n\nAdditional suggestions under matching practice conditions. The summary above describes the full selected scope.\n\nRecurrent errors within: Dm7 (4 beats) → G7 (4 beats) → Cmaj7 (4 beats) · 80 BPM · 2 notes/chord · Random: C, G, F\n\nC key · G7 · 9\n\nRepeated first-response errors\n\n27 / 34 assessed · 34 questions · 21 sessions\n\nSetup practiceView evidence\nC key · Dm7 · 5\n\nRepeated first-response errors\n\n121 / 135 assessed · 135 questions · 21 sessions\n\nSetup practiceView evidence\nC key · Dm7 · b7\n\nRepeated first-response errors\n\n88 / 97 assessed · 97 questions · 21 sessions\n\nSetup practiceView evidence\nPractice coverage"
+      }
+    },
+    "status": "MISMATCH: current build is not the approved reference"
+  },
+  {
+    "screen": "setup-preview",
+    "viewport": {
+      "width": 971,
+      "height": 373
+    },
+    "regions": {},
+    "status": "MISMATCH: current build is not the approved reference"
+  },
+  {
+    "screen": "return-selection",
+    "viewport": {
+      "width": 450,
+      "height": 372
+    },
+    "regions": {
+      "summary": {
+        "bounds": {
+          "x": 16,
+          "y": 563.09375,
+          "width": 418,
+          "height": 769.5
+        },
+        "text": "Your practice focus\n\nRecorded results across the current scope; practice settings may differ.\n\nAll 90 assessed notes for maj7: degree 5 were correct in this scope.\n\n90/90 correct assessed target notes · 90 assessed questions · 21 assessed sessions\n\nView evidence: maj7: 5\n\nm7: target 5 was reported as 1 in 9 first errors. Practise this sound relationship next.\n\n121/137 correct assessed target notes · 137 assessed questions · 21 assessed sessions\n\nView evidence: m7: 5 → 1\n\n7: degree 9 deserves more attention in these recorded results (29/36 correct).\n\n29/36 correct assessed target notes · 36 assessed questions · 21 assessed sessions\n\nView evidence: 7: 9\n\nIncorrect notes without a specific direction: Unknown 17; without annotation 0. These count in accuracy, not directed confusions."
+      },
+      "confusions": {
+        "bounds": {
+          "x": 16,
+          "y": 1384.59375,
+          "width": 418,
+          "height": 1731.5
+        },
+        "text": "Degree confusions\n\nTarget degree → Reported degree · First errors\n\nList\nMatrix\nm7: 5 → 1 · 9 errors\n\n9 confusions / 137 assessed target notes · 9 questions · 9 sessions\n\nDm7: 7\nAm7: 1\nGm7: 1\nView matching records\nPractice source\n1. Progression · Play by Ear · Dm7 (4 beats) → G7 (4 beats) → Cmaj7 (4 beats) · 80 BPM · 2 notes/chord · Random: C, G, F · Volume 60% · Voices 100%, 100%, 100%, 100%, 100%\n\nVoice levels: 100%, 100%, 100%, 100%, 100% · Volume: 60%\n\nThis recorded setup is one source of these results.\n\nReview practice setup\nm7: b7 → b3 · 5 errors\nm7: b3 → b7 · 4 errors\n7: 9 → 1 · 3 errors\nm7: 1 → 5 · 3 errors\nm7: b7 → 1 · 3 errors\n7: 5 → 3 · 2 errors\n7: 3 → #11 · 1 errors\n7: 5 → 13 · 1 errors\n7: 5 → b7 · 1 errors\n7: 9 → 3 · 1 errors\nm7: 5 → b7 · 1 errors\nmaj7: 3 → #11 · 1 errors\n\nUnknown: 17 · Incorrect without annotation: 0 · Unassessed notes: 24"
+      },
+      "performance": {
+        "bounds": {
+          "x": 16,
+          "y": 3188.09375,
+          "width": 418,
+          "height": 564.5
+        },
+        "text": "Performance by chord degree\n\nRecorded accuracy: 0–49%, 50–79%, 80–94%, 95–100%. L = limited sample; — = no observations, not a score.\n\n0–49%\n50–79%\n80–94%\n95–100%\nChord quality × target degree\nChord quality\t1\tb3\t3\t5\tb7\tmaj7\t9\n7\t\n97%\n100/103\n\t—\t\n98%\n104/106\n\t\n94%\n81/86\n\t\n100%\n111/111\n\t—\t\n81%\n29/36\n\nm7\t\n96%\n109/114\n\t\n96%\n88/92\n\t—\t\n88%\n121/137\n\t\n91%\n90/99\n\t—\t—\nmaj7\t\n100%\n90/90\n\t—\t\n99%\n155/156\n\t\n100%\n90/90\n\t—\t\n100%\n106/106\n\t—"
+      },
+      "secondary": {
+        "bounds": {
+          "x": 16,
+          "y": 3776.59375,
+          "width": 418,
+          "height": 923.46875
+        },
+        "text": "Comparable recorded change\n\nNot enough matching-condition evidence to compare periods.\n\nWhat to practise next\n\nAdditional suggestions under matching practice conditions. The summary above describes the full selected scope.\n\nRecurrent errors within: Dm7 (4 beats) → G7 (4 beats) → Cmaj7 (4 beats) · 80 BPM · 2 notes/chord · Random: C, G, F\n\nC key · G7 · 9\n\nRepeated first-response errors\n\n27 / 34 assessed · 34 questions · 21 sessions\n\nSetup practiceView evidence\nC key · Dm7 · 5\n\nRepeated first-response errors\n\n121 / 135 assessed · 135 questions · 21 sessions\n\nSetup practiceView evidence\nC key · Dm7 · b7\n\nRepeated first-response errors\n\n88 / 97 assessed · 97 questions · 21 sessions\n\nSetup practiceView evidence\nPractice coverage"
+      }
+    },
+    "status": "MISMATCH: current build is not the approved reference"
+  },
+  {
+    "screen": "no-records",
+    "viewport": {
+      "width": 470,
+      "height": 374
+    },
+    "regions": {
+      "summary": {
+        "bounds": {
+          "x": 16,
+          "y": 547.09375,
+          "width": 438,
+          "height": 111.5
+        },
+        "text": "Your practice focus\n\nNo recorded observations in this scope."
+      }
+    },
+    "status": "MISMATCH: current build is not the approved reference"
+  },
+  {
+    "screen": "empty-period",
+    "viewport": {
+      "width": 470,
+      "height": 374
+    },
+    "regions": {
+      "summary": {
+        "bounds": {
+          "x": 16,
+          "y": 547.09375,
+          "width": 438,
+          "height": 111.5
+        },
+        "text": "Your practice focus\n\nNo recorded observations in this scope."
+      }
+    },
+    "status": "MISMATCH: current build is not the approved reference"
+  },
+  {
+    "screen": "unassessed",
+    "viewport": {
+      "width": 471,
+      "height": 375
+    },
+    "regions": {
+      "summary": {
+        "bounds": {
+          "x": 16,
+          "y": 563.09375,
+          "width": 439,
+          "height": 111.5
+        },
+        "text": "Your practice focus\n\n12 unassessed recorded notes; no accuracy result yet."
+      },
+      "confusions": {
+        "bounds": {
+          "x": 16,
+          "y": 726.59375,
+          "width": 439,
+          "height": 162.5
+        },
+        "text": "Degree confusions\n\nTarget degree → Reported degree · First errors\n\nNo specific first-error directions recorded in this scope.\n\nUnknown: 0 · Incorrect without annotation: 0 · Unassessed notes: 12"
+      },
+      "performance": {
+        "bounds": {
+          "x": 16,
+          "y": 961.09375,
+          "width": 439,
+          "height": 605.28125
+        },
+        "text": "Performance by chord degree\n\nRecorded accuracy: 0–49%, 50–79%, 80–94%, 95–100%. L = limited sample; — = no observations, not a score.\n\n0–49%\n50–79%\n80–94%\n95–100%\nChord quality × target degree\nChord quality\t1\t3\t5\n7\t\nUnassessed\n0/0\nNot scored\n\t—\t\nUnassessed\n0/0\nNot scored\n\nm7\t\nUnassessed\n0/0\nNot scored\n\t—\t\nUnassessed\n0/0\nNot scored\n\nmaj7\t\nUnassessed\n0/0\nNot scored\n\t\nUnassessed\n0/0\nNot scored\n\t\nUnassessed\n0/0\nNot scored"
+      },
+      "secondary": {
+        "bounds": {
+          "x": 16,
+          "y": 1590.375,
+          "width": 439,
+          "height": 382.296875
+        },
+        "text": "Comparable recorded change\n\nNot enough matching-condition evidence to compare periods.\n\nWhat to practise next\n\nAdditional suggestions under matching practice conditions. The summary above describes the full selected scope.\n\nNo additional matching-condition error recommendation meets the evidence thresholds. Coverage gaps below are not weaknesses.\n\nPractice coverage"
+      }
+    },
+    "status": "MISMATCH: current build is not the approved reference"
+  },
+  {
+    "screen": "limited",
+    "viewport": {
+      "width": 470,
+      "height": 453
+    },
+    "regions": {
+      "summary": {
+        "bounds": {
+          "x": 16,
+          "y": 563.09375,
+          "width": 438,
+          "height": 185.5
+        },
+        "text": "Your practice focus\n\nEarly observations: more distinct questions and sessions are needed before highlighting strengths or recurrent errors.\n\nIncorrect notes without a specific direction: Unknown 7; without annotation 0. These count in accuracy, not directed confusions."
+      },
+      "confusions": {
+        "bounds": {
+          "x": 16,
+          "y": 800.59375,
+          "width": 438,
+          "height": 162.5
+        },
+        "text": "Degree confusions\n\nTarget degree → Reported degree · First errors\n\nNo specific first-error directions recorded in this scope.\n\nUnknown: 7 · Incorrect without annotation: 0 · Unassessed notes: 0"
+      },
+      "performance": {
+        "bounds": {
+          "x": 16,
+          "y": 1035.09375,
+          "width": 438,
+          "height": 605.28125
+        },
+        "text": "Performance by chord degree\n\nRecorded accuracy: 0–49%, 50–79%, 80–94%, 95–100%. L = limited sample; — = no observations, not a score.\n\n0–49%\n50–79%\n80–94%\n95–100%\nChord quality × target degree\nChord quality\t1\t3\t5\n7\t\n50%\n1/2\nL\n\t—\t\n50%\n1/2\nL\n\nm7\t\n0%\n0/2\nL\n\t—\t\n50%\n1/2\nL\n\nmaj7\t\n50%\n1/2\nL\n\t\n0%\n0/1\nL\n\t\n100%\n1/1\nL"
+      },
+      "secondary": {
+        "bounds": {
+          "x": 16,
+          "y": 1664.375,
+          "width": 438,
+          "height": 382.296875
+        },
+        "text": "Comparable recorded change\n\nNot enough matching-condition evidence to compare periods.\n\nWhat to practise next\n\nAdditional suggestions under matching practice conditions. The summary above describes the full selected scope.\n\nNo additional matching-condition error recommendation meets the evidence thresholds. Coverage gaps below are not weaknesses.\n\nPractice coverage"
+      }
+    },
+    "status": "MISMATCH: current build is not the approved reference"
+  },
+  {
+    "screen": "all-correct",
+    "viewport": {
+      "width": 470,
+      "height": 453
+    },
+    "regions": {
+      "summary": {
+        "bounds": {
+          "x": 16,
+          "y": 563.09375,
+          "width": 438,
+          "height": 135.5
+        },
+        "text": "Your practice focus\n\nEarly observations: more distinct questions and sessions are needed before highlighting strengths or recurrent errors."
+      },
+      "confusions": {
+        "bounds": {
+          "x": 16,
+          "y": 750.59375,
+          "width": 438,
+          "height": 162.5
+        },
+        "text": "Degree confusions\n\nTarget degree → Reported degree · First errors\n\nNo specific first-error directions recorded in this scope.\n\nUnknown: 0 · Incorrect without annotation: 0 · Unassessed notes: 0"
+      },
+      "performance": {
+        "bounds": {
+          "x": 16,
+          "y": 985.09375,
+          "width": 438,
+          "height": 605.28125
+        },
+        "text": "Performance by chord degree\n\nRecorded accuracy: 0–49%, 50–79%, 80–94%, 95–100%. L = limited sample; — = no observations, not a score.\n\n0–49%\n50–79%\n80–94%\n95–100%\nChord quality × target degree\nChord quality\t1\tb3\t3\t5\tb7\tmaj7\t9\n7\t\n100%\n5/5\nL\n\t—\t\n100%\n5/5\nL\n\t\n100%\n4/4\nL\n\t\n100%\n5/5\nL\n\t—\t\n100%\n1/1\nL\n\nm7\t\n100%\n6/6\nL\n\t\n100%\n4/4\nL\n\t—\t\n100%\n6/6\nL\n\t\n100%\n4/4\nL\n\t—\t—\nmaj7\t\n100%\n5/5\nL\n\t—\t\n100%\n6/6\nL\n\t\n100%\n5/5\nL\n\t—\t\n100%\n4/4\nL\n\t—"
+      },
+      "secondary": {
+        "bounds": {
+          "x": 16,
+          "y": 1614.375,
+          "width": 438,
+          "height": 382.296875
+        },
+        "text": "Comparable recorded change\n\nNot enough matching-condition evidence to compare periods.\n\nWhat to practise next\n\nAdditional suggestions under matching practice conditions. The summary above describes the full selected scope.\n\nNo additional matching-condition error recommendation meets the evidence thresholds. Coverage gaps below are not weaknesses.\n\nPractice coverage"
+      }
+    },
+    "status": "MISMATCH: current build is not the approved reference"
+  },
+  {
+    "screen": "unknown-direction",
+    "viewport": {
+      "width": 471,
+      "height": 452
+    },
+    "regions": {
+      "summary": {
+        "bounds": {
+          "x": 16,
+          "y": 563.09375,
+          "width": 439,
+          "height": 185.5
+        },
+        "text": "Your practice focus\n\nEarly observations: more distinct questions and sessions are needed before highlighting strengths or recurrent errors.\n\nIncorrect notes without a specific direction: Unknown 5; without annotation 2. These count in accuracy, not directed confusions."
+      },
+      "confusions": {
+        "bounds": {
+          "x": 16,
+          "y": 800.59375,
+          "width": 439,
+          "height": 162.5
+        },
+        "text": "Degree confusions\n\nTarget degree → Reported degree · First errors\n\nNo specific first-error directions recorded in this scope.\n\nUnknown: 5 · Incorrect without annotation: 2 · Unassessed notes: 0"
+      },
+      "performance": {
+        "bounds": {
+          "x": 16,
+          "y": 1035.09375,
+          "width": 439,
+          "height": 605.28125
+        },
+        "text": "Performance by chord degree\n\nRecorded accuracy: 0–49%, 50–79%, 80–94%, 95–100%. L = limited sample; — = no observations, not a score.\n\n0–49%\n50–79%\n80–94%\n95–100%\nChord quality × target degree\nChord quality\t1\t3\t5\n7\t\n50%\n1/2\nL\n\t—\t\n50%\n1/2\nL\n\nm7\t\n0%\n0/2\nL\n\t—\t\n50%\n1/2\nL\n\nmaj7\t\n50%\n1/2\nL\n\t\n0%\n0/1\nL\n\t\n100%\n1/1\nL"
+      },
+      "secondary": {
+        "bounds": {
+          "x": 16,
+          "y": 1664.375,
+          "width": 439,
+          "height": 382.296875
+        },
+        "text": "Comparable recorded change\n\nNot enough matching-condition evidence to compare periods.\n\nWhat to practise next\n\nAdditional suggestions under matching practice conditions. The summary above describes the full selected scope.\n\nNo additional matching-condition error recommendation meets the evidence thresholds. Coverage gaps below are not weaknesses.\n\nPractice coverage"
+      }
+    },
+    "status": "MISMATCH: current build is not the approved reference"
+  }
+]
