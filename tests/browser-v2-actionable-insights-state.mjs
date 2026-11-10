@@ -12,15 +12,15 @@ try{
   const c=defaultConfig('play');c.chords[0].symbol='Dbm7';const q=generate(c,()=>.2);q.notes.forEach(n=>{n.correct=true;n.answer=n.degree;});q.done=true;q.submitted=true;q.referencePlayed=true;delete q.source;delete q.practiceKey;delete q.generatorVersion;delete q.created;
   localStorage.setItem('jazzEarLab:v2:progressionHistory',JSON.stringify([{id:'old-progression',config:c,questions:[q],ended:true}]));sessionStorage.removeItem('jazzEarLab:v2:insightView');
  });
- await page.reload();await page.getByText(/records have no usable date/).waitFor();
+ await page.reload();await page.locator('summary').filter({hasText:/^Source conditions$/}).click();await page.getByText(/records have no usable date/).waitFor();
  await page.getByLabel('Period',{exact:true}).selectOption('All time');
  await page.getByLabel('Practice family',{exact:true}).selectOption('Play by Ear');await page.getByRole('button',{name:'Progression',exact:true}).click();
- await page.getByText('6 / 6 assessed',{exact:true}).waitFor();await page.getByRole('button',{name:'Inspect Not recorded',exact:true}).click();
+ await page.locator('.insight-compact-outcome').filter({hasText:'6 / 6 assessed notes'}).waitFor();await page.getByRole('button',{name:'Inspect Not recorded',exact:true}).click();
  await page.getByLabel('Chord view',{exact:true}).selectOption('Full chord');await page.getByRole('heading',{name:'Dbm7',exact:true}).waitFor();
  assert.equal(await page.getByRole('button',{name:/^Setup practice:/}).count(),0);
  await page.getByLabel('Practice family',{exact:true}).selectOption('Degree Audiation');await page.getByRole('button',{name:'Single Chord',exact:true}).click();
- await page.getByText('1 / 1 assessed',{exact:true}).waitFor();await page.locator('summary').filter({hasText:/^More filters$/}).click();await page.getByLabel('Production category',{exact:true}).selectOption('played');await page.getByText('1 / 1 assessed',{exact:true}).waitFor();
- await page.getByLabel('Practice family',{exact:true}).selectOption('Play by Ear');await page.getByRole('heading',{name:'Single Chord · Play by Ear',exact:true}).waitFor();await page.getByText('No records for this exercise yet.',{exact:true}).waitFor();
+ await page.locator('.insight-compact-outcome').filter({hasText:'1 / 1 assessed notes'}).waitFor();await page.locator('summary').filter({hasText:/^More filters$/}).click();await page.getByLabel('Production category',{exact:true}).selectOption('played');await page.locator('.insight-compact-outcome').filter({hasText:'1 / 1 assessed notes'}).waitFor();
+ await page.getByLabel('Practice family',{exact:true}).selectOption('Play by Ear');await page.getByText('No records for this exercise yet.',{exact:true}).waitFor();
  // Hundreds of settings remain in disclosed evidence, never hundreds of open paragraphs.
  await page.evaluate(async()=>{
   const {defaultConfig,generate}=await import('/js/v2/progression.js');
@@ -29,7 +29,7 @@ try{
  });
  const raw=await page.evaluate(()=>localStorage.getItem('jazzEarLab:v2:progressionHistory'));
  await page.reload();await page.getByLabel('Period',{exact:true}).selectOption('Last 28 days');await page.getByRole('button',{name:'Progression',exact:true}).click();
- await page.getByText('1800 / 1800 assessed',{exact:true}).waitFor();
+ await page.locator('.insight-compact-outcome').filter({hasText:'1800 / 1800 assessed notes'}).waitFor();
  assert.ok(await page.locator('.insight-priority').count()<=3);assert.ok(await page.locator('p:visible').count()<40);
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
  assert.equal(await page.evaluate(()=>localStorage.getItem('jazzEarLab:v2:progressionHistory')),raw);

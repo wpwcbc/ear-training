@@ -23,7 +23,8 @@
   "copy": {
     "navigation": ["Jazz Ear Lab", "Practice", "Insights", "Legacy"],
     "scope": ["Insights", "Play by Ear", "Progression", "Single Chord", "Last 28 days", "{accuracy}% · {correct} / {assessed} assessed notes · {questions} questions · {sessions} sessions", "Self-rated"],
-    "summary": ["Your practice focus", "Strong recorded results in {quality}.", "Look closer at {qualityDegreeA} ({correctA}/{assessedA}) and {qualityDegreeB} ({correctB}/{assessedB}).", "{qualityDegree} → {reportedDegree} appears in {errors} recorded errors.", "View evidence", "Set up practice"],
+    "summary": ["Your practice focus", "Strong recorded results in {quality} {degreePlural}.", "Look closer at {qualityDegreeA} ({correctA}/{assessedA}) and {qualityDegreeB} ({correctB}/{assessedB}).", "{qualityDegree} → {reportedDegree} appears in {errors} recorded errors.", "View evidence", "Set up practice"],
+    "summaryApproval": "2026-11-10: User explicitly approved adding the actual degree to the strength sentence, e.g. Strong recorded results in maj7 fifths. No change to ranking or eligibility.",
     "confusions": ["Degree confusions", "List", "Matrix", "Target → Reported", "Errors", "View matching records", "Unknown {unknown} · No annotation {unspecified},not included in directions."],
     "performance": ["Performance by chord degree", "Select a cell for counts and evidence.", "Degree", "Lower recorded accuracy", "Higher recorded accuracy", "Limited sample"],
     "secondary": ["Timing and replay", "Sessions and source conditions"],

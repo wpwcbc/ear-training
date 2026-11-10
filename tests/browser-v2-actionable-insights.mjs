@@ -20,13 +20,13 @@ try{
  });
  await page.goto(url+'#insights');await page.reload();
  await page.getByLabel('Practice family',{exact:true}).selectOption('Degree Recognition');
- await page.getByRole('heading',{name:'Single Chord · Degree Recognition',exact:true}).waitFor();
- await page.getByText('9 / 10 assessed',{exact:true}).waitFor();
- await page.getByText('10 questions · 1 sessions · 0 unassessed',{exact:true}).waitFor();
+ assert.equal(await page.getByRole('button',{name:'Single Chord',exact:true}).getAttribute('aria-pressed'),'true');
+ await page.locator('.insight-compact-outcome').filter({hasText:'9 / 10 assessed notes'}).waitFor();
+ assert.match(await page.locator('.insight-compact-outcome').innerText(),/10 questions · 1 sessions/);
  assert.equal(await page.getByLabel('Period',{exact:true}).inputValue(),'Last 28 days');
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
  await page.getByLabel('Practice family',{exact:true}).selectOption('Play by Ear');await page.getByRole('button',{name:'Progression',exact:true}).click();
- await page.getByText('159 / 180 assessed',{exact:true}).waitFor();
+ await page.locator('.insight-compact-outcome').filter({hasText:'159 / 180 assessed notes'}).waitFor();
  await page.getByRole('button',{name:'Inspect Eb',exact:true}).focus();await page.keyboard.press('Enter');
  assert.equal(await page.evaluate(()=>document.activeElement.textContent),'Explore the music');
  await page.getByLabel('Chord view',{exact:true}).selectOption('Full chord');
@@ -60,15 +60,16 @@ try{
  await page.getByLabel('Chord 1 beats',{exact:true}).fill('2');await page.getByLabel('Chord 1 beats',{exact:true}).dispatchEvent('change');
  assert.deepEqual(await page.evaluate(()=>({presets:localStorage.getItem('jazzEarLab:v2:progressionPresets'),history:localStorage.getItem('jazzEarLab:v2:progressionHistory')})),before);
  await page.getByRole('button',{name:'Back to Insights',exact:true}).click();
- await page.getByRole('heading',{name:'Progression · Play by Ear',exact:true}).waitFor();
+ await page.getByLabel('Practice family',{exact:true}).waitFor();
+ assert.equal(await page.getByLabel('Practice family',{exact:true}).inputValue(),'Play by Ear');
  await page.locator('summary').filter({hasText:/^Sessions$/}).click();await page.getByRole('link',{name:'View latest matching session',exact:true}).click();
  await page.getByRole('heading',{name:'Progression · Play by Ear',exact:true}).waitFor();
  await page.reload();await page.getByRole('button',{name:'Overall Insights',exact:true}).click();
- await page.getByRole('heading',{name:'Progression · Play by Ear',exact:true}).waitFor();
+ await page.getByLabel('Practice family',{exact:true}).waitFor();
  if(folder){await page.getByRole('button',{name:'Key',exact:true}).click();for(const width of [320,390,1440]){await page.setViewportSize({width,height:1000});await page.evaluate(()=>document.fonts.ready);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);await page.screenshot({path:folder+'/play-insights-'+width+'.png',fullPage:true});}}
  for(const family of ['Degree Recognition','Degree Audiation','Play by Ear']){
   await page.getByLabel('Practice family',{exact:true}).selectOption(family);
-  for(const context of ['Single Chord','Progression']){await page.getByRole('button',{name:context,exact:true}).click();await page.getByRole('heading',{name:context+' · '+family,exact:true}).waitFor();}
+  for(const context of ['Single Chord','Progression']){await page.getByRole('button',{name:context,exact:true}).click();assert.equal(await page.getByRole('button',{name:context,exact:true}).getAttribute('aria-pressed'),'true');assert.equal(await page.getByLabel('Practice family',{exact:true}).inputValue(),family);}
  }
  await page.getByLabel('Practice family',{exact:true}).selectOption('Overall');
  for(const width of [320,390,1440]){await page.setViewportSize({width,height:1000});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);}

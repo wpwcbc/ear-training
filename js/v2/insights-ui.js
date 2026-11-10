@@ -6,12 +6,33 @@ function sourceOptionLabel(r, i) { const c = r.source, levels = 'mode' in c ? c.
 function practiceSummarySection(records, onSetup) {
     const report = insightPracticeSummary(records), section = el('section', '', 'insight-practice-summary');
     section.append(el('h2', 'Your practice focus'));
-    if (view.family === 'Overall')
-        section.append(el('p', 'Mixed practice, including system-graded and self-rated results', 'insight-scope-note'));
     if (report.message)
         section.append(el('p', report.message));
-    if (report.findings.length)
-        section.append(el('p', 'Recorded results across the current scope; practice settings may differ.', 'insight-scope-note'));
+    const names = { '1': 'root', 'b2': 'flat second', '2': 'second', 'b3': 'minor third', '3': 'third', '4': 'fourth', '#4': 'sharp fourth', 'b5': 'flat fifth', '5': 'fifth', '#5': 'sharp fifth', 'b6': 'flat sixth', '6': 'sixth', 'bb7': 'diminished seventh', 'b7': 'minor seventh', 'maj7': 'major seventh', 'b9': 'flat ninth', '9': 'ninth', '#9': 'sharp ninth', '11': 'eleventh', '#11': 'sharp eleventh', 'b13': 'flat thirteenth', '13': 'thirteenth' };
+    const degreeName = (degree) => names[degree] ?? degree;
+    const musicalName = (quality, degree) => `${quality === '7' ? 'dominant-7' : quality === 'm7' ? 'minor-7' : quality} ${degreeName(degree)}`;
+    const narrative = el('div', '', 'summary-narrative');
+    const strength = report.findings.find(f => f.kind === 'strength'), attention = report.findings.find(f => f.kind === 'attention'), confusion = report.findings.find(f => f.kind === 'confusion');
+    if (strength)
+        narrative.append(el('p', `Strong recorded results in ${strength.quality} ${degreeName(strength.degree)}s.`));
+    const priorities = [attention, confusion].filter((f) => !!f);
+    if (priorities.length)
+        narrative.append(el('p', 'Look closer at ' + priorities.map(f => `${musicalName(f.quality, f.degree)}s (${f.m.correct}/${f.m.n})`).join(' and ') + '.'));
+    if (confusion) {
+        const reported = confusion.label.split(' → ')[1];
+        const name = musicalName(confusion.quality, confusion.degree);
+        narrative.append(el('p', `${name[0].toUpperCase() + name.slice(1)} → ${degreeName(reported)} appears in ${confusion.items.length} recorded errors.`));
+    }
+    if (narrative.children.length)
+        section.append(narrative);
+    const actions = el('div', '', 'summary-actions'), allEvidence = details('View evidence');
+    allEvidence.classList.add('summary-evidence');
+    allEvidence.append(el('p', 'Recorded results across the current scope; practice settings may differ.'));
+    if (records.some(r => r.a.gradingSource === 'self'))
+        allEvidence.append(el('p', 'Self-rated · not pitch-verified'));
+    if (view.family === 'Overall')
+        allEvidence.append(el('p', 'Mixed practice, including system-graded and self-rated results'));
+    const findingEvidence = [];
     for (const finding of report.findings) {
         const item = el('article', '', 'summary-finding');
         item.append(el('p', finding.text, 'summary-text'));
@@ -63,9 +84,11 @@ function practiceSummarySection(records, onSetup) {
         }
         catch { /* Optional disclosure state. */ } };
         item.append(evidence);
-        section.append(item);
+        allEvidence.append(item);
+        findingEvidence.push({ finding, detail: evidence });
         try {
             if (sessionStorage.getItem('jazzEarLab:v2:summaryReturn') === stateKey) {
+                allEvidence.open = true;
                 sessionStorage.removeItem('jazzEarLab:v2:summaryReturn');
                 requestAnimationFrame(() => evidence.querySelector('summary')?.focus());
             }
@@ -73,7 +96,19 @@ function practiceSummarySection(records, onSetup) {
         catch { /* Optional return focus. */ }
     }
     if (report.unknown || report.unspecified)
-        section.append(el('p', `Incorrect notes without a specific direction: Unknown ${report.unknown}; without annotation ${report.unspecified}. These count in accuracy, not directed confusions.`, 'insight-scope-note'));
+        allEvidence.append(el('p', `Unknown: ${report.unknown} · Without annotation: ${report.unspecified}`));
+    const available = findingEvidence.filter(x => recordedSources(x.finding.items).length);
+    if (report.findings.length) {
+        actions.append(allEvidence);
+        if (onSetup && available.length) {
+            const action = el('button', 'Set up practice');
+            action.type = 'button';
+            action.onclick = () => { const chosen = available.find(x => x.finding.kind === 'confusion') ?? available.find(x => x.finding.kind === 'attention') ?? available[0]; allEvidence.open = true; for (const x of findingEvidence)
+                x.detail.open = x === chosen; chosen.detail.querySelector('summary')?.focus(); };
+            actions.append(action);
+        }
+        section.append(actions);
+    }
     return section;
 }
 function performanceSection(records, onSetup) {
@@ -474,17 +509,18 @@ export function renderInsights(host, sessions, runs, evidence, onSetup) {
         }
         if (view.family !== 'Overall') {
             const contexts = el('div', '', 'insight-contexts');
-            for (const c of ['Single Chord', 'Progression'])
+            for (const c of ['Progression', 'Single Chord'])
                 contexts.append(button(c, () => changeScope(view.family, c), view.context === c));
-            host.append(contexts);
+            bar.insertBefore(contexts, bar.lastElementChild);
         }
         const period = insightPeriod(view.days || 28), scope = view.days ? all.filter(r => r.time !== null && r.time >= period.start && r.time < period.end) : all;
         const dateLabel = (n) => new Date(n).toLocaleDateString();
-        host.append(el('p', (view.days ? `${dateLabel(period.start)} – ${dateLabel(period.end - 1)}` : 'All recorded dates') + ' · Records in this browser', 'insight-scope-note'));
+        const dateFacts = el('div');
+        dateFacts.append(el('p', (view.days ? `${dateLabel(period.start)} – ${dateLabel(period.end - 1)}` : 'All recorded dates') + ' · Records in this browser'));
         if (all.some(r => r.dateSource === 'session'))
-            host.append(el('p', 'Some older records use session-start dates. Exact question dates were not recorded.', 'insight-scope-note'));
+            dateFacts.append(el('p', 'Some older records use session-start dates. Exact question dates were not recorded.'));
         if (all.some(r => r.time === null))
-            host.append(el('p', `${all.filter(r => r.time === null).length} records have no usable date; available in All time.`, 'insight-scope-note'));
+            dateFacts.append(el('p', `${all.filter(r => r.time === null).length} records have no usable date; available in All time.`));
         const currentScope = el('div', '', 'insight-current-scope');
         host.append(currentScope);
         const scopeFilters = Object.entries({ key: view.key, root: view.root, quality: view.quality, chord: view.chord, degree: view.degree }).filter(([, value]) => value);
@@ -506,7 +542,7 @@ export function renderInsights(host, sessions, runs, evidence, onSetup) {
                 host.append(el('p', all.length ? 'No matching records in this period. Try a wider period.' : 'No V2 records in this browser. Choose an exercise to begin.'), button('Show all time', () => { view.days = 0; }));
                 const link = el('a', 'Choose an exercise');
                 link.href = '#home';
-                host.append(link);
+                host.append(link, details('Source conditions', dateFacts));
                 finish();
                 return;
             }
@@ -525,7 +561,7 @@ export function renderInsights(host, sessions, runs, evidence, onSetup) {
                 section.append(grid);
                 host.append(section);
             }
-            host.append(details('Combined degree accuracy', outcome(overviewRows, 'Mixed practice including self-ratings')));
+            host.append(details('Combined degree accuracy', outcome(overviewRows, 'Mixed practice including self-ratings'), dateFacts));
         }
         else {
             const mode = Object.entries(exerciseNames).find(([, name]) => name === view.context + ' · ' + view.family)[0];
@@ -534,11 +570,18 @@ export function renderInsights(host, sessions, runs, evidence, onSetup) {
             let rows = insightFilter(modeRows, { key: view.key, root: view.root, quality: view.quality, chord: view.chord, degree: view.degree });
             if (mode === 'm1' && view.production !== 'all')
                 rows = rows.filter(r => view.production === 'played' ? r.a.responseMethod === 'played' : ['imagined', 'sung'].includes(r.a.responseMethod));
-            host.append(el('h2', view.context + ' · ' + view.family), el('p', view.family === 'Degree Recognition' ? 'System graded' : 'Self-rated · not pitch-verified', 'insight-assessment'));
-            const result = outcome(rows, view.family === 'Degree Recognition' ? 'First-answer accuracy' : 'Self-rated accuracy');
+            const m = insightStats(rows), result = el('section', '', 'insight-outcome insight-compact-outcome');
+            result.setAttribute('aria-label', view.family === 'Degree Recognition' ? 'First-answer accuracy' : 'Self-rated accuracy');
+            result.dataset.assessed = String(m.n);
+            result.dataset.correct = String(m.correct);
+            const totals = el('p');
+            totals.append(el('strong', percent(m)), document.createTextNode(` · ${m.correct} / ${m.n} assessed notes · `), el('span', `${m.questions} questions · ${m.sessions} sessions`, 'insight-counts'));
+            result.append(totals, el('span', view.family === 'Degree Recognition' ? 'System graded' : 'Self-rated', 'insight-assessment'));
             host.append(result);
+            dateFacts.append(el('p', `${m.unassessed} unassessed · Replay-assisted first responses: ${m.replayed} / ${m.n}`));
             host.append(practiceSummarySection(rows, onSetup));
             if (!modeRows.length || !rows.length) {
+                host.append(details('Source conditions', dateFacts));
                 host.append(el('p', Object.entries({ key: view.key, root: view.root, quality: view.quality, chord: view.chord, degree: view.degree }).filter(([, value]) => value).map(([key, value]) => key + ': ' + value).join(' · '), 'insight-scope-note'));
                 host.append(el('p', !rows.length && modeRows.length ? 'No records match these filters.' : all.some(r => r.a.exercise === mode) ? 'No matching records in this period. Try a wider period.' : 'No records for this exercise yet.'), button('Show all time', () => { view.days = 0; }), button('Clear filters', () => { reset(); view.production = 'all'; }), button('Practice ' + exerciseNames[mode], () => { const progression = modeForExercise(mode); location.hash = progression ? 'progression/' + progression : 'home'; }));
                 finish();
@@ -743,7 +786,7 @@ export function renderInsights(host, sessions, runs, evidence, onSetup) {
                 if (!sources.has(identity))
                     sources.set(identity, r);
             }
-            const conditions = details('Source conditions');
+            const conditions = details('Source conditions', dateFacts);
             for (const r of sources.values()) {
                 const label = insightConditionLabel(r), c = r.source, section = el('section');
                 section.append(el('h3', label));

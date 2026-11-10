@@ -1,4 +1,5 @@
 @font-face { font-family: "Source Sans 3"; src: url("fonts/source-sans-3-400.ttf") format("truetype"); font-weight: 400; font-display: swap; }
+#insights-navigation { display:none; }
 @font-face { font-family: "Source Sans 3"; src: url("fonts/source-sans-3-500.ttf") format("truetype"); font-weight: 500; font-display: swap; }
 @font-face { font-family: "Source Sans 3"; src: url("fonts/source-sans-3-600.ttf") format("truetype"); font-weight: 600; font-display: swap; }
 @font-face { font-family: "Source Sans 3"; src: url("fonts/source-sans-3-700.ttf") format("truetype"); font-weight: 700; font-display: swap; }
@@ -514,7 +515,67 @@ input[type="number"], output, .session-count, .assessment-count, .unassessed,
 .summary-finding select{width:100%;min-width:0;max-width:100%;}
 .insight-musical-overview{display:grid;grid-template-columns:minmax(0,1fr);gap:24px;}
 .insight-musical-overview>section{min-width:0;}
-.insights-work>.insight-outcome{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 16px;padding:8px 0;}
+/* Approved overview composition; details retain their existing evidence controls. */
+body:has(.insights-work)>header{height:59px;min-height:59px;padding-inline:30px;gap:66px;}
+body:has(.insights-work)>header .brand{font-size:28px;}
+body:has(.insights-work)>header nav a{font-size:22px;min-height:59px;padding-inline:6px;}
+body:has(.insights-work)>header nav img{display:none;}
+body:has(.insights-work) #app{max-width:1296px;padding:30px 26px 24px;margin-inline:auto;}
+body:has(.insights-work) #app>h1{font-size:46px;line-height:1.2;margin:0 0 12px;}
+.insights-work .insight-toolbar{display:flex;justify-content:flex-start;align-items:center;gap:14px;margin:0 0 13px;}
+.insight-toolbar>label{font-size:0;display:block;flex:none;}
+.insight-toolbar>label select{font-size:20px;min-height:38px;height:38px;padding:2px 12px;width:222px;border-radius:5px;}
+.insight-toolbar>label:last-child{border-left:1px solid var(--control);padding-left:20px;margin-left:6px;}
+.insight-toolbar>label:last-child select{width:180px;}
+.insights-work .insight-contexts{display:flex;margin:0;gap:0;}
+.insight-contexts button{min-height:38px;height:38px;padding:3px 14px;font-size:20px;border:1px solid var(--control);border-radius:0;}
+.insight-contexts button:first-child{border-radius:5px 0 0 5px;}
+.insight-contexts button:last-child{border-radius:0 5px 5px 0;}
+.insights-work .insight-compact-outcome{display:flex;align-items:center;gap:18px;padding:0 0 20px;margin:0;border-bottom:1px solid var(--control);}
+.insight-compact-outcome>p{font-size:26px;line-height:1.2;margin:0;}
+.insight-compact-outcome strong{font-size:36px;}
+.insight-compact-outcome .insight-assessment{margin:0 0 0 auto;white-space:nowrap;color:var(--muted);font-size:18px;}
+.insights-work .insight-practice-summary{border-top:0;border-bottom:1px solid var(--control);padding:12px 0 10px;margin:0;}
+.insight-practice-summary>h2{font-size:30px;margin:0 0 10px;line-height:1.2;}
+.summary-narrative{border-left:9px solid var(--signal);padding-left:19px;border-radius:3px;font-size:22px;line-height:1.45;}
+.summary-narrative p{margin:0;max-width:none;}
+.summary-actions{display:grid;grid-template-columns:1fr auto;align-items:start;margin-top:10px;}
+.summary-actions>.summary-evidence{grid-column:1/-1;grid-row:1;border:0;margin:0;padding:0;}
+.summary-actions>.summary-evidence>summary{list-style:none;display:flex;align-items:center;width:fit-content;min-height:46px;padding:0;color:#0645dc;text-decoration:underline;font-size:22px;}
+.summary-actions>.summary-evidence>summary::-webkit-details-marker{display:none;}
+.summary-actions>button{grid-column:2;grid-row:1;min-height:46px;min-width:199px;font-size:22px;padding:6px 24px;}
+.summary-evidence[open]>.summary-finding:first-of-type{margin-top:12px;}
+.summary-evidence .summary-finding{border-top:1px solid var(--rule);}
+@media(max-width:600px){
+ body:has(.insights-work)>header{height:38px;min-height:38px;padding:0 21px;justify-content:space-between;gap:0;position:relative;flex-wrap:nowrap;}
+ body:has(.insights-work)>header .brand{font-size:18px;min-height:38px;width:auto;}
+ body:has(.insights-work) #insights-navigation{display:flex;background:transparent;min-height:34px;height:34px;padding:4px;}
+ #insights-navigation img{filter:brightness(0) invert(1);}
+ body:has(.insights-work)>header nav{display:none;position:absolute;top:38px;left:0;right:0;background:#161616;z-index:20;padding:8px 20px;}
+ body:has(.insights-work)>header nav.is-open{display:flex;}
+ body:has(.insights-work)>header nav a{font-size:16px;min-height:44px;}
+ body:has(.insights-work) #app{padding:8px 21px 20px;}
+ body:has(.insights-work) #app>h1{font-size:28px;margin-bottom:6px;line-height:1.2;}
+ .insights-work .insight-toolbar{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;margin-bottom:2px;}
+ .insight-toolbar>label select{width:100%;height:26px;min-height:26px;padding:1px 7px;font-size:14px;}
+ .insight-contexts button{min-height:26px;height:26px;font-size:12px;padding:2px 12px;}
+ .insight-toolbar>label:last-child{grid-column:1/-1;border:0;padding:0;margin:0;}
+ .insight-toolbar>label:last-child select{width:100%;}
+ .insights-work .insight-compact-outcome{display:block;padding-bottom:8px;}
+ .insight-compact-outcome>p{font-size:16px;line-height:1.2;}
+ .insight-compact-outcome .insight-counts{display:block;}
+ .insight-compact-outcome strong{font-size:22px;}
+ .insight-compact-outcome .insight-assessment{display:block;font-size:14px;line-height:1.3;margin-top:2px;}
+ .insights-work .insight-practice-summary{padding:8px 0 10px;}
+ .insight-practice-summary>h2{font-size:18px;margin-bottom:5px;}
+ .summary-narrative{border-left-width:6px;padding-left:14px;font-size:16px;line-height:1.125;}
+ .summary-actions{margin-top:6px;}
+ .summary-actions>.summary-evidence>summary{font-size:14px;min-height:32px;}
+ .summary-actions>button{font-size:14px;min-height:32px;min-width:132px;padding:4px 16px;}
+}
+.insights-work>.insight-outcome:not(.insight-compact-outcome){display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 16px;padding:8px 0;}
+.insight-current-scope:has(>.insight-chips:empty){display:none;}
+.insights-work .insight-compact-outcome{border-top:0;}
 .insights-work>.insight-outcome h2{font-size:1rem;margin:0;}
 .insights-work>.insight-outcome p{margin:0;}
 .insights-work>.insight-outcome .metric-number{font-size:1.75rem;}
