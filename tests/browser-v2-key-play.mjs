@@ -79,7 +79,7 @@ try{
  await button('Remaining notes correct and submit').click();await page.getByText('4 / 6 assessed notes',{exact:true}).waitFor();
  await button('Finish').click();await page.getByText('4 / 6 assessed notes',{exact:true}).waitFor();await capture('progression-results');
  await button('Overall Insights').click();await page.getByLabel('Practice family',{exact:true}).selectOption('Play by Ear');await button('Progression').click();
- await page.getByText('4 / 6 assessed',{exact:true}).waitFor();await page.getByText('Unavailable · n=0 eligible questions',{exact:true}).waitFor();await capture('play-insights');
+ await page.locator('.insight-outcome').getByText(/4 \/ 6 assessed notes/).waitFor();await page.getByText('Unavailable · n=0 eligible questions',{exact:true}).waitFor();await capture('play-insights');
  await page.getByLabel('Practice family',{exact:true}).selectOption('Overall');await page.getByText('Combined degree accuracy',{exact:true}).click();await page.getByText('5 / 7 assessed',{exact:true}).waitFor();await page.getByLabel('Practice family',{exact:true}).selectOption('Play by Ear');await button('Progression').click();
  await page.locator('summary').filter({hasText:/^Sessions$/}).click();const latest=page.getByRole('link',{name:'View latest matching session',exact:true});await latest.click();
  await page.getByText('4 / 6 assessed notes',{exact:true}).waitFor();await page.reload();await page.getByText('4 / 6 assessed notes',{exact:true}).waitFor();

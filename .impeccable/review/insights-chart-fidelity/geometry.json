@@ -1,0 +1,374 @@
+{
+  "overview-desktop": {
+    "width": 1084,
+    "height": 956,
+    "regions": {
+      ".insight-practice-summary": {
+        "x": 26,
+        "y": 271.375,
+        "width": 1032,
+        "height": 220.671875,
+        "clientWidth": 1032,
+        "scrollWidth": 1032,
+        "text": "Your practice focus\n\nStrong recorded results in maj7 fifths.\n\nLook closer at dominant-7 ninths (29/36) and minor-7 fifths (121/137).\n\nMinor-7 fifth → root appears in 9 recorded errors.\n\nView evidence\nSet up practice"
+      },
+      ".confusion-heading": {
+        "x": 31,
+        "y": 508.046875,
+        "width": 459,
+        "height": 32,
+        "clientWidth": 459,
+        "scrollWidth": 459,
+        "text": "Degree confusions\nList\nMatrix"
+      },
+      ".confusion-columns": {
+        "x": 31,
+        "y": 556.046875,
+        "width": 459,
+        "height": 28,
+        "clientWidth": 459,
+        "scrollWidth": 459,
+        "text": "Target → Reported\nErrors"
+      },
+      ".confusion-list": {
+        "x": 31,
+        "y": 584.046875,
+        "width": 459,
+        "height": 222,
+        "clientWidth": 459,
+        "scrollWidth": 459,
+        "text": "m7 · 5 → 1\n9\nDm77\nAm71\nGm71\nView matching records\nm7 · b7 → b3\n5\nm7 · b3 → b7\n4"
+      },
+      ".confusion-accounting": {
+        "x": 43,
+        "y": 810.046875,
+        "width": 435,
+        "height": 20,
+        "clientWidth": 435,
+        "scrollWidth": 435,
+        "text": "Unknown 17 · No annotation 0,not included in directions."
+      },
+      ".insight-performance": {
+        "x": 537,
+        "y": 508.046875,
+        "width": 517,
+        "height": 322,
+        "clientWidth": 517,
+        "scrollWidth": 526,
+        "text": "Performance by chord degree\n\nSelect a cell for counts and evidence.\n\nChord quality × target degree\nDegree\t1\tb3\t3\t5\tb7\tmaj7\t9\nm7\t\n96%\n\t\n96%\n\t–\t\n88%\n\t\n91%\n\t–\t–\n7\t\n97%\n\t–\t\n98%\n\t\n94%\n\t\n100%\n\t–\t\n81%\n\nmaj7\t\n100%\n\t–\t\n99%\n\t\n100%\n\t–\t\n100%\n\t–\nLower recorded accuracy\nHigher recorded accuracy\nLimited sample"
+      },
+      ".insight-performance table": {
+        "x": 537,
+        "y": 576.046875,
+        "width": 517,
+        "height": 154.5,
+        "clientWidth": 517,
+        "scrollWidth": 517,
+        "text": "Chord quality × target degree\nDegree\t1\tb3\t3\t5\tb7\tmaj7\t9\nm7\t\n96%\n\t\n96%\n\t–\t\n88%\n\t\n91%\n\t–\t–\n7\t\n97%\n\t–\t\n98%\n\t\n94%\n\t\n100%\n\t–\t\n81%\n\nmaj7\t\n100%\n\t–\t\n99%\n\t\n100%\n\t–\t\n100%\n\t–"
+      },
+      ".insight-performance tbody": {
+        "x": 537.5,
+        "y": 610.046875,
+        "width": 516,
+        "height": 120,
+        "clientWidth": 516,
+        "scrollWidth": 516,
+        "text": "m7\t\n96%\n\t\n96%\n\t–\t\n88%\n\t\n91%\n\t–\t–\n7\t\n97%\n\t–\t\n98%\n\t\n94%\n\t\n100%\n\t–\t\n81%\n\nmaj7\t\n100%\n\t–\t\n99%\n\t\n100%\n\t–\t\n100%\n\t–"
+      },
+      ".heatmap-legend": {
+        "x": 540,
+        "y": 750.546875,
+        "width": 523,
+        "height": 28,
+        "clientWidth": 523,
+        "scrollWidth": 523,
+        "text": "Lower recorded accuracy\nHigher recorded accuracy\nLimited sample"
+      }
+    }
+  },
+  "overview-mobile": {
+    "width": 379,
+    "height": 956,
+    "regions": {
+      ".insight-practice-summary": {
+        "x": 21,
+        "y": 220.359375,
+        "width": 337,
+        "height": 173.59375,
+        "clientWidth": 337,
+        "scrollWidth": 337,
+        "text": "Your practice focus\n\nStrong recorded results in maj7 fifths.\n\nLook closer at dominant-7 ninths (29/36) and minor-7 fifths (121/137).\n\nMinor-7 fifth → root appears in 9 recorded errors.\n\nView evidence\nSet up practice"
+      },
+      ".confusion-heading": {
+        "x": 21,
+        "y": 401.953125,
+        "width": 339,
+        "height": 24,
+        "clientWidth": 339,
+        "scrollWidth": 339,
+        "text": "Degree confusions\nList\nMatrix"
+      },
+      ".confusion-columns": {
+        "x": 21,
+        "y": 433.953125,
+        "width": 339,
+        "height": 20,
+        "clientWidth": 339,
+        "scrollWidth": 339,
+        "text": "Target → Reported\nErrors"
+      },
+      ".confusion-list": {
+        "x": 21,
+        "y": 453.953125,
+        "width": 339,
+        "height": 152,
+        "clientWidth": 339,
+        "scrollWidth": 339,
+        "text": "m7 · 5 → 1\n9\nDm77\nAm71\nGm71\nView matching records\nm7 · b7 → b3\n5\nm7 · b3 → b7\n4"
+      },
+      ".confusion-accounting": {
+        "x": 25,
+        "y": 609.953125,
+        "width": 331,
+        "height": 17,
+        "clientWidth": 331,
+        "scrollWidth": 331,
+        "text": "Unknown 17 · No annotation 0,not included in directions."
+      },
+      ".insight-performance": {
+        "x": 21,
+        "y": 633.953125,
+        "width": 339,
+        "height": 233.5,
+        "clientWidth": 339,
+        "scrollWidth": 339,
+        "text": "Performance by chord degree\n\nSelect a cell for counts and evidence.\n\nChord quality × target degree\nDegree\t1\tb3\t3\t5\tb7\tmaj7\t9\nm7\t\n96%\n\t\n96%\n\t–\t\n88%\n\t\n91%\n\t–\t–\n7\t\n97%\n\t–\t\n98%\n\t\n94%\n\t\n100%\n\t–\t\n81%\n\nmaj7\t\n100%\n\t–\t\n99%\n\t\n100%\n\t–\t\n100%\n\t–\nLower recorded accuracy\nHigher recorded accuracy\nLimited sample"
+      },
+      ".insight-performance table": {
+        "x": 21,
+        "y": 682.953125,
+        "width": 339,
+        "height": 115.5,
+        "clientWidth": 339,
+        "scrollWidth": 339,
+        "text": "Chord quality × target degree\nDegree\t1\tb3\t3\t5\tb7\tmaj7\t9\nm7\t\n96%\n\t\n96%\n\t–\t\n88%\n\t\n91%\n\t–\t–\n7\t\n97%\n\t–\t\n98%\n\t\n94%\n\t\n100%\n\t–\t\n81%\n\nmaj7\t\n100%\n\t–\t\n99%\n\t\n100%\n\t–\t\n100%\n\t–"
+      },
+      ".insight-performance tbody": {
+        "x": 21.5,
+        "y": 710.953125,
+        "width": 338,
+        "height": 87,
+        "clientWidth": 338,
+        "scrollWidth": 338,
+        "text": "m7\t\n96%\n\t\n96%\n\t–\t\n88%\n\t\n91%\n\t–\t–\n7\t\n97%\n\t–\t\n98%\n\t\n94%\n\t\n100%\n\t–\t\n81%\n\nmaj7\t\n100%\n\t–\t\n99%\n\t\n100%\n\t–\t\n100%\n\t–"
+      },
+      ".heatmap-legend": {
+        "x": 22,
+        "y": 831.453125,
+        "width": 338,
+        "height": 36,
+        "clientWidth": 338,
+        "scrollWidth": 338,
+        "text": "Lower recorded accuracy\nHigher recorded accuracy\nLimited sample"
+      }
+    }
+  },
+  "matrix": {
+    "width": 971,
+    "height": 503,
+    "regions": {
+      ".confusion-matrix h1": {
+        "x": 26,
+        "y": 47,
+        "width": 919,
+        "height": 39.09375,
+        "clientWidth": 919,
+        "scrollWidth": 919,
+        "text": "Degree confusions"
+      },
+      ".confusion-matrix .chart-scope": {
+        "x": 26,
+        "y": 86.09375,
+        "width": 919,
+        "height": 24,
+        "clientWidth": 919,
+        "scrollWidth": 919,
+        "text": "Play by Ear · Progression · Last 28 days"
+      },
+      ".matrix-toolbar": {
+        "x": 26,
+        "y": 118.09375,
+        "width": 919,
+        "height": 50,
+        "clientWidth": 919,
+        "scrollWidth": 919,
+        "text": "Quality\nm7\n7\nmaj7\nList\nMatrix"
+      },
+      ".matrix-plot": {
+        "x": 26,
+        "y": 180.09375,
+        "width": 571.625,
+        "height": 232.5,
+        "clientWidth": 572,
+        "scrollWidth": 572,
+        "text": "m7 · First-error directions\nTarget degree\n\tReported degree\n1\tb3\t5\tb7\n1\t–\t0\t3\t0\nb3\t0\t–\t0\t4\n5\t9\t0\t–\t1\nb7\t3\t5\t0\t–\n\nRecorded first errors · 0 to 9\n\n9\n7 – 8\n5 – 6\n3 – 4\n1 – 2\n0"
+      },
+      ".confusion-matrix tbody": {
+        "x": 26,
+        "y": 248.09375,
+        "width": 426.984375,
+        "height": 164,
+        "clientWidth": 427,
+        "scrollWidth": 427,
+        "text": "1\t–\t0\t3\t0\nb3\t0\t–\t0\t4\n5\t9\t0\t–\t1\nb7\t3\t5\t0\t–"
+      },
+      ".matrix-legend": {
+        "x": 477.484375,
+        "y": 180.09375,
+        "width": 120.140625,
+        "height": 232.5,
+        "clientWidth": 120,
+        "scrollWidth": 120,
+        "text": "Recorded first errors · 0 to 9\n\n9\n7 – 8\n5 – 6\n3 – 4\n1 – 2\n0"
+      },
+      ".matrix-selection": {
+        "x": 623.625,
+        "y": 185.09375,
+        "width": 321.375,
+        "height": 301,
+        "clientWidth": 320,
+        "scrollWidth": 320,
+        "text": "m7: 5 → 1\n\n9 of 137 assessed target notes\n\n16 first errors in this target group\n\nDm7\n7\nAm7\n1\nGm7\n1\nEvidence"
+      },
+      ".matrix-accounting": {
+        "x": 26,
+        "y": 432.59375,
+        "width": 571.625,
+        "height": 61,
+        "clientWidth": 572,
+        "scrollWidth": 572,
+        "text": "Unknown: 9 · Without annotation: 0\n\nUnassessed notes: 8"
+      }
+    }
+  },
+  "evidence": {
+    "width": 448,
+    "height": 503,
+    "regions": {
+      ".chart-back": {
+        "x": 25,
+        "y": 46,
+        "width": 138.4375,
+        "height": 24,
+        "clientWidth": 138,
+        "scrollWidth": 138,
+        "text": "Back to Insights"
+      },
+      ".confusion-evidence-panel h1": {
+        "x": 25,
+        "y": 78,
+        "width": 403,
+        "height": 36,
+        "clientWidth": 403,
+        "scrollWidth": 403,
+        "text": "m7: 5 → 1"
+      },
+      ".confusion-evidence-panel .chart-scope": {
+        "x": 25,
+        "y": 114,
+        "width": 403,
+        "height": 22,
+        "clientWidth": 403,
+        "scrollWidth": 403,
+        "text": "Play by Ear · Progression · Last 28 days"
+      },
+      ".direction-totals": {
+        "x": 25,
+        "y": 142,
+        "width": 403,
+        "height": 46,
+        "clientWidth": 403,
+        "scrollWidth": 403,
+        "text": "9 recorded confusions\n\n121 / 137 correct target notes"
+      },
+      ".confusion-evidence-panel .direction-roots": {
+        "x": 25,
+        "y": 223,
+        "width": 403,
+        "height": 94,
+        "clientWidth": 403,
+        "scrollWidth": 403,
+        "text": "Dm7\n7\nAm7\n1\nGm7\n1"
+      },
+      ".direction-source": {
+        "x": 25,
+        "y": 330,
+        "width": 403,
+        "height": 151,
+        "clientWidth": 403,
+        "scrollWidth": 403,
+        "text": "Practice source\nii–V–I · 80 BPM · C, G, F\n\nThis setup is one source of these results.\n\nReview practice setup"
+      },
+      ".direction-source select": {
+        "x": 25,
+        "y": 364,
+        "width": 403,
+        "height": 35,
+        "clientWidth": 401,
+        "scrollWidth": 401,
+        "text": "ii–V–I · 80 BPM · C, G, F"
+      },
+      ".direction-source button": {
+        "x": 25,
+        "y": 439,
+        "width": 403,
+        "height": 42,
+        "clientWidth": 401,
+        "scrollWidth": 401,
+        "text": "Review practice setup"
+      }
+    }
+  },
+  "setup-preview": {
+    "width": 971,
+    "height": 373,
+    "regions": {
+      ".recorded-setup-review": {
+        "x": 25,
+        "y": 45,
+        "width": 921,
+        "height": 307.5,
+        "clientWidth": 921,
+        "scrollWidth": 921,
+        "text": "Back to evidence\nReview practice setup\n\nFrom recorded setup\n\nMode\nPlay by Ear\nContext\nProgression\nChanges\nDm7 → G7 → Cmaj7\nTempo\n80 BPM\nKeys\nC, G, F\nTarget pool change\nm7: 5\nOther chord pools\nunchanged\nOpen Customize\nBack to evidence"
+      },
+      ".recorded-setup-review h1": {
+        "x": 25,
+        "y": 72,
+        "width": 327.15625,
+        "height": 38,
+        "clientWidth": 327,
+        "scrollWidth": 327,
+        "text": "Review practice setup"
+      },
+      ".recorded-setup-review dl": {
+        "x": 25,
+        "y": 115,
+        "width": 921,
+        "height": 171.5,
+        "clientWidth": 921,
+        "scrollWidth": 921,
+        "text": "Mode\nPlay by Ear\nContext\nProgression\nChanges\nDm7 → G7 → Cmaj7\nTempo\n80 BPM\nKeys\nC, G, F\nTarget pool change\nm7: 5\nOther chord pools\nunchanged"
+      },
+      ".setup-review-actions": {
+        "x": 25,
+        "y": 296.5,
+        "width": 921,
+        "height": 56,
+        "clientWidth": 921,
+        "scrollWidth": 921,
+        "text": "Open Customize\nBack to evidence"
+      }
+    }
+  }
+}

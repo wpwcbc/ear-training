@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {mkdir} from 'node:fs/promises';
+import {referenceRuns} from './fixtures/insights-reference.mjs';
 const {chromium}=await import(process.env.PLAYWRIGHT_MODULE);
 const browser=await chromium.launch({executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE});
 try{
@@ -12,6 +13,7 @@ try{
   for(let i=0;i<9;i++){
    const a=attempt(c,next(),s.id,'fresh'),root=i<7?'D':i===7?'A':'G';
    a.target.chord={...a.target.chord,root,quality:'m7',symbol:root+'m7'};a.target.degree='5';
+   if(i===8)a.configurationSnapshot.volume=.35;
    a.firstCorrect=false;a.firstAnswer='1';a.gradingSource='automatic';s.attempts.push(a);
   }
   for(let i=0;i<3;i++){const a=attempt(c,next(),s.id,'fresh');a.exercise='m2';a.gradingSource='automatic';a.target.chord={root:'C',quality:'7',symbol:'C7'};a.target.degree='#11';a.firstAnswer='b5';a.firstCorrect=false;s.attempts.push(a);}
@@ -35,23 +37,30 @@ try{
  await matrix.waitFor();
  await section.getByText('Unassessed notes: 0',{exact:true}).waitFor();
  const direction=matrix.getByRole('button',{name:'m7: target 5, reported 1, 9 errors'});
+ const selected=section.locator('.matrix-selection'),evidence=section.locator('.confusion-evidence-panel');
  await direction.focus();await page.keyboard.press('Enter');
- assert.ok((await page.evaluate(()=>document.activeElement.getAttribute('aria-label'))).includes('m7: 5 → 1'));
- assert.notEqual(await summary.locator('..').getAttribute('open'),null);
+ assert.equal(await page.evaluate(()=>document.activeElement.textContent),'m7: 5 → 1');
+ assert.equal(await direction.getAttribute('aria-pressed'),'true');
  await page.keyboard.press('Enter');
  assert.equal(await direction.evaluate(n=>n===document.activeElement),true);
  await page.keyboard.press('Enter');
  assert.equal(await matrix.getByRole('button').count(),1);
- const listRow=summary.locator('..');
- await listRow.locator('summary').filter({hasText:/^Evidence$/}).click();
- assert.equal(await listRow.getByRole('link',{name:'Open containing session'}).count(),9);
+ const evidenceLink=selected.getByRole('button',{name:'Evidence',exact:true});
+ await evidenceLink.click();await evidence.getByRole('heading',{name:'m7: 5 → 1',exact:true}).waitFor();
+ assert.equal(await evidence.getByRole('link',{name:'Open containing session'}).count(),0);
+ await evidence.locator('summary').getByText('View matching records',{exact:true}).click();
+ assert.equal(await evidence.getByRole('link',{name:'Open containing session'}).count(),9);
+ await evidence.getByRole('button',{name:'Back to Insights',exact:true}).click();
+ assert.equal(await evidenceLink.evaluate(n=>n===document.activeElement),true);
  await section.getByLabel('Matrix chord quality',{exact:true}).selectOption('7');
  await section.getByRole('button',{name:'7: target #11, reported b5, 3 errors'}).waitFor();
- assert.equal(await listRow.getAttribute('open'),null);
+ assert.equal(await selected.isVisible(),false);
  await section.getByLabel('Matrix chord quality',{exact:true}).selectOption('m7');
  await section.getByRole('button',{name:'m7: target 5, reported 1, 9 errors'}).click();
- assert.ok((await section.innerText()).includes('Question '));
- assert.ok((await section.getByRole('combobox',{name:'Practice source for m7: 5 → 1',exact:true}).locator('option').first().innerText()).includes('Recognition'));
+ await evidenceLink.click();
+ const source=evidence.getByRole('combobox',{name:'Practice source for m7: 5 → 1',exact:true});
+ assert.equal(await source.locator('option').count(),2);
+ await source.selectOption({index:1});const chosen=await source.inputValue();
  await mkdir('.impeccable/review/v2-confusions',{recursive:true});
  for(const width of [1440,390,320]){
   await page.setViewportSize({width,height:900});
@@ -59,16 +68,53 @@ try{
   await page.screenshot({path:`.impeccable/review/v2-confusions/${width}.png`,fullPage:true});
  }
  const before=await page.evaluate(()=>localStorage.getItem('jazzEarLab:v2:sessions'));
- await section.getByRole('button',{name:'Review practice setup for m7: 5 → 1'}).click();
+ const review=evidence.getByRole('button',{name:'Review practice setup for m7: 5 → 1'});
+ await review.click();
  await page.waitForURL(/insight-setup/);
- await page.goto('http://127.0.0.1:4173/jazz-ear-lab-v2/#insights');
- await section.getByLabel('Dm7: 7',{exact:true}).waitFor();
+ await page.getByRole('button',{name:'Sound',exact:true}).click();
+ assert.equal(await page.getByLabel('Volume',{exact:true}).inputValue(),'0.35');
+ await page.getByRole('button',{name:'Back to evidence',exact:true}).click({timeout:2000});
+ await review.waitFor();
+ await page.waitForFunction(()=>document.activeElement?.getAttribute('aria-label')==='Review practice setup for m7: 5 → 1');
+ assert.equal(await source.inputValue(),chosen);
+ await page.goBack();await page.waitForURL(/insight-setup/);
+ await page.getByRole('button',{name:'Back to evidence',exact:true}).click();
+ await review.waitFor({timeout:2000});
+ assert.equal(await source.inputValue(),chosen);
+ await evidence.getByRole('button',{name:'Back to Insights',exact:true}).click();
+ assert.equal(await direction.getAttribute('aria-pressed'),'true');
  assert.equal(await section.getByRole('button',{name:'Matrix',exact:true}).getAttribute('aria-pressed'),'true');
  assert.equal(await page.evaluate(()=>localStorage.getItem('jazzEarLab:v2:sessions')),before);
+ await section.getByRole('button',{name:'List',exact:true}).click();
  await page.getByLabel('Practice family',{exact:true}).selectOption('Degree Recognition');
  await page.locator('summary').filter({hasText:/^More filters$/}).click();await page.getByLabel('Root',{exact:true}).selectOption('D');
  await section.getByRole('button',{name:'Matrix',exact:true}).click();
  await section.getByRole('button',{name:'m7: target 5, reported 1, 7 errors'}).waitFor();
  assert.equal(await section.getByRole('button',{name:/target #11/}).count(),0);
+ const fixedRuns=referenceRuns().sort((a,b)=>Number(b.questions.some(q=>q.practiceKey==='G'))-Number(a.questions.some(q=>q.practiceKey==='G')));
+ for(const run of fixedRuns)for(const question of run.questions)question.source={...question.source,keyMode:'fixed',key:question.practiceKey};
+ const fixedPage=await browser.newPage();
+ await fixedPage.clock.install({time:new Date('2026-11-09T12:00:00Z')});
+ await fixedPage.goto('http://127.0.0.1:4173/jazz-ear-lab-v2/');
+ await fixedPage.evaluate(runs=>localStorage.setItem('jazzEarLab:v2:progressionHistory',JSON.stringify(runs)),fixedRuns);
+ await fixedPage.goto('http://127.0.0.1:4173/jazz-ear-lab-v2/#insights');await fixedPage.reload();
+ await fixedPage.getByLabel('Practice family',{exact:true}).selectOption('Play by Ear');
+ await fixedPage.getByRole('button',{name:'Progression',exact:true}).click();
+ await fixedPage.getByRole('button',{name:/^m7: 5, 88 percent/}).click();
+ assert.equal(await fixedPage.getByLabel('Practice source for m7: 5',{exact:true}).locator('option').count(),3,'heatmap keeps fixed C, G and F sources distinct');
+ await fixedPage.getByRole('button',{name:'Back to heatmap',exact:true}).click();
+ await fixedPage.evaluate(()=>{
+  const scope=['Play by Ear','Progression',28,'','','','','','all','',''];
+  sessionStorage.setItem('jazzEarLab:v2:matrix:'+JSON.stringify(scope)+':source:m7: 5 → 1','0');
+ });
+ await fixedPage.locator('.insight-confusions').getByRole('button',{name:'View matching records',exact:true}).click();
+ const fixedSource=fixedPage.getByLabel('Practice source for m7: 5 → 1',{exact:true});
+ assert.deepEqual((await fixedSource.locator('option').allTextContents()).sort(),['ii–V–I · 80 BPM · C','ii–V–I · 80 BPM · F','ii–V–I · 80 BPM · G']);
+ assert.equal(await fixedSource.locator('option').first().textContent(),'ii–V–I · 80 BPM · G');
+ assert.equal(await fixedSource.locator('option:checked').textContent(),'ii–V–I · 80 BPM · C','restore the previously selected fixed source, not its old index');
+ await fixedSource.selectOption({label:'ii–V–I · 80 BPM · G'});
+ await fixedPage.getByRole('button',{name:'Review practice setup for m7: 5 → 1',exact:true}).click();
+ await fixedPage.waitForURL(/insight-setup/);
+ assert.equal(await fixedPage.getByLabel('Practice key',{exact:true}).inputValue(),'G');
  console.log('PASS confusion totals, keyboard disclosure, responsive widths, setup and return history preservation');
 }finally{await browser.close();}

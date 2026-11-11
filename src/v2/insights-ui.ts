@@ -1,12 +1,20 @@
 import {insightRecords,insightStats,insightPeriod,insightFilter,insightGroups,insightKeys,insightPriorities,insightConditionLabel,insightTrend,insightKeyComparison,insightEfficiency,insightEligible,insightStratum,insightSetupId,type InsightRecord,type InsightFamily,type InsightRun,type InsightFilters} from './insights.js';
 import {exerciseNames,modeForExercise} from './exercise-names.js';
 import type {Attempt,Session} from './model.js';
+import {templates} from './progression.js';
 import {insightConfusions,insightHeatmap,insightConfusionMatrix,insightPracticeSummary} from './insights.js';
 
+type OpenSetup=(record:InsightRecord,label:string,filters:InsightFilters,restoreEvidence?:()=>void)=>void;
+
+function recordedSourceId(r:InsightRecord){
+ const source=r.source;
+ const fixedKey='mode'in source&&r.context==='Progression'&&source.keyMode!=='random'?source.key??r.key:null;
+ return JSON.stringify([r.a.exercise,insightSetupId(r),fixedKey]);
+}
 function recordedSources(records:InsightRecord[]){return [...new Map(records.filter(r=>r.sourceKnown).map(r=>[r.a.exercise+'|'+insightSetupId(r),r])).values()];}
 function sourceOptionLabel(r:InsightRecord,i:number){const c=r.source,levels='mode'in c?c.levels:c.voiceLevels??[1,1,1,1,1];return `${i+1}. ${exerciseNames[r.a.exercise]} · ${insightConditionLabel(r)} · Volume ${Math.round(c.volume*100)}% · Voices ${levels.map(v=>Math.round(v*100)+'%').join(', ')}`;}
 
-function practiceSummarySection(records:InsightRecord[],onSetup?: (record:InsightRecord,label:string,filters:InsightFilters)=>void){
+function practiceSummarySection(records:InsightRecord[],onSetup?:OpenSetup){
  const report=insightPracticeSummary(records),section=el('section','','insight-practice-summary');
  section.append(el('h2','Your practice focus'));
  if(report.message)section.append(el('p',report.message));
@@ -51,15 +59,16 @@ function practiceSummarySection(records:InsightRecord[],onSetup?: (record:Insigh
  return section;
 }
 
-function performanceSection(records:InsightRecord[],onSetup?: (record:InsightRecord,label:string,filters:InsightFilters)=>void){
+function performanceSection(records:InsightRecord[],onSetup?:OpenSetup){
  const report=insightHeatmap(records),section=el('section','','insight-performance');
  section.append(el('h2','Performance by chord degree'));
  if(!report.cells.length){section.append(el('p','No recorded observations in this scope.'));return section;}
  section.append(el('p','Select a cell for counts and evidence.','heatmap-instruction'));
- const legend=el('div','','heatmap-legend');
- legend.append(el('span','Lower recorded accuracy'));
- for(const band of ['low','mid','high','top']){const swatch=el('span','','heatmap-swatch');swatch.dataset.band=band;swatch.setAttribute('aria-hidden','true');legend.append(swatch);}
- legend.append(el('span','Higher recorded accuracy'),el('span','Limited sample','limited-legend'));
+ const legend=el('div','','heatmap-legend'),scale=el('div','','heatmap-scale'),swatches=el('span','','heatmap-swatches');
+ swatches.setAttribute('aria-hidden','true');
+ for(const band of ['low','mid','high','top']){const swatch=el('span','','heatmap-swatch');swatch.dataset.band=band;swatches.append(swatch);}
+ scale.append(el('span','Lower recorded accuracy'),swatches,el('span','Higher recorded accuracy'));
+ legend.append(scale,el('span','Limited sample','limited-legend'));
  const scroll=el('div','','table-scroll');scroll.tabIndex=0;scroll.setAttribute('role','region');scroll.setAttribute('aria-label','Chord degree performance');
  const table=el('table'),head=el('thead'),tr=el('tr');table.append(el('caption','Chord quality × target degree'));
  const corner=el('th','Degree');corner.scope='col';tr.append(corner);
@@ -75,7 +84,7 @@ function performanceSection(records:InsightRecord[],onSetup?: (record:InsightRec
   const row=el('tr'),th=el('th',quality);th.scope='row';row.append(th);
   for(const degree of report.degrees){
    const td=el('td'),cell=report.cells.find(c=>c.quality===quality&&c.degree===degree);
-   if(!cell){td.append(el('span','—'));td.setAttribute('aria-label',`${quality}, ${degree}: no observations`);row.append(td);continue;}
+   if(!cell){td.textContent='–';td.setAttribute('aria-label',`${quality}, ${degree}: no observations`);row.append(td);continue;}
    const label=`${quality}: ${degree}`,identity=JSON.stringify([quality,degree]);
    const control=el('button',cell.rate===null?'Unassessed':Math.round(cell.rate*100)+'%','heatmap-cell');control.type='button';
    const displayedRate=cell.rate===null?null:Math.round(cell.rate*100);
@@ -88,16 +97,15 @@ function performanceSection(records:InsightRecord[],onSetup?: (record:InsightRec
     control.setAttribute('aria-pressed','true');
     try{sessionStorage.setItem(stateKey,identity);}catch{/* Optional selection state. */}
     detail.hidden=false;detail.replaceChildren();const title=el('h3',`${label} · Recorded results`);title.tabIndex=-1;
-    detail.append(title,el('p',`${cell.m.correct} / ${cell.m.n} assessed notes · ${cell.m.questions} questions · ${cell.m.sessions} sessions · ${cell.m.unassessed} unassessed notes`),el('p',cell.status==='limited'?'Limited sample: not a reliable strength or weakness.':cell.status==='unassessed'?'No accuracy result yet.':'Recorded across the selected practice scope.'));
+    detail.append(title,el('p',`${cell.m.correct} / ${cell.m.n} assessed notes · ${cell.m.questions} questions · ${cell.m.sessions} sessions · ${cell.m.unassessed} unassessed notes`));
+    if(cell.status!=='recorded')detail.append(el('p',cell.status==='limited'?'Limited sample: not a reliable strength or weakness.':'No accuracy result yet.'));
     const evidence=details('Matching heatmap records');
     for(const r of cell.items){const line=el('p'),link=el('a','Open containing session');link.href=r.href;link.onclick=rememberReturn;line.append(el('span',`${r.chordLabel} · ${r.degree} · ${r.a.firstCorrect===null?'Unassessed':r.a.firstCorrect?'Correct':'Incorrect'} · ${r.a.gradingSource==='self'?'Self-rated':'System graded'} · Question ${r.questionId} · Record ${r.a.id} `),link);evidence.append(line);}detail.append(evidence);
-    const sources=recordedSources(cell.items);
-    if(onSetup&&sources.length){const l=el('label','Practice source'),s=el('select');s.setAttribute('aria-label',`Practice source for ${label}`);
-     sources.forEach((r,i)=>{const o=el('option',sourceOptionLabel(r,i));o.value=String(i);s.append(o);});
-     const sourceKey=stateKey+':source:'+identity;try{const saved=sessionStorage.getItem(sourceKey);if(saved!==null&&sources[Number(saved)])s.value=saved;}catch{/* Optional source choice. */}
-     s.onchange=()=>{try{sessionStorage.setItem(sourceKey,s.value);}catch{/* Optional source choice. */}};
-     l.append(s);detail.append(l,el('p','One recorded setup, not every condition in this cell.','insight-scope-note'));
-     const action=el('button','Review practice setup');action.type='button';action.onclick=()=>{rememberReturn();onSetup(sources[Number(s.value)],label,{...(view.key?{key:view.key}:{}),...(view.root?{root:view.root}:{}),...(view.chord?{chord:view.chord}:{}),quality,degree});};detail.append(action);
+    const source=onSetup&&chartSource(cell.items,label,stateKey+':source:'+identity);
+    if(onSetup&&source){
+     evidence.insertBefore(source.settings,evidence.children[1]??null);
+     detail.append(source.field,el('p','This setup is one source of these results.','insight-scope-note'));
+     const action=el('button','Review practice setup');action.type='button';action.onclick=()=>{rememberReturn();onSetup(source.selected(),label,{key:view.key,root:view.root,chord:view.chord,quality,degree});};detail.append(action);
     }
     const close=el('button','Back to heatmap','secondary');close.type='button';close.onclick=()=>{detail.hidden=true;control.setAttribute('aria-pressed','false');try{sessionStorage.removeItem(stateKey);}catch{/* Optional selection state. */}control.focus();};detail.append(close);
     if(focus)title.focus();
@@ -109,92 +117,264 @@ function performanceSection(records:InsightRecord[],onSetup?: (record:InsightRec
  table.append(body);scroll.append(table);section.append(scroll,legend,detail);return section;
 }
 
-function confusionSection(records:InsightRecord[],onSetup?: (record:InsightRecord,label:string,filters:InsightFilters)=>void){
- const report=insightConfusions(records),section=el('section','','insight-confusions');
- section.append(el('h2','Degree confusions'));
- if(!report.groups.length)section.append(el('p','No specific first-error directions recorded in this scope.'));
- const list=el('div','','confusion-list'),matrix=el('div','','confusion-matrix');
- const rows=new Map<string,HTMLDetailsElement>();
- const matrixState='jazzEarLab:v2:matrix:'+JSON.stringify([view.family,view.context,view.days,view.key,view.root,view.quality,view.chord,view.degree,view.production,view.condition,view.setup]);
- let presentation='List',quality=report.groups[0]?.quality??'',matrixSelection='',showAll=false;
- const listHeader=el('div','','confusion-columns');listHeader.append(el('span','Target → Reported'),el('span','Errors'));
- const allButton=el('button','All confusions','confusion-all');allButton.type='button';
- const accounting=el('p','','confusion-accounting');
- const listPreferences=new Map<HTMLDetailsElement,boolean>();
- try{const saved=JSON.parse(sessionStorage.getItem(matrixState)??'null');if(saved){presentation=saved.presentation==='Matrix'?'Matrix':'List';matrixSelection=typeof saved.selection==='string'?saved.selection:'';showAll=saved.showAll===true;if(report.groups.some(g=>g.quality===saved.quality))quality=saved.quality;}}catch{/* Optional matrix view. */}
- const controls=el('div','','insight-tabs');
- const modeButtons=new Map<string,HTMLButtonElement>();
- const renderMatrix=()=>{
-  try{sessionStorage.setItem(matrixState,JSON.stringify({presentation,quality,selection:matrixSelection,showAll}));}catch{/* Optional matrix view. */}
-  let index=0;for(const [key,row]of rows){row.hidden=presentation==='Matrix'?key!==matrixSelection:!showAll&&index>=3;row.open=presentation==='List'?(listPreferences.get(row)??false):key===matrixSelection;const link=row.querySelector('.confusion-evidence>summary');if(link)link.textContent=presentation==='Matrix'?'Evidence':'View matching records';index++;}
-  listHeader.hidden=presentation!=='List';allButton.hidden=presentation!=='List'||report.groups.length<=3;allButton.textContent=showAll?'Show fewer':'All confusions';
-  matrix.hidden=presentation!=='Matrix';for(const [name,b]of modeButtons)b.setAttribute('aria-pressed',String(name===presentation));
-  section.classList.toggle('is-matrix',presentation==='Matrix');
-  const shownReport=presentation==='Matrix'?insightConfusions(records.filter(r=>r.quality===quality)):report;
-  accounting.textContent=presentation==='Matrix'?`Unknown: ${shownReport.unknown} · Without annotation: ${shownReport.unspecified}`:`Unknown ${report.unknown} · No annotation ${report.unspecified},not included in directions.`;
-  matrix.replaceChildren();if(matrix.hidden)return;
-  const label=el('label','Quality'),select=el('select');select.setAttribute('aria-label','Matrix chord quality');
-  for(const q of [...new Set(report.groups.map(g=>g.quality))]){const option=el('option',q);option.value=q;select.append(option);}select.value=quality;
-  select.onchange=()=>{quality=select.value;matrixSelection='';renderMatrix();matrix.querySelector('select')?.focus();};label.append(select);matrix.append(label);
-  const projection=insightConfusionMatrix(report,quality),maximum=Math.max(1,...projection.groups.map(g=>g.count));
-  const legend=el('div','','matrix-legend');legend.append(el('p',`Recorded first errors · 0 to ${maximum}`));
-  for(let band=5;band>=0;band--){const lo=band===0?0:Math.floor((band-1)*maximum/5)+1,hi=Math.floor(band*maximum/5);if(lo>hi)continue;const item=el('div'),swatch=el('span','','matrix-swatch');swatch.dataset.intensity=String(band);swatch.setAttribute('aria-hidden','true');item.append(swatch,el('span',lo===hi?String(lo):`${lo} – ${hi}`));legend.append(item);}
-  matrix.append(el('p','Reported degree','matrix-axis'));
-  const scroll=el('div','','table-scroll');scroll.tabIndex=0;scroll.setAttribute('role','region');scroll.setAttribute('aria-label','Degree confusion matrix');
-  const table=el('table'),head=el('thead'),header=el('tr'),corner=el('th','Target degree');corner.scope='col';header.append(corner);table.append(el('caption',`${quality} · First-error directions`));
-  table.style.setProperty('--matrix-columns',String(projection.degrees.length+1));
-  for(const degree of projection.degrees){const th=el('th',degree);th.scope='col';header.append(th);}head.append(header);table.append(head);const body=el('tbody');
-  for(const target of projection.degrees){const tr=el('tr'),th=el('th',target);th.scope='row';tr.append(th);
-   for(const reported of projection.degrees){const td=el('td'),group=projection.groups.find(g=>g.target===target&&g.reported===reported);
-    if(target===reported){td.textContent='—';td.setAttribute('aria-label','Not an error direction');}
-    else if(!group){td.textContent='0';td.setAttribute('aria-label',`${quality}: target ${target}, reported ${reported}, 0 recorded errors`);}
-    else{const button=el('button',String(group.count),'confusion-cell');button.type='button';button.dataset.intensity=String(Math.ceil(group.count/maximum*5));button.setAttribute('aria-label',`${quality}: target ${target}, reported ${reported}, ${group.count} errors`);button.setAttribute('aria-pressed',String(matrixSelection===JSON.stringify([quality,target,reported])));
-     button.onclick=()=>{matrixSelection=JSON.stringify([quality,target,reported]);renderMatrix();rows.get(matrixSelection)?.querySelector('summary')?.focus();};td.append(button);}
-    tr.append(td);
-   }body.append(tr);
-  }table.append(body);scroll.append(table);const plot=el('div','','matrix-plot');plot.append(scroll,legend);matrix.append(plot,el('p',`Unassessed notes: ${shownReport.unassessed}`,'matrix-accounting'));
- };
- if(report.groups.length){for(const mode of ['List','Matrix']){const b=el('button',mode,'secondary');b.type='button';b.onclick=()=>{presentation=mode;renderMatrix();};modeButtons.set(mode,b);controls.append(b);}section.append(controls,matrix);}
- for(const group of report.groups){
-  const label=`${group.quality}: ${group.target} → ${group.reported}`;
-  const rememberFocus=()=>{try{sessionStorage.setItem('jazzEarLab:v2:confusionReturn',label);}catch{/* Optional return focus. */}};
-  const row=details(''),heading=row.querySelector('summary')!;heading.setAttribute('aria-label',`${label} · ${group.count} errors`);
-  heading.onclick=event=>{if(presentation!=='Matrix')return;event.preventDefault();matrixSelection='';renderMatrix();Array.from(matrix.querySelectorAll<HTMLButtonElement>('button')).find(b=>b.getAttribute('aria-label')===`${group.quality}: target ${group.target}, reported ${group.reported}, ${group.count} errors`)?.focus();};
-  heading.append(el('span',`${group.quality} · ${group.target} → ${group.reported}`),el('span',String(group.count),'confusion-count'));
-  const matrixCounts=el('div','','matrix-selection-counts');
-  matrixCounts.append(el('p',`${group.count} of ${group.assessed} assessed target notes`),el('p',`${records.filter(r=>r.quality===group.quality&&r.degree===group.target&&r.a.firstCorrect===false).length} first errors in this target group`));row.append(matrixCounts);
-  const roots=el('ul','','confusion-roots');for(const root of group.roots){const li=el('li');li.append(el('span',root.label),el('span',String(root.count)));li.setAttribute('aria-label',`${root.label}: ${root.count}`);roots.append(li);}row.append(roots);
-  const evidence=details('View matching records');
-  evidence.classList.add('confusion-evidence');
-  evidence.append(el('p',`${group.count} confusions / ${group.assessed} assessed target notes · ${group.questions} questions · ${group.sessions} sessions`));
-  for(const r of group.items){
-   const line=el('div'),link=el('a','Open containing session');link.href=r.href;link.onclick=rememberFocus;
-   line.append(el('p',`${r.chordLabel} · target ${r.degree} → reported ${group.reported} · ${exerciseNames[r.a.exercise]} · ${r.a.gradingSource==='self'?'Self-rated':'System graded'}`),
-    el('p',`${r.time===null?'Date not recorded':new Date(r.time).toLocaleString()} · Question ${r.questionId} · Record ${r.a.id}`,'insight-scope-note'),link);evidence.append(line);
-  }row.append(evidence);
-  const sources=recordedSources(group.items);
-  if(onSetup&&sources.length){
-   const sourceLabel=el('label','Practice source'),select=el('select');select.setAttribute('aria-label',`Practice source for ${label}`);
-   sources.forEach((r,i)=>{const option=el('option',sourceOptionLabel(r,i));option.value=String(i);select.append(option);});sourceLabel.append(select);evidence.append(sourceLabel);
-   const settings=el('p','','insight-scope-note');
-   const describeSource=()=>{const c=sources[Number(select.value)].source;settings.textContent='Voice levels: '+('mode'in c?c.levels:c.voiceLevels??[1,1,1,1,1]).map(n=>Math.round(n*100)+'%').join(', ')+' · Volume: '+Math.round(c.volume*100)+'%';};
-   const sourceKey=matrixState+':source:'+label;
-   try{const saved=sessionStorage.getItem(sourceKey);if(saved!==null&&sources[Number(saved)])select.value=saved;}catch{/* Optional source choice. */}
-   select.onchange=()=>{describeSource();try{sessionStorage.setItem(sourceKey,select.value);}catch{/* Optional source choice. */}};describeSource();evidence.append(settings);
-   evidence.append(el('p','This setup is one source of these results.','insight-scope-note'));
-   const action=el('button','Review practice setup');action.type='button';action.setAttribute('aria-label',`Review practice setup for ${label}`);
-   action.onclick=()=>{rememberFocus();onSetup(sources[Number(select.value)],label,{...(view.key?{key:view.key}:{}),...(view.root?{root:view.root}:{}),...(view.chord?{chord:view.chord}:{}),quality:group.quality,degree:group.target});};evidence.append(action);
-  }else evidence.append(el('p','Original practice setup unavailable; review the records instead.'));
-  const stateKey=matrixState+':row:'+label;
-  try{row.open=sessionStorage.getItem(stateKey)==='open'||sessionStorage.getItem(stateKey)===null&&rows.size===0;}catch{/* Optional disclosure state. */}
-  listPreferences.set(row,row.open);
-  row.ontoggle=()=>{if(presentation==='List'){listPreferences.set(row,row.open);try{sessionStorage.setItem(stateKey,row.open?'open':'closed');}catch{/* Optional disclosure state. */}}};
-  rows.set(JSON.stringify([group.quality,group.target,group.reported]),row);list.append(row);
-  try{if(sessionStorage.getItem('jazzEarLab:v2:confusionReturn')===label){showAll=showAll||rows.size>3;evidence.open=true;sessionStorage.removeItem('jazzEarLab:v2:confusionReturn');requestAnimationFrame(()=>row.querySelector('summary')?.focus());}}catch{/* Optional return focus. */}
+type ConfusionGroup=ReturnType<typeof insightConfusions>['groups'][number];
+const leadingConfusionCount=3;
+const directionId=(group:ConfusionGroup)=>JSON.stringify([group.quality,group.target,group.reported]);
+const directionLabel=(group:ConfusionGroup)=>`${group.quality}: ${group.target} → ${group.reported}`;
+
+function rootBreakdown(group:ConfusionGroup,inline=false){
+ const roots=el('ul','',inline?'confusion-roots':'direction-roots');
+ for(const root of group.roots){
+  const item=el('li');item.setAttribute('aria-label',`${root.label}: ${root.count}`);
+  item.append(el('span',root.label),el('span',String(root.count)));roots.append(item);
  }
- allButton.onclick=()=>{showAll=!showAll;renderMatrix();};
- section.append(listHeader,list,allButton);renderMatrix();
- section.append(accounting);
+ return roots;
+}
+
+function compactSourceLabel(r:InsightRecord){
+ const c=r.source;
+ if(!('mode' in c)||r.context!=='Progression')return `${exerciseNames[r.a.exercise]} · ${insightConditionLabel(r)}`;
+ const symbols=c.chords.map(chord=>chord.symbol);
+ const name=symbols.length===templates.major.length&&symbols.every((symbol,i)=>symbol===templates.major[i])?'ii–V–I':symbols.join(' → ');
+ const keys=c.keyMode==='random'?c.keyPool?.join(', '):c.key??r.key;
+ return [name,`${c.bpm} BPM`,keys].filter(Boolean).join(' · ');
+}
+
+function chartSource(records:InsightRecord[],label:string,sourceKey:string){
+ const sources=new Map(records.filter(r=>r.sourceKnown).map(r=>[recordedSourceId(r),r]));
+ if(!sources.size)return;
+ const field=el('label','Practice source'),select=el('select');select.setAttribute('aria-label','Practice source for '+label);
+ const labels=[...sources.values()].map(compactSourceLabel);
+ [...sources.keys()].forEach((key,i)=>{
+  const text=labels[i],option=el('option',labels.indexOf(text)===labels.lastIndexOf(text)?text:`${i+1}. ${text}`);
+  option.value=key;select.append(option);
+ });
+ try{
+  const saved=sessionStorage.getItem(sourceKey);
+  if(saved&&sources.has(saved))select.value=saved;
+  else if(saved!==null&&/^\d+$/.test(saved)){
+   // Resolve a positional preference through the old deduplication order.
+   const previous=recordedSources(records)[Number(saved)];
+   if(previous)select.value=recordedSourceId(previous);
+  }
+ }catch{/* Optional source choice. */}
+ const settings=el('p','','insight-scope-note'),selected=()=>sources.get(select.value)!;
+ const describe=()=>{settings.textContent=sourceOptionLabel(selected(),select.selectedIndex);};
+ select.onchange=()=>{describe();try{sessionStorage.setItem(sourceKey,select.value);}catch{/* Optional source choice. */}};
+ describe();field.append(select);
+ return {field,settings,selected};
+}
+
+function confusionSection(records:InsightRecord[],onSetup?:OpenSetup){
+ const report=insightConfusions(records),section=el('section','','insight-confusions');
+ const listPanel=el('div','','confusion-overview'),heading=el('div','','confusion-heading');
+ heading.append(el('h2','Degree confusions'));listPanel.append(heading);section.append(listPanel);
+ if(!report.groups.length){
+  listPanel.append(el('p','No specific first-error directions recorded in this scope.'),el('p',`Unknown ${report.unknown} · No annotation ${report.unspecified},not included in directions.`,'confusion-accounting'));
+  return section;
+ }
+ const filters={key:view.key,root:view.root,quality:view.quality,chord:view.chord,degree:view.degree};
+ const scopeText=[view.family,view.family==='Overall'?'':view.context,view.days?`Last ${view.days} days`:'All time',
+  ...Object.entries(filters).filter(([,value])=>value).map(([name,value])=>`${name}: ${value}`),
+  view.production==='played'?'Instrumental playing':view.production==='imagined-sung'?'Imagined / sung':'',
+  view.condition?'Matching practice conditions':'',view.setup?'Coverage setup':''].filter(Boolean).join(' · ');
+ const stateKey='jazzEarLab:v2:matrix:'+JSON.stringify([view.family,view.context,view.days,view.key,view.root,view.quality,view.chord,view.degree,view.production,view.condition,view.setup]);
+ const returnKey=stateKey+':return';
+ const groups=new Map(report.groups.map(group=>[directionId(group),group]));
+ const qualities=[...new Set(report.groups.map(group=>group.quality))];
+ const list=el('div','','confusion-list');list.id='insight-confusion-list';
+ const rows=new Map<string,{row:HTMLDetailsElement;link:HTMLButtonElement}>();
+ const cells=new Map<string,HTMLButtonElement>();
+ let presentation:'List'|'Matrix'='List',quality=qualities[0],selection='',showAll=false,listScroll=0;
+ type EvidenceReturn={direction:string;y:number;x:number;focus?:string;recordsOpen?:boolean};
+ let pending:EvidenceReturn|null=null;
+ try{
+  const saved=JSON.parse(sessionStorage.getItem(stateKey)??'null');
+  if(saved){
+   presentation=saved.presentation==='Matrix'?'Matrix':'List';
+   if(qualities.includes(saved.quality))quality=saved.quality;
+   const chosen=groups.get(saved.selection);
+   if(chosen&&chosen.quality===quality&&chosen.target!==chosen.reported)selection=saved.selection;
+   showAll=saved.showAll===true;
+   if(Number.isFinite(saved.listScroll))listScroll=saved.listScroll;
+  }
+  pending=JSON.parse(sessionStorage.getItem(returnKey)??'null');
+  sessionStorage.removeItem(returnKey);
+ }catch{/* Optional chart preferences. */}
+ const saveView=()=>{try{sessionStorage.setItem(stateKey,JSON.stringify({presentation,quality,selection,showAll,listScroll}));}catch{/* Optional chart preferences. */}};
+ const tabs=el('div','','insight-tabs confusion-tabs');
+ const listButton=el('button','List','secondary'),matrixButton=el('button','Matrix','secondary');
+ listButton.type=matrixButton.type='button';tabs.append(listButton,matrixButton);heading.append(tabs);
+ const columns=el('div','','confusion-columns');columns.append(el('span','Target → Reported'),el('span','Errors'));
+ listPanel.append(columns,list,el('p',`Unknown ${report.unknown} · No annotation ${report.unspecified},not included in directions.`,'confusion-accounting'));
+ const matrix=el('div','','confusion-matrix'),matrixTitle=el('h1','Degree confusions'),toolbar=el('div','','matrix-toolbar');
+ matrixTitle.tabIndex=-1;
+ const qualityLabel=el('label','Quality'),qualitySelect=el('select');qualitySelect.setAttribute('aria-label','Matrix chord quality');
+ for(const name of qualities){const option=el('option',name);option.value=name;qualitySelect.append(option);}
+ qualitySelect.value=quality;qualityLabel.append(qualitySelect);toolbar.append(qualityLabel);
+ const workspace=el('div','','matrix-workspace'),plot=el('div','','matrix-plot'),left=el('div','','matrix-main');
+ const scroll=el('div','','table-scroll'),legend=el('div','','matrix-legend'),accounting=el('div','','matrix-accounting');
+ scroll.tabIndex=0;scroll.setAttribute('role','region');scroll.setAttribute('aria-label','Degree confusion matrix');
+ const selected=el('section','','matrix-selection');
+ plot.append(scroll,legend);left.append(plot,accounting);workspace.append(left,selected);
+ matrix.append(matrixTitle,el('p',scopeText,'chart-scope'),toolbar,workspace);
+ const evidence=el('section','','confusion-evidence-panel');evidence.hidden=true;
+ section.append(matrix,evidence);
+
+ function updateView(){
+  const isMatrix=presentation==='Matrix',isEvidence=!evidence.hidden;
+  listPanel.hidden=isMatrix||isEvidence;matrix.hidden=!isMatrix||isEvidence;
+  section.classList.toggle('is-matrix',isMatrix&&!isEvidence);
+  section.classList.toggle('is-evidence',isEvidence);
+  const tabRow=isMatrix?toolbar:heading;
+  if(tabs.parentElement!==tabRow)tabRow.append(tabs);
+  listButton.setAttribute('aria-pressed',String(!isMatrix));matrixButton.setAttribute('aria-pressed',String(isMatrix));
+  if(!isMatrix&&groups.size>leadingConfusionCount){listButton.setAttribute('aria-controls',list.id);listButton.setAttribute('aria-expanded',String(showAll));listButton.title=showAll?'Show fewer':'All confusions';}
+  else{listButton.removeAttribute('aria-controls');listButton.removeAttribute('aria-expanded');listButton.removeAttribute('title');}
+  [...rows.values()].forEach(({row},i)=>{row.hidden=!showAll&&i>=leadingConfusionCount;});
+  saveView();
+ }
+
+ function closeSelection(){
+  const cell=cells.get(selection);selection='';renderSelection();cell?.focus();
+ }
+
+ function renderSelection(focus=false){
+  for(const [id,cell]of cells)cell.setAttribute('aria-pressed',String(id===selection));
+  selected.replaceChildren();
+  const group=groups.get(selection);
+  selected.hidden=!group;
+  if(group){
+   const label=directionLabel(group),title=el('h2'),close=el('button',label,'matrix-selection-title');
+   close.type='button';close.title='Back to matrix';close.onclick=closeSelection;title.append(close);
+   const population=insightStats(insightFilter(records,{quality:group.quality,degree:group.target}));
+   const counts=el('div','','matrix-selection-counts');
+   counts.append(el('p',`${group.count} of ${group.assessed} assessed target notes`),el('p',`${population.n-population.correct} first errors in this target group`));
+   const link=el('button','Evidence','chart-link');link.type='button';link.onclick=()=>openEvidence(group);link.dataset.directionEvidence='matrix';
+   selected.append(title,counts,rootBreakdown(group),link);
+   if(focus)close.focus();
+  }
+  saveView();
+ }
+
+ function renderMatrix(){
+  const projection=insightConfusionMatrix(report,quality),maximum=Math.max(0,...projection.groups.map(group=>group.count));
+  const step=Math.max(1,Math.ceil(maximum/5)),bands=Math.ceil(maximum/step);
+  const intensity=(count:number)=>count?String(Math.ceil(Math.ceil(count/step)/bands*5)):'0';
+  legend.replaceChildren(el('p',`Recorded first errors · 0 to ${maximum}`));
+  for(let band=bands;band>=0;band--){
+   const lo=band?(band-1)*step+1:0,hi=Math.min(band*step,maximum),item=el('div'),swatch=el('span','','matrix-swatch');
+   swatch.dataset.intensity=intensity(hi);swatch.setAttribute('aria-hidden','true');
+   item.append(swatch,el('span',lo===hi?String(lo):`${lo} – ${hi}`));legend.append(item);
+  }
+  const qualityReport=insightConfusions(insightFilter(records,{quality}));
+  accounting.replaceChildren(el('p',`Unknown: ${qualityReport.unknown} · Without annotation: ${qualityReport.unspecified}`),el('p',`Unassessed notes: ${qualityReport.unassessed}`));
+  const table=el('table'),head=el('thead'),axes=el('tr'),degrees=el('tr'),targetAxis=el('th'),reportedAxis=el('th','Reported degree','reported-axis');
+  const targetColumn=el('colgroup'),reportedColumns=el('colgroup');
+  targetColumn.append(el('col','','matrix-target-column'));reportedColumns.span=Math.max(1,projection.degrees.length);
+  table.append(el('caption',`${quality} · First-error directions`),targetColumn,reportedColumns);
+  table.style.setProperty('--matrix-degrees',String(projection.degrees.length));
+  targetAxis.append(el('span','Target degree'));targetAxis.rowSpan=2;targetAxis.scope='col';targetAxis.className='target-axis';
+  reportedAxis.colSpan=reportedColumns.span;reportedAxis.scope='colgroup';axes.append(targetAxis,reportedAxis);
+  for(const degree of projection.degrees){const th=el('th',degree);th.scope='col';degrees.append(th);}
+  head.append(axes,degrees);table.append(head);const body=el('tbody');cells.clear();
+  for(const target of projection.degrees){
+   const row=el('tr'),th=el('th',target);th.scope='row';row.append(th);
+   for(const reported of projection.degrees){
+    const td=el('td'),id=JSON.stringify([quality,target,reported]),group=groups.get(id);
+    if(target===reported){td.textContent='–';td.className='matrix-diagonal';td.setAttribute('aria-label','Not an error direction');}
+    else if(!group){td.textContent='0';td.setAttribute('aria-label',`${quality}: target ${target}, reported ${reported}, 0 recorded errors`);}
+    else{
+     const cell=el('button',String(group.count),'confusion-cell');cell.type='button';cell.dataset.intensity=intensity(group.count);
+     cell.setAttribute('aria-label',`${quality}: target ${target}, reported ${reported}, ${group.count} errors`);
+     cell.onclick=()=>{selection=id;renderSelection(true);};cells.set(id,cell);td.append(cell);
+    }
+    row.append(td);
+   }
+   body.append(row);
+  }
+  table.append(body);scroll.replaceChildren(table);renderSelection();
+ }
+
+ function openEvidence(group:ConfusionGroup,origin:EvidenceReturn={direction:directionId(group),y:window.scrollY,x:scroll.scrollLeft}){
+  const id=directionId(group),label=directionLabel(group);
+  const population=insightStats(insightFilter(records,{quality:group.quality,degree:group.target}));
+  const back=el('button','Back to Insights','chart-link chart-back');back.type='button';
+  const icon=el('img');icon.src='../jazz-ear-lab/icons/arrow-left.svg';icon.alt='';back.prepend(icon);
+  const title=el('h1',label);title.tabIndex=-1;
+  const totals=el('div','','direction-totals');totals.append(el('p',`${group.count} recorded confusions`),el('p',`${population.correct} / ${group.assessed} correct target notes`));
+  const recordsDetail=details('View matching records');recordsDetail.className='direction-records';
+  recordsDetail.open=origin.recordsOpen===true;
+  const support=el('p',`${group.questions} questions · ${group.sessions} sessions`);
+  recordsDetail.append(support);
+  const remember=(focus:string)=>{try{sessionStorage.setItem(returnKey,JSON.stringify({...origin,focus,recordsOpen:recordsDetail.open}));}catch{/* Optional return focus. */}};
+  let restore:HTMLElement|undefined;
+  const entries=el('ul');
+  for(const r of group.items){
+   const item=el('li'),link=el('a','Open containing session');link.href=r.href;link.onclick=()=>remember(r.a.id);
+   if(origin.focus===r.a.id){recordsDetail.open=true;restore=link;}
+   item.append(el('p',`${r.chordLabel} · target ${r.degree} → reported ${group.reported} · ${exerciseNames[r.a.exercise]} · ${r.a.gradingSource==='self'?'Self-rated':'System graded'}`),
+    el('p',`${r.time===null?'Date not recorded':new Date(r.time).toLocaleString()} · Question ${r.questionId} · Record ${r.a.id}`,'insight-scope-note'),link);entries.append(item);
+  }
+  entries.className='session-history';recordsDetail.append(entries);
+  const source=el('div','','direction-source');
+  const sourceKey=stateKey+':source:'+label,choice=onSetup&&chartSource(group.items,label,sourceKey);
+  if(onSetup&&choice){
+   recordsDetail.insertBefore(choice.settings,support);
+   const action=el('button','Review practice setup');action.type='button';action.setAttribute('aria-label','Review practice setup for '+label);
+   action.onclick=()=>{
+    const record=choice.selected();
+    onSetup(record,label,{key:view.key,root:view.root,chord:view.chord,quality:group.quality,degree:group.target},()=>{
+     try{sessionStorage.setItem(sourceKey,recordedSourceId(record));}catch{/* Optional source choice. */}
+     remember('setup');
+    });
+   };
+   if(origin.focus==='setup')restore=action;
+   source.append(choice.field,el('p','This setup is one source of these results.'),action);
+  }else source.append(el('p','Original practice setup unavailable; review the records instead.'));
+  evidence.replaceChildren(back,title,el('p',scopeText,'chart-scope'),totals,el('p','Across recorded roots and practice setups.','direction-provenance'),rootBreakdown(group),source,recordsDetail);
+  evidence.hidden=false;updateView();
+  back.onclick=()=>{
+   evidence.hidden=true;updateView();scroll.scrollLeft=origin.x;
+   const link=presentation==='Matrix'?selected.querySelector<HTMLButtonElement>('[data-direction-evidence]'):rows.get(id)?.link;
+   window.scrollTo(0,origin.y);(link??listButton).focus();
+  };
+  evidence.onkeydown=event=>{if(event.key==='Escape'){event.preventDefault();back.click();}};
+  requestAnimationFrame(()=>{if(!evidence.isConnected||evidence.hidden)return;window.scrollTo(0,0);(restore??title).focus();});
+ }
+
+ for(const [id,group]of groups){
+  const label=directionLabel(group),row=details(''),summary=row.querySelector('summary')!;
+  summary.setAttribute('aria-label',`${label} · ${group.count} errors`);
+  summary.append(el('span',`${group.quality} · ${group.target} → ${group.reported}`),el('span',String(group.count),'confusion-count'));
+  const action=el('button','View matching records','chart-link');action.type='button';action.onclick=()=>openEvidence(group);
+  const footer=el('div','','confusion-row-action');footer.append(action);
+  row.append(rootBreakdown(group,true),footer);
+  const rowKey=stateKey+':row:'+label;row.open=rows.size===0;
+  try{const saved=sessionStorage.getItem(rowKey);if(saved!==null)row.open=saved==='open';}catch{/* Optional disclosure state. */}
+  row.ontoggle=()=>{try{sessionStorage.setItem(rowKey,row.open?'open':'closed');}catch{/* Optional disclosure state. */}};
+  rows.set(id,{row,link:action});list.append(row);
+ }
+ listButton.onclick=()=>{
+  if(presentation==='List'){if(groups.size>leadingConfusionCount)showAll=!showAll;updateView();return;}
+  presentation='List';updateView();window.scrollTo(0,listScroll);matrixButton.focus();
+ };
+ matrixButton.onclick=()=>{
+  if(presentation==='Matrix')return;
+  listScroll=window.scrollY;presentation='Matrix';renderMatrix();updateView();
+  window.scrollTo(0,0);matrixTitle.focus({preventScroll:true});
+ };
+ qualitySelect.onchange=()=>{quality=qualitySelect.value;selection='';renderMatrix();scroll.scrollLeft=0;};
+ matrix.onkeydown=event=>{if(event.key==='Escape'&&selection){event.preventDefault();closeSelection();}};
+ if(presentation==='Matrix')renderMatrix();
+ updateView();
+ const returning=pending&&groups.get(pending.direction);
+ if(returning&&pending){
+  if(presentation==='List'){
+   const row=rows.get(pending.direction)!.row;row.open=true;showAll=showAll||row.hidden;
+  }
+  openEvidence(returning,pending);
+ }else if(presentation==='Matrix')requestAnimationFrame(()=>{if(matrixTitle.isConnected&&!matrix.hidden)matrixTitle.focus({preventScroll:true});});
  return section;
 }
 const families:InsightFamily[]=['Degree Recognition','Degree Audiation','Play by Ear'];
@@ -206,8 +386,8 @@ try{const saved=JSON.parse(sessionStorage.getItem('jazzEarLab:v2:insightView')??
 function el<K extends keyof HTMLElementTagNameMap>(tag:K,text='',cls=''){const n=document.createElement(tag);n.textContent=text;n.className=cls;return n;}
 function details(title:string,...nodes:HTMLElement[]){const n=el('details');n.append(el('summary',title),...nodes);return n;}
 const percent=(m:ReturnType<typeof insightStats>)=>m.n?Math.round(100*m.correct/m.n)+'%':'—';
-function musicalOverview(records:InsightRecord[],onSetup?: (record:InsightRecord,label:string,filters:InsightFilters)=>void){const n=el('div','','insight-musical-overview');n.append(confusionSection(records,onSetup),performanceSection(records,onSetup));return n;}
-export function renderInsights(host:HTMLElement,sessions:Session[],runs:InsightRun[],evidence:Attempt[],onSetup?:(record:InsightRecord,label:string,filters:InsightFilters)=>void){
+function musicalOverview(records:InsightRecord[],onSetup?:OpenSetup){const n=el('div','','insight-musical-overview');n.append(confusionSection(records,onSetup),performanceSection(records,onSetup));return n;}
+export function renderInsights(host:HTMLElement,sessions:Session[],runs:InsightRun[],evidence:Attempt[],onSetup?:OpenSetup){
  const all=insightRecords(sessions,runs,evidence);
  function render(){
   const focus=(document.activeElement as HTMLElement)?.dataset.insightControl;

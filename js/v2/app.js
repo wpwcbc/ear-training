@@ -319,7 +319,7 @@ function config() {
     const title = heading(inInsightPreview() ? "Customize " + modeName : "Customize " + preset().name + (preset().name === modeName ? "" : " — " + modeName));
     header.append(title);
     if (inInsightPreview())
-        header.append(el("p", "Insights practice: " + insightPreview.label + ". Independent draft; source presets unchanged."), button("Back to Insights", () => location.hash = "insights"));
+        header.append(el("p", "Insights practice: " + insightPreview.label + ". Independent draft; source presets unchanged."), button(insightPreview.restoreEvidence ? "Back to evidence" : "Back to Insights", () => location.hash = "insights"));
     const editor = el("section", "", "config-editor"), side = el("aside", "", "config-summary");
     editor.setAttribute("aria-label", "Preset settings");
     const tabs = el("nav", "", "steps config-tabs");
@@ -839,8 +839,22 @@ function insights() {
     const work = el("div");
     host.append(work);
     try {
-        renderInsights(work, sessions, progressionRuns(), progressionEvidence(), (record, label, filters) => { insightPreview = insightPractice(record, filters, label); if (insightPreview.kind === "single")
-            draft = editableConfig(insightPreview.config); step = "Harmony"; location.hash = "insight-setup"; });
+        renderInsights(work, sessions, progressionRuns(), progressionEvidence(), (record, label, filters, restoreEvidence) => {
+            const proposal = insightPractice(record, filters, label);
+            let review;
+            if (restoreEvidence && record.context === "Progression" && "mode" in record.source && proposal.kind === "progression" && filters.quality && filters.degree) {
+                const keysOf = (c) => c.keyMode === "random" ? (c.keyPool ?? []).join(", ") : c.key ?? record.key ?? "C";
+                const before = keysOf(record.source), after = keysOf(proposal.config);
+                review = { family: record.family, target: `${filters.quality}: ${filters.degree}`, keys: before === after ? after : `${before} → ${after}`, config: structuredClone(proposal.config) };
+            }
+            insightPreview = { ...proposal, restoreEvidence, review };
+            if (proposal.kind === "single")
+                draft = editableConfig(proposal.config);
+            if (review)
+                window.scrollTo(0, 0);
+            step = "Harmony";
+            location.hash = "insight-setup";
+        });
     }
     catch (e) {
         work.append(el("p", "Insights records could not be read. Existing history was preserved."), button("Retry Insights", () => { clearError(); render(); }));
@@ -876,7 +890,7 @@ function render() {
         .querySelectorAll("nav[aria-label='Primary'] a")
         .forEach((link) => {
         const active = link.hash ===
-            (route === "insights" || route.startsWith("results/")
+            (route === "insights" || route === "insight-setup" || route.startsWith("results/")
                 ? "#insights"
                 : "#home");
         if (active)
@@ -890,6 +904,7 @@ function render() {
     }
     host.replaceChildren();
     if (route === "insight-setup" && insightPreview) {
+        insightPreview.restoreEvidence?.();
         if (insightPreview.kind === "progression")
             disposeProgression = mountProgression(host, insightPreview.config.mode, false, undefined, insightPreview);
         else

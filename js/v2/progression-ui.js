@@ -470,9 +470,43 @@ export function mountProgression(root, initialMode = progressionModes.degreeReco
         const presetControls = el("div");
         presetControls.className = "config-preset-controls";
         presetControls.append(label("Saved preset"), action("Save as new preset"));
-        header.append(title, presetControls);
-        if (preview)
-            header.append(el("p", "Insights practice: " + preview.label + ". Independent draft; source presets unchanged. Key narrowing is shown below. Degree targeting affects every occurrence of that chord quality."), button("Back to Insights", () => { location.hash = "insights"; }));
+        const review = previewActive ? preview?.review : undefined;
+        if (review) {
+            const panel = el("section"), headingRow = el("div"), back = el("a", "Back to evidence"), icon = el("img"), facts = el("dl"), actions = el("div");
+            panel.className = "recorded-setup-review";
+            headingRow.className = "setup-review-heading";
+            actions.className = "setup-review-actions";
+            title.textContent = "Review practice setup";
+            back.href = "#insights";
+            back.className = "chart-link chart-back";
+            icon.src = "../jazz-ear-lab/icons/arrow-left.svg";
+            icon.alt = "";
+            back.prepend(icon);
+            headingRow.append(title, el("p", "From recorded setup"));
+            const original = review.config;
+            for (const [name, value] of [
+                ["Mode", review.family], ["Context", "Progression"], ["Changes", original.chords.map(row => row.symbol).join(" → ")],
+                ["Tempo", `${original.bpm} BPM`], ["Keys", review.keys],
+                ["Target pool change", review.target], ["Other chord pools", "unchanged"],
+            ])
+                facts.append(el("dt", name), el("dd", value));
+            const open = button("Open Customize", () => {
+                header.scrollIntoView({ block: "start" });
+                tabs.querySelector("[aria-current='page']")?.focus({ preventScroll: true });
+            });
+            open.classList.remove("secondary");
+            const returnToEvidence = button("Back to evidence", () => { location.hash = "insights"; });
+            returnToEvidence.className = "secondary";
+            actions.append(open, returnToEvidence);
+            panel.append(back, headingRow, facts, actions);
+            page.append(panel);
+            header.append(el("h2", "Customize " + progressionName(config.mode)), presetControls);
+        }
+        else {
+            header.append(title, presetControls);
+            if (preview)
+                header.append(el("p", "Insights practice: " + preview.label + ". Independent draft; source presets unchanged. Key narrowing is shown below. Degree targeting affects every occurrence of that chord quality."), button(preview.restoreEvidence ? "Back to evidence" : "Back to Insights", () => { location.hash = "insights"; }));
+        }
         tabs.className = "steps config-tabs";
         tabs.setAttribute("aria-label", "Configuration chapters");
         for (const name of configurationChapters) {
