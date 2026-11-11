@@ -64,7 +64,7 @@ try{
  assert.equal(await page.locator('.insight-performance thead th').count(),2);
  const confusion=page.locator('.insight-confusions');await confusion.getByRole('button',{name:'Matrix',exact:true}).click();
  const direction=confusion.getByRole('button',{name:'m7: target 1, reported 5, 1 errors'});await direction.focus();await page.keyboard.press('Enter');
- const selected=confusion.locator('.confusion-list>details:not([hidden])');await selected.locator('summary').filter({hasText:'View matching records'}).click();assert.equal(await selected.getByRole('link',{name:'Open containing session'}).count(),1);
+ const selected=confusion.locator('.confusion-list>details:not([hidden])');await selected.locator('summary').filter({hasText:/^Evidence$/}).click();assert.equal(await selected.getByRole('link',{name:'Open containing session'}).count(),1);
  assert.equal(await page.locator('.insight-outcome').getAttribute('data-assessed'),'14');
  await selected.getByRole('button',{name:'Review practice setup for m7: 1 → 5'}).click();await page.waitForURL(/insight-setup/);
  await page.getByRole('button',{name:'Back to Insights',exact:true}).click();await direction.waitFor();
