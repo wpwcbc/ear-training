@@ -1,3 +1,4 @@
+import {selectFamily,openSources} from './insights-browser-support.mjs';
 import assert from 'node:assert/strict';
 import {mkdir} from 'node:fs/promises';
 const {chromium}=await import(process.env.PLAYWRIGHT_MODULE);
@@ -30,29 +31,30 @@ try{
  assert.match(await page.locator('.insight-total-line').textContent(),/531\/567 assessed notes · 162 questions · 18 sessions/);
  const saved=await page.evaluate(()=>Object.fromEntries(Object.keys(localStorage).map(k=>[k,localStorage.getItem(k)])));
  for(const [family,contexts]of [['Degree Recognition',[['Single Chord','m2'],['Progression','recognition']]],['Degree Audiation',[['Single Chord','m1'],['Progression','singing']]],['Play by Ear',[['Single Chord','play-single'],['Progression','play']]]]){
-  await page.getByLabel('Practice family',{exact:true}).selectOption(family);
+  await selectFamily(page,family);
   for(const [context,id]of contexts){await page.getByRole('button',{name:context,exact:true}).click();const outcome=page.locator('.insight-outcome');await outcome.waitFor();assert.equal(await outcome.getAttribute('data-assessed'),String(expected[id].n));assert.equal(await outcome.getAttribute('data-correct'),String(expected[id].correct));
    assert.ok(await page.locator('.insight-practice-summary').count());assert.ok(await page.locator('.insight-performance table').count());
   }
  }
- await page.getByLabel('Practice family',{exact:true}).selectOption('Degree Recognition');await page.getByRole('button',{name:'Single Chord',exact:true}).click();
+ await selectFamily(page,'Degree Recognition');await page.getByRole('button',{name:'Single Chord',exact:true}).click();
  await page.getByLabel('Period',{exact:true}).selectOption('All time');assert.equal(await page.locator('.insight-outcome').getAttribute('data-assessed'),'28');
  await page.getByLabel('Period',{exact:true}).selectOption('Last 7 days');assert.equal(await page.locator('.insight-outcome').getAttribute('data-assessed'),'27');
- await page.getByLabel('Practice family',{exact:true}).selectOption('Play by Ear');await page.getByRole('button',{name:'Progression',exact:true}).click();
+ await selectFamily(page,'Play by Ear');await page.getByRole('button',{name:'Progression',exact:true}).click();
  await mkdir('.impeccable/review/v2-insights-integration',{recursive:true});
  for(const width of [1440,390]){
   await page.setViewportSize({width,height:1000});await page.evaluate(()=>window.scrollTo(0,0));
   await page.getByRole('heading',{name:'Your practice focus',exact:true}).waitFor({state:'visible'});
-  const summary=await page.locator('.insight-practice-summary').boundingBox(),confusions=await page.locator('.insight-confusions').boundingBox(),performance=await page.locator('.insight-performance').boundingBox(),support=await page.locator('.insight-lead').boundingBox();
+  const summary=await page.locator('.insight-practice-summary').boundingBox(),confusions=await page.locator('.insight-confusions').boundingBox(),performance=await page.locator('.insight-performance').boundingBox(),support=await page.locator('.insight-secondary').boundingBox();
   assert.ok(summary.y+summary.height<=confusions.y+1);assert.ok(confusions.y<support.y);
   if(width===1440)assert.ok(confusions.x+confusions.width<=performance.x+1);else assert.ok(confusions.y+confusions.height<=performance.y+1);
   await page.screenshot({path:`.impeccable/review/v2-insights-integration/first-viewport-${width}.png`});
  }
  await page.setViewportSize({width:1440,height:1000});
- await page.getByLabel('Practice family',{exact:true}).selectOption('Degree Audiation');await page.getByRole('button',{name:'Single Chord',exact:true}).click();
- await page.locator('summary').filter({hasText:/^More filters$/}).click();await page.getByLabel('Production category',{exact:true}).selectOption('imagined-sung');assert.equal(await page.locator('.insight-outcome').getAttribute('data-assessed'),'18');
+ await selectFamily(page,'Degree Audiation');await page.getByRole('button',{name:'Single Chord',exact:true}).click();
+ await openSources(page);await page.locator('summary').filter({hasText:/^More filters$/}).click();await page.getByLabel('Production category',{exact:true}).selectOption('imagined-sung');assert.equal(await page.locator('.insight-outcome').getAttribute('data-assessed'),'18');
  await page.getByLabel('Production category',{exact:true}).selectOption('played');assert.equal(await page.locator('.insight-outcome').getAttribute('data-assessed'),'9');
- await page.getByLabel('Practice family',{exact:true}).selectOption('Play by Ear');await page.getByRole('button',{name:'Progression',exact:true}).click();
+ assert.equal(await page.getByRole('button',{name:'Played · remove',exact:true}).isVisible(),true);
+ await selectFamily(page,'Play by Ear');await page.getByRole('button',{name:'Progression',exact:true}).click();
  await page.getByLabel('Period',{exact:true}).selectOption('Last 7 days');await page.getByRole('button',{name:'Degree',exact:true}).click();
  if(!await page.getByLabel('Chord quality',{exact:true}).isVisible())await page.locator('summary').filter({hasText:/^More filters$/}).click();await page.getByLabel('Chord quality',{exact:true}).selectOption('m7');
  assert.ok((await page.locator('.insight-performance tbody th').allTextContents()).every(x=>x==='m7'));
@@ -64,12 +66,19 @@ try{
  assert.equal(await page.locator('.insight-performance thead th').count(),2);
  const confusion=page.locator('.insight-confusions');await confusion.getByRole('button',{name:'Matrix',exact:true}).click();
  const direction=confusion.getByRole('button',{name:'m7: target 1, reported 5, 1 errors'});await direction.focus();await page.keyboard.press('Enter');
- const selected=confusion.locator('.confusion-list>details:not([hidden])');await selected.locator('summary').filter({hasText:'View matching records'}).click();assert.equal(await selected.getByRole('link',{name:'Open containing session'}).count(),1);
+ await confusion.getByRole('button',{name:'Evidence',exact:true}).click();
+ const evidencePanel=confusion.locator('.confusion-evidence-panel');
+ await evidencePanel.locator('summary').getByText('View matching records',{exact:true}).click();
+ assert.equal(await evidencePanel.getByRole('link',{name:'Open containing session'}).count(),1);
  assert.equal(await page.locator('.insight-outcome').getAttribute('data-assessed'),'14');
- await selected.getByRole('button',{name:'Review practice setup for m7: 1 → 5'}).click();await page.waitForURL(/insight-setup/);
- await page.getByRole('button',{name:'Back to Insights',exact:true}).click();await direction.waitFor();
+ await evidencePanel.getByRole('button',{name:'Review practice setup for m7: 1 → 5'}).click();await page.waitForURL(/insight-setup/);
+ await page.locator('.recorded-setup-review').getByText('C, Eb → C',{exact:true}).waitFor({timeout:2000});
+ await page.getByRole('button',{name:'Back to evidence',exact:true}).click();
+ await evidencePanel.getByRole('button',{name:'Back to Insights',exact:true}).click();await direction.waitFor();
+ assert.equal(await direction.getAttribute('aria-pressed'),'true');
+ await confusion.getByRole('button',{name:'List',exact:true}).click();
  assert.equal(await page.getByLabel('Root',{exact:true}).inputValue(),'D');assert.equal(await page.locator('.insight-outcome').getAttribute('data-assessed'),'14');
- await page.getByLabel('Practice family',{exact:true}).selectOption('Overall');
+ await selectFamily(page,'Overall');
  const filterBox=await page.locator('.insight-current-scope').boundingBox(),summaryBox=await page.locator('.insight-practice-summary').boundingBox();
  assert.ok(filterBox.y+filterBox.height<=summaryBox.y);assert.match(await page.locator('.insight-current-scope').textContent(),/root: D/);
  await mkdir('.impeccable/review/v2-insights-integration',{recursive:true});
@@ -86,7 +95,16 @@ try{
   const attempts=degrees.map((degree,i)=>({...attempt(config,{id:'wide'+i,chord,degree,midi:60+targetPc(chord,degree),options:optionsFor(chord,degree),generatorVersion:'synthetic-wide'},'wide','fresh'),firstCorrect:false,firstAnswer:degree==='1'?'5':'1',completedAt:now}));
   localStorage.setItem('jazzEarLab:v2:sessions',JSON.stringify([{id:'wide',config,presetId:builtins[0].id,startedAt:now,endedAt:now,attempts}]));sessionStorage.clear();
  });
- await wide.goto(url+'#insights');await wide.reload();await wide.locator('.insight-confusions').getByRole('button',{name:'Matrix',exact:true}).click();
+ await wide.goto(url+'#insights');await wide.reload();
+ const widePerformance=wide.getByRole('region',{name:'Chord degree performance',exact:true});
+ assert.ok(await widePerformance.evaluate(n=>n.scrollWidth>n.clientWidth));
+ const finalDegree=widePerformance.getByRole('button',{name:/^m7: 13, 0 percent/});
+ await finalDegree.focus();await wide.keyboard.press('Enter');
+ await wide.getByRole('heading',{name:'m7: 13 · Recorded results',exact:true}).waitFor();
+ assert.equal(await finalDegree.getAttribute('aria-pressed'),'true');
+ await wide.getByRole('button',{name:'Back to heatmap',exact:true}).click();
+ assert.equal(await finalDegree.evaluate(n=>n===document.activeElement),true);
+ await wide.locator('.insight-confusions').getByRole('button',{name:'Matrix',exact:true}).click();
  const grid=wide.getByRole('region',{name:'Degree confusion matrix',exact:true});
  assert.ok(await grid.evaluate(n=>n.scrollWidth>n.clientWidth));
  const altered=grid.getByRole('button',{name:'m7: target bb7, reported 1, 1 errors'});await altered.focus();await wide.keyboard.press('Enter');

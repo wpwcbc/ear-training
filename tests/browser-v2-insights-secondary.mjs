@@ -1,0 +1,41 @@
+import {selectFamily,openSources} from './insights-browser-support.mjs';
+import assert from 'node:assert/strict';
+import {referenceRuns} from './fixtures/insights-reference.mjs';
+
+const {chromium}=await import(process.env.PLAYWRIGHT_MODULE);
+const browser=await chromium.launch({executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE});
+const url=(process.env.BASE_URL||'http://127.0.0.1:4173')+'/jazz-ear-lab-v2/';
+try{
+ const page=await browser.newPage({viewport:{width:1084,height:956}});
+ await page.clock.install({time:new Date('2026-11-09T12:00:00Z')});
+ await page.goto(url);
+ await page.evaluate(runs=>localStorage.setItem('jazzEarLab:v2:progressionHistory',JSON.stringify(runs)),referenceRuns());
+ await page.goto(url+'#insights');await page.reload();
+ await selectFamily(page,'Play by Ear');
+ await page.getByRole('button',{name:'Progression',exact:true}).click();
+ const timing=page.getByText('Timing and replay',{exact:true}),sources=page.getByText('Sessions and source conditions',{exact:true});
+ await timing.waitFor({timeout:2000});await sources.waitFor({timeout:2000});
+ assert.equal(await page.getByRole('heading',{name:'What to practise next',exact:true}).isVisible(),false);
+ assert.equal(await page.getByRole('heading',{name:'Explore the music',exact:true}).isVisible(),false);
+ await timing.focus();await page.keyboard.press('Enter');
+ await page.getByRole('heading',{name:'Post-accompaniment completion delay',exact:true}).waitFor();
+ await page.getByText('Timing exclusions',{exact:true}).click();
+ await page.getByText('Incorrect or unassessed:',{exact:false}).waitFor();
+ await timing.click();
+ await sources.click();await page.getByRole('heading',{name:'Explore the music',exact:true}).waitFor();
+ await openSources(page);await page.getByText('More filters',{exact:true}).click();
+ await page.getByLabel('Root',{exact:true}).focus();
+ await page.getByLabel('Root',{exact:true}).selectOption('D');
+ assert.equal(await page.getByLabel('Root',{exact:true}).evaluate(n=>n===document.activeElement),true);
+ assert.equal(await page.getByRole('button',{name:'root: D · remove',exact:true}).isVisible(),true);
+ await page.locator('summary').filter({hasText:/^Source conditions$/}).click();
+ await page.getByText('Technical versions',{exact:true}).click();
+ await page.locator('summary').filter({hasText:/^Sessions$/}).click();
+ const latest=page.getByRole('link',{name:'View latest matching session',exact:true});
+ await latest.click();await page.waitForURL(/results/);await page.goBack();
+ await latest.waitFor();
+ assert.equal(await page.getByLabel('Root',{exact:true}).inputValue(),'D');
+ await page.waitForFunction(()=>document.activeElement?.textContent==='View latest matching session');
+ assert.equal(await page.getByText('Technical versions',{exact:true}).evaluate(n=>n.parentElement.open),true);
+ console.log('PASS collapsed support, timing grain, retained filters and session return');
+}finally{await browser.close();}

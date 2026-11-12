@@ -1,8 +1,8 @@
 import {insightPractice,type InsightPreview} from "./insights.js";
-import {renderInsights} from "./insights-ui.js";
+import {renderInsights,type InsightSetupReturn} from "./insights-ui.js";
 import { exerciseNames, progressionModes, progressionName } from "./exercise-names.js";
 import { configurationChapters, configurationGroup, rememberGroups, practiceSummary, type ConfigurationChapter } from "./configuration.js";
-import {mountProgression, progressionRuns, progressionEvidence} from "./progression-ui.js";
+import {mountProgression, progressionRuns, progressionEvidence, type RecordedSetupReview} from "./progression-ui.js";
 import { AudioEngine } from "../jazz/audio.js";
 import { parseChord, chordNotes, chordToneDegrees, degreeForPc } from "../jazz/theory.js";
 import { QuestionLifecycle } from "./question.js";
@@ -45,7 +45,7 @@ let step: ConfigurationChapter = "Harmony";
 let dirty = false,
   fatal = false;
 let auditionQuality = "";
-let insightPreview:InsightPreview|null=null;
+let insightPreview:(InsightPreview&{returnTo?:InsightSetupReturn;review?:RecordedSetupReview})|null=null;
 const inInsightPreview=()=>location.hash==="#insight-setup"&&insightPreview?.kind==="single";
 let headingFocus = true, lastRoute = "", savedPresetId = "";
 let practiceSignature = "";
@@ -372,7 +372,7 @@ function config() {
   const modeName = exerciseNames[draft.exercise];
   const title = heading(inInsightPreview()?"Customize "+modeName:"Customize " + preset().name + (preset().name === modeName ? "" : " — " + modeName));
   header.append(title);
-  if(inInsightPreview())header.append(el("p","Insights practice: "+insightPreview!.label+". Independent draft; source presets unchanged."),button("Back to Insights",()=>location.hash="insights"));
+  if(inInsightPreview())header.append(el("p","Insights practice: "+insightPreview!.label+". Independent draft; source presets unchanged."),button(insightPreview!.returnTo?.evidence?"Back to evidence":"Back to Insights",()=>location.hash="insights"));
   const editor = el("section", "", "config-editor"), side = el("aside", "", "config-summary");
   editor.setAttribute("aria-label", "Preset settings");
   const tabs = el("nav", "", "steps config-tabs");
@@ -890,7 +890,21 @@ function results(id: string) {
 function insights() {
   heading("Insights");
   const work=el("div");host.append(work);
-  try {renderInsights(work,sessions,progressionRuns(),progressionEvidence(),(record,label,filters)=>{insightPreview=insightPractice(record,filters,label);if(insightPreview.kind==="single")draft=editableConfig(insightPreview.config);step="Harmony";location.hash="insight-setup";});}
+  try {
+    renderInsights(work,sessions,progressionRuns(),progressionEvidence(),(record,label,filters,returnTo)=>{
+      const proposal=insightPractice(record,filters,label);
+      let review:RecordedSetupReview|undefined;
+      if(returnTo?.evidence&&record.context==="Progression"&&"mode" in record.source&&proposal.kind==="progression"&&filters.quality&&filters.degree){
+        const keysOf=(c:typeof proposal.config)=>c.keyMode==="random"?(c.keyPool??[]).join(", "):c.key??record.key??"C";
+        const before=keysOf(record.source),after=keysOf(proposal.config);
+        review={family:record.family,target:`${filters.quality}: ${filters.degree}`,keys:before===after?after:`${before} → ${after}`,config:structuredClone(proposal.config)};
+      }
+      insightPreview={...proposal,returnTo,review};
+      if(proposal.kind==="single")draft=editableConfig(proposal.config);
+      if(review)window.scrollTo(0,0);
+      step="Harmony";location.hash="insight-setup";
+    });
+  }
   catch(e){work.append(el("p","Insights records could not be read. Existing history was preserved."),button("Retry Insights",()=>{clearError();render();}));report(e);}
 }
 let disposeProgression: (()=>void) | undefined;
@@ -915,7 +929,7 @@ function render() {
     .forEach((link) => {
       const active =
         link.hash ===
-        (route === "insights" || route.startsWith("results/")
+        (route === "insights" || route === "insight-setup" || route.startsWith("results/")
           ? "#insights"
           : "#home");
       if (active) link.setAttribute("aria-current", "page");
@@ -926,7 +940,10 @@ function render() {
     audio.stop();
   }
   host.replaceChildren();
-  if(route==="insight-setup"&&insightPreview){if(insightPreview.kind==="progression")disposeProgression=mountProgression(host,insightPreview.config.mode,false,undefined,insightPreview);else config();}
+  if(route==="insight-setup"&&insightPreview){
+    insightPreview.returnTo?.restore();
+    if(insightPreview.kind==="progression")disposeProgression=mountProgression(host,insightPreview.config.mode,false,undefined,insightPreview);else config();
+  }
   else if(route==="insight-setup"){host.append(el("p","This temporary draft is no longer available. Return to its Insights evidence."),button("Back to Insights",()=>location.hash="insights"));}
   else if (route === "progression" || route.startsWith("progression/")) { try {disposeProgression=mountProgression(host,Object.values(progressionModes).find(mode => mode === route.split("/")[1]) ?? progressionModes.degreeRecognition,route.endsWith("/start"),route.split("/")[2] === "results" ? decodeURIComponent(route.split("/")[3] ?? "") : undefined);} catch(e){report(e);} }
   else if (route === "practice" && session) renderPractice();

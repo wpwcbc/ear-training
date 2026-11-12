@@ -1,0 +1,590 @@
+{
+  "no-records": [
+    {
+      "text": "Jazz Ear Lab\nPractice\nInsights\nLegacy",
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 470,
+        "height": 52,
+        "top": 0,
+        "right": 470,
+        "bottom": 52,
+        "left": 0
+      }
+    },
+    {
+      "text": "Last 7 days\nLast 28 days\nLast 90 days\nAll time",
+      "rect": {
+        "x": 18,
+        "y": 65,
+        "width": 168,
+        "height": 42,
+        "top": 65,
+        "right": 186,
+        "bottom": 107,
+        "left": 18
+      }
+    },
+    {
+      "text": "Your practice focus",
+      "rect": {
+        "x": 18,
+        "y": 138,
+        "width": 436,
+        "height": 31.1875,
+        "top": 138,
+        "right": 454,
+        "bottom": 169.1875,
+        "left": 18
+      }
+    },
+    {
+      "text": "No practice records in this browser.",
+      "rect": {
+        "x": 18,
+        "y": 198.1875,
+        "width": 436,
+        "height": 60,
+        "top": 198.1875,
+        "right": 454,
+        "bottom": 258.1875,
+        "left": 18
+      }
+    },
+    {
+      "text": "",
+      "rect": {
+        "x": 36,
+        "y": 198.1875,
+        "width": 58,
+        "height": 58,
+        "top": 198.1875,
+        "right": 94,
+        "bottom": 256.1875,
+        "left": 36
+      }
+    },
+    {
+      "text": "Choose an exercise",
+      "rect": {
+        "x": 18,
+        "y": 301.1875,
+        "width": 436,
+        "height": 48,
+        "top": 301.1875,
+        "right": 454,
+        "bottom": 349.1875,
+        "left": 18
+      }
+    },
+    {
+      "text": "Choose an exercise",
+      "rect": {
+        "x": 91,
+        "y": 301.1875,
+        "width": 310,
+        "height": 48,
+        "top": 301.1875,
+        "right": 401,
+        "bottom": 349.1875,
+        "left": 91
+      }
+    }
+  ],
+  "empty-period": [
+    {
+      "text": "Jazz Ear Lab\nPractice\nInsights\nLegacy",
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 470,
+        "height": 52,
+        "top": 0,
+        "right": 470,
+        "bottom": 52,
+        "left": 0
+      }
+    },
+    {
+      "text": "Last 7 days\nLast 28 days\nLast 90 days\nAll time",
+      "rect": {
+        "x": 18,
+        "y": 65,
+        "width": 168,
+        "height": 42,
+        "top": 65,
+        "right": 186,
+        "bottom": 107,
+        "left": 18
+      }
+    },
+    {
+      "text": "Your practice focus",
+      "rect": {
+        "x": 18,
+        "y": 138,
+        "width": 436,
+        "height": 31.1875,
+        "top": 138,
+        "right": 454,
+        "bottom": 169.1875,
+        "left": 18
+      }
+    },
+    {
+      "text": "No records in the last 28 days.",
+      "rect": {
+        "x": 18,
+        "y": 198.1875,
+        "width": 436,
+        "height": 60,
+        "top": 198.1875,
+        "right": 454,
+        "bottom": 258.1875,
+        "left": 18
+      }
+    },
+    {
+      "text": "",
+      "rect": {
+        "x": 36,
+        "y": 198.1875,
+        "width": 58,
+        "height": 58,
+        "top": 198.1875,
+        "right": 94,
+        "bottom": 256.1875,
+        "left": 36
+      }
+    },
+    {
+      "text": "Show all time",
+      "rect": {
+        "x": 18,
+        "y": 301.1875,
+        "width": 436,
+        "height": 48,
+        "top": 301.1875,
+        "right": 454,
+        "bottom": 349.1875,
+        "left": 18
+      }
+    },
+    {
+      "text": "Show all time",
+      "rect": {
+        "x": 81,
+        "y": 301.1875,
+        "width": 310,
+        "height": 48,
+        "top": 301.1875,
+        "right": 391,
+        "bottom": 349.1875,
+        "left": 81
+      }
+    }
+  ],
+  "unassessed": [
+    {
+      "text": "Jazz Ear Lab\nPractice\nInsights\nLegacy",
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 471,
+        "height": 52,
+        "top": 0,
+        "right": 471,
+        "bottom": 52,
+        "left": 0
+      }
+    },
+    {
+      "text": "Last 7 days\nLast 28 days\nLast 90 days\nAll time",
+      "rect": {
+        "x": 18,
+        "y": 65,
+        "width": 168,
+        "height": 42,
+        "top": 65,
+        "right": 186,
+        "bottom": 107,
+        "left": 18
+      }
+    },
+    {
+      "text": "Your practice focus",
+      "rect": {
+        "x": 18,
+        "y": 138,
+        "width": 437,
+        "height": 31.1875,
+        "top": 138,
+        "right": 455,
+        "bottom": 169.1875,
+        "left": 18
+      }
+    },
+    {
+      "text": "12 unassessed recorded notes\n\n0 assessed notes · 2 questions · 1 session",
+      "rect": {
+        "x": 18,
+        "y": 193.1875,
+        "width": 437,
+        "height": 58.03125,
+        "top": 193.1875,
+        "right": 455,
+        "bottom": 251.21875,
+        "left": 18
+      }
+    },
+    {
+      "text": "",
+      "rect": {
+        "x": 21,
+        "y": 193.1875,
+        "width": 58,
+        "height": 58,
+        "top": 193.1875,
+        "right": 79,
+        "bottom": 251.1875,
+        "left": 21
+      }
+    },
+    {
+      "text": "No accuracy result yet.\n\nView sessions",
+      "rect": {
+        "x": 18,
+        "y": 283.21875,
+        "width": 437,
+        "height": 55,
+        "top": 283.21875,
+        "right": 455,
+        "bottom": 338.21875,
+        "left": 18
+      }
+    }
+  ],
+  "limited": [
+    {
+      "text": "Jazz Ear Lab\nPractice\nInsights\nLegacy",
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 470,
+        "height": 52,
+        "top": 0,
+        "right": 470,
+        "bottom": 52,
+        "left": 0
+      }
+    },
+    {
+      "text": "Last 7 days\nLast 28 days\nLast 90 days\nAll time",
+      "rect": {
+        "x": 18,
+        "y": 65,
+        "width": 168,
+        "height": 42,
+        "top": 65,
+        "right": 186,
+        "bottom": 107,
+        "left": 18
+      }
+    },
+    {
+      "text": "Your practice focus",
+      "rect": {
+        "x": 18,
+        "y": 132,
+        "width": 436,
+        "height": 31.1875,
+        "top": 132,
+        "right": 454,
+        "bottom": 163.1875,
+        "left": 18
+      }
+    },
+    {
+      "text": "Early observations\n\nm7 fifth: 3 / 4 correct\n\n4 assessed notes · 2 questions · 1 session",
+      "rect": {
+        "x": 18,
+        "y": 179.1875,
+        "width": 436,
+        "height": 82.625,
+        "top": 179.1875,
+        "right": 454,
+        "bottom": 261.8125,
+        "left": 18
+      }
+    },
+    {
+      "text": "",
+      "rect": {
+        "x": 21,
+        "y": 179.1875,
+        "width": 48,
+        "height": 48,
+        "top": 179.1875,
+        "right": 69,
+        "bottom": 227.1875,
+        "left": 21
+      }
+    },
+    {
+      "text": "Limited sample\n\nMore practice is needed before highlighting a pattern.\n\nView evidence",
+      "rect": {
+        "x": 18,
+        "y": 275.8125,
+        "width": 436,
+        "height": 160.6875,
+        "top": 275.8125,
+        "right": 454,
+        "bottom": 436.5,
+        "left": 18
+      }
+    },
+    {
+      "text": "View evidence",
+      "rect": {
+        "x": 91,
+        "y": 388.5,
+        "width": 310,
+        "height": 48,
+        "top": 388.5,
+        "right": 401,
+        "bottom": 436.5,
+        "left": 91
+      }
+    }
+  ],
+  "all-correct": [
+    {
+      "text": "Jazz Ear Lab\nPractice\nInsights\nLegacy",
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 470,
+        "height": 52,
+        "top": 0,
+        "right": 470,
+        "bottom": 52,
+        "left": 0
+      }
+    },
+    {
+      "text": "Last 7 days\nLast 28 days\nLast 90 days\nAll time",
+      "rect": {
+        "x": 18,
+        "y": 65,
+        "width": 168,
+        "height": 42,
+        "top": 65,
+        "right": 186,
+        "bottom": 107,
+        "left": 18
+      }
+    },
+    {
+      "text": "Your practice focus",
+      "rect": {
+        "x": 18,
+        "y": 132,
+        "width": 436,
+        "height": 31.1875,
+        "top": 132,
+        "right": 454,
+        "bottom": 163.1875,
+        "left": 18
+      }
+    },
+    {
+      "text": "All assessed notes were correct in this period.\n\n60 / 60 assessed notes · 30 questions · 4 sessions",
+      "rect": {
+        "x": 18,
+        "y": 179.1875,
+        "width": 436,
+        "height": 88.03125,
+        "top": 179.1875,
+        "right": 454,
+        "bottom": 267.21875,
+        "left": 18
+      }
+    },
+    {
+      "text": "",
+      "rect": {
+        "x": 21,
+        "y": 179.1875,
+        "width": 58,
+        "height": 58,
+        "top": 179.1875,
+        "right": 79,
+        "bottom": 237.1875,
+        "left": 21
+      }
+    },
+    {
+      "text": "No recorded first-error directions.\n\nReview performance",
+      "rect": {
+        "x": 18,
+        "y": 289.21875,
+        "width": 436,
+        "height": 138.59375,
+        "top": 289.21875,
+        "right": 454,
+        "bottom": 427.8125,
+        "left": 18
+      }
+    },
+    {
+      "text": "Review performance",
+      "rect": {
+        "x": 81,
+        "y": 379.8125,
+        "width": 310,
+        "height": 48,
+        "top": 379.8125,
+        "right": 391,
+        "bottom": 427.8125,
+        "left": 81
+      }
+    }
+  ],
+  "unknown-direction": [
+    {
+      "text": "Jazz Ear Lab\nPractice\nInsights\nLegacy",
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 471,
+        "height": 52,
+        "top": 0,
+        "right": 471,
+        "bottom": 52,
+        "left": 0
+      }
+    },
+    {
+      "text": "Last 7 days\nLast 28 days\nLast 90 days\nAll time",
+      "rect": {
+        "x": 18,
+        "y": 65,
+        "width": 168,
+        "height": 42,
+        "top": 65,
+        "right": 186,
+        "bottom": 107,
+        "left": 18
+      }
+    },
+    {
+      "text": "Your practice focus",
+      "rect": {
+        "x": 18,
+        "y": 132,
+        "width": 437,
+        "height": 31.1875,
+        "top": 132,
+        "right": 455,
+        "bottom": 163.1875,
+        "left": 18
+      }
+    },
+    {
+      "text": "Errors recorded, but no specific wrong degrees.\n\nUnknown: 5 · Without annotation: 2",
+      "rect": {
+        "x": 18,
+        "y": 179.1875,
+        "width": 437,
+        "height": 88.03125,
+        "top": 179.1875,
+        "right": 455,
+        "bottom": 267.21875,
+        "left": 18
+      }
+    },
+    {
+      "text": "",
+      "rect": {
+        "x": 21,
+        "y": 179.1875,
+        "width": 58,
+        "height": 58,
+        "top": 179.1875,
+        "right": 79,
+        "bottom": 237.1875,
+        "left": 21
+      }
+    },
+    {
+      "text": "These errors count in accuracy, not in the confusion matrix.\nView evidence",
+      "rect": {
+        "x": 18,
+        "y": 289.21875,
+        "width": 437,
+        "height": 86.625,
+        "top": 289.21875,
+        "right": 455,
+        "bottom": 375.84375,
+        "left": 18
+      }
+    }
+  ],
+  "overview-desktop": [
+    {
+      "text": "Timing and replay",
+      "rect": {
+        "x": 26,
+        "y": 852.046875,
+        "width": 1037,
+        "height": 41,
+        "top": 852.046875,
+        "right": 1063,
+        "bottom": 893.046875,
+        "left": 26
+      }
+    },
+    {
+      "text": "Sessions and source conditions",
+      "rect": {
+        "x": 26,
+        "y": 894.046875,
+        "width": 1037,
+        "height": 41,
+        "top": 894.046875,
+        "right": 1063,
+        "bottom": 935.046875,
+        "left": 26
+      }
+    }
+  ],
+  "overview-mobile": [
+    {
+      "text": "Timing and replay",
+      "rect": {
+        "x": 21,
+        "y": 877.453125,
+        "width": 340,
+        "height": 30,
+        "top": 877.453125,
+        "right": 361,
+        "bottom": 907.453125,
+        "left": 21
+      }
+    },
+    {
+      "text": "Sessions and source conditions",
+      "rect": {
+        "x": 21,
+        "y": 908.453125,
+        "width": 340,
+        "height": 30,
+        "top": 908.453125,
+        "right": 361,
+        "bottom": 938.453125,
+        "left": 21
+      }
+    }
+  ]
+}

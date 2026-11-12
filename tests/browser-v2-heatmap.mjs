@@ -1,3 +1,4 @@
+import {selectFamily} from './insights-browser-support.mjs';
 import assert from 'node:assert/strict';
 import {mkdir} from 'node:fs/promises';
 const {chromium}=await import(process.env.PLAYWRIGHT_MODULE);
@@ -24,13 +25,16 @@ try{
  await section.getByRole('button',{name:'Review practice setup',exact:true}).click();await page.waitForURL(/insight-setup/);
  await page.getByRole('button',{name:'Back to Insights',exact:true}).click();await section.getByRole('heading',{name:'7: 9 · Recorded results',exact:true}).waitFor();
  assert.equal(await cell.getAttribute('aria-pressed'),'true');
- await page.waitForFunction(()=>document.activeElement?.classList.contains('heatmap-cell'));
+ await page.waitForFunction(()=>document.activeElement?.textContent==='Review practice setup');
+ const session=section.getByRole('link',{name:'Open containing session'}).first();
+ await session.click();await page.waitForURL(/#results\//);await page.goBack();
+ await page.waitForFunction(()=>document.activeElement?.textContent==='Open containing session');
  await section.getByRole('button',{name:'Back to heatmap'}).click();assert.equal(await cell.evaluate(n=>n===document.activeElement),true);
  assert.equal(await page.evaluate(()=>localStorage.getItem('jazzEarLab:v2:sessions')),before);
  await mkdir('.impeccable/review/v2-heatmap',{recursive:true});
  for(const width of [1440,390,320]){await page.setViewportSize({width,height:900});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);await section.screenshot({path:`.impeccable/review/v2-heatmap/${width}.png`});}
  await section.getByRole('button',{name:/^m7: #11, unassessed/}).click();await section.getByText('No accuracy result yet.',{exact:true}).waitFor();
- await page.getByLabel('Practice family',{exact:true}).selectOption('Degree Recognition');
+ await selectFamily(page,'Degree Recognition');
  await section.getByRole('button',{name:/^7: 9, 50 percent/}).waitFor();
  console.log('PASS performance heatmap values, evidence, source preview, return, keyboard, states and responsive widths');
 }finally{await browser.close();}

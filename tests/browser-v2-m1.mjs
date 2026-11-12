@@ -1,3 +1,4 @@
+import {selectFamily,openSources} from './insights-browser-support.mjs';
 import assert from "node:assert/strict";
 import { seedM1Preset } from "./m1-preset.mjs";
 const { chromium } = await import(
@@ -155,9 +156,9 @@ try {
   );
   assert.notEqual(history.cohorts[0], history.cohorts[1]);
   await page.goto(`${url}#insights`);
-  await page.getByLabel("Practice family", { exact: true }).selectOption("Degree Audiation");
+  await selectFamily(page,"Degree Audiation");
   await page.getByLabel("Period", { exact: true }).selectOption("All time");
-  await page.getByText("Source conditions", { exact: true }).click();
+  await openSources(page);await page.getByText("Source conditions", { exact: true }).click();
   await page.getByText("Technical versions", { exact: true }).click();
   const technical = await page.locator('details').filter({has:page.locator('summary').filter({hasText:/^Technical versions$/})}).last().textContent();
   assert.ok(technical.includes(history.old.attempts[0].timingVersion));

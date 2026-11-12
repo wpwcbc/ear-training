@@ -1,0 +1,113 @@
+[
+  {
+    "width": 1084,
+    "regions": {
+      ".insight-practice-summary": {
+        "x": 26,
+        "y": 271.375,
+        "width": 1032,
+        "height": 220.671875,
+        "scrollWidth": 1032,
+        "clientWidth": 1032
+      },
+      ".insight-confusions": {
+        "x": 26,
+        "y": 508.046875,
+        "width": 462.125,
+        "height": 355.375,
+        "scrollWidth": 462,
+        "clientWidth": 462
+      },
+      ".insight-performance": {
+        "x": 534.125,
+        "y": 508.046875,
+        "width": 523.875,
+        "height": 355.375,
+        "scrollWidth": 524,
+        "clientWidth": 524
+      },
+      ".insight-performance table": {
+        "x": 534.125,
+        "y": 582.03125,
+        "width": 523.875,
+        "height": 153,
+        "scrollWidth": 523,
+        "clientWidth": 524
+      }
+    }
+  },
+  {
+    "width": 379,
+    "regions": {
+      ".insight-practice-summary": {
+        "x": 21,
+        "y": 220.359375,
+        "width": 337,
+        "height": 173.59375,
+        "scrollWidth": 337,
+        "clientWidth": 337
+      },
+      ".insight-confusions": {
+        "x": 21,
+        "y": 403.953125,
+        "width": 337,
+        "height": 266.6875,
+        "scrollWidth": 337,
+        "clientWidth": 337
+      },
+      ".insight-performance": {
+        "x": 21,
+        "y": 686.640625,
+        "width": 337,
+        "height": 217.484375,
+        "scrollWidth": 337,
+        "clientWidth": 337
+      },
+      ".insight-performance table": {
+        "x": 21,
+        "y": 741.125,
+        "width": 337,
+        "height": 118,
+        "scrollWidth": 337,
+        "clientWidth": 337
+      }
+    }
+  },
+  {
+    "width": 320,
+    "regions": {
+      ".insight-practice-summary": {
+        "x": 21,
+        "y": 220.359375,
+        "width": 278,
+        "height": 173.59375,
+        "scrollWidth": 278,
+        "clientWidth": 278
+      },
+      ".insight-confusions": {
+        "x": 21,
+        "y": 403.953125,
+        "width": 278,
+        "height": 282.28125,
+        "scrollWidth": 278,
+        "clientWidth": 278
+      },
+      ".insight-performance": {
+        "x": 21,
+        "y": 702.234375,
+        "width": 278,
+        "height": 217.484375,
+        "scrollWidth": 278,
+        "clientWidth": 278
+      },
+      ".insight-performance table": {
+        "x": 21,
+        "y": 756.71875,
+        "width": 336,
+        "height": 118,
+        "scrollWidth": 336,
+        "clientWidth": 336
+      }
+    }
+  }
+]

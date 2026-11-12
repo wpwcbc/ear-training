@@ -1,3 +1,4 @@
+import {selectFamily,openSources} from './insights-browser-support.mjs';
 import {mkdir} from 'node:fs/promises';
 import assert from 'node:assert/strict';
 const {chromium}=await import(process.env.PLAYWRIGHT_MODULE||'/opt/codex/cua_node/lib/node_modules/playwright/index.mjs');
@@ -19,30 +20,30 @@ try{
   localStorage.setItem(keys.sessions,JSON.stringify([s]));sessionStorage.removeItem('jazzEarLab:v2:insightView');
  });
  await page.goto(url+'#insights');await page.reload();
- await page.getByLabel('Practice family',{exact:true}).selectOption('Degree Recognition');
+ await selectFamily(page,'Degree Recognition');
  assert.equal(await page.getByRole('button',{name:'Single Chord',exact:true}).getAttribute('aria-pressed'),'true');
  await page.locator('.insight-compact-outcome').filter({hasText:'9 / 10 assessed notes'}).waitFor();
  assert.match(await page.locator('.insight-compact-outcome').innerText(),/10 questions · 1 sessions/);
  assert.equal(await page.getByLabel('Period',{exact:true}).inputValue(),'Last 28 days');
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
- await page.getByLabel('Practice family',{exact:true}).selectOption('Play by Ear');await page.getByRole('button',{name:'Progression',exact:true}).click();
+ await selectFamily(page,'Play by Ear');await page.getByRole('button',{name:'Progression',exact:true}).click();
  await page.locator('.insight-compact-outcome').filter({hasText:'159 / 180 assessed notes'}).waitFor();
- await page.getByRole('button',{name:'Inspect Eb',exact:true}).focus();await page.keyboard.press('Enter');
+ await openSources(page);await page.getByRole('button',{name:'Inspect Eb',exact:true}).focus();await page.keyboard.press('Enter');
  assert.equal(await page.evaluate(()=>document.activeElement.textContent),'Explore the music');
  await page.getByLabel('Chord view',{exact:true}).selectOption('Full chord');
  await page.getByRole('button',{name:'Inspect Fm7',exact:true}).focus();await page.keyboard.press('Enter');
  await page.getByRole('heading',{name:'m7 / b7',exact:true}).waitFor();
  assert.equal(await page.evaluate(()=>document.activeElement.textContent),'Explore the music');
  assert.ok(await page.getByRole('button',{name:'key: Eb · remove',exact:true}).count());
- await page.locator('summary').filter({hasText:/^More filters$/}).click();await page.getByLabel('Root',{exact:true}).selectOption('F');
- await page.getByLabel('Practice family',{exact:true}).selectOption('Degree Audiation');
+ await openSources(page);await page.locator('summary').filter({hasText:/^More filters$/}).click();await page.getByLabel('Root',{exact:true}).selectOption('F');
+ await selectFamily(page,'Degree Audiation');
  assert.ok((await page.locator('main').innerText()).includes('root: F'));
  await page.getByRole('button',{name:'Single Chord',exact:true}).click();
  await page.getByText(/Cleared incompatible filters: playback key/).waitFor();
  assert.ok((await page.locator('main').innerText()).includes('root: F'));
- await page.getByLabel('Practice family',{exact:true}).selectOption('Play by Ear');await page.getByRole('button',{name:'Progression',exact:true}).click();
+ await selectFamily(page,'Play by Ear');await page.getByRole('button',{name:'Progression',exact:true}).click();
  await page.getByRole('button',{name:'Clear filters',exact:true}).click();
- await page.getByRole('heading',{name:'What to practise next',exact:true}).waitFor();
+ await openSources(page);await page.getByRole('heading',{name:'What to practise next',exact:true}).waitFor();
  await page.locator('summary').filter({hasText:/^Detailed breakdown$/}).click();assert.equal(await page.getByRole('table',{name:'Full chord × degree',exact:true}).count(),1);
  await page.locator('summary').filter({hasText:/^Detailed breakdown$/}).click();
  assert.ok(await page.getByText('Repeated first-response errors',{exact:true}).count());
@@ -62,22 +63,22 @@ try{
  await page.getByRole('button',{name:'Back to Insights',exact:true}).click();
  await page.getByLabel('Practice family',{exact:true}).waitFor();
  assert.equal(await page.getByLabel('Practice family',{exact:true}).inputValue(),'Play by Ear');
- await page.locator('summary').filter({hasText:/^Sessions$/}).click();await page.getByRole('link',{name:'View latest matching session',exact:true}).click();
+ await openSources(page);await page.locator('summary').filter({hasText:/^Sessions$/}).click();await page.getByRole('link',{name:'View latest matching session',exact:true}).click();
  await page.getByRole('heading',{name:'Progression · Play by Ear',exact:true}).waitFor();
  await page.reload();await page.getByRole('button',{name:'Overall Insights',exact:true}).click();
  await page.getByLabel('Practice family',{exact:true}).waitFor();
  if(folder){await page.getByRole('button',{name:'Key',exact:true}).click();for(const width of [320,390,1440]){await page.setViewportSize({width,height:1000});await page.evaluate(()=>document.fonts.ready);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);await page.screenshot({path:folder+'/play-insights-'+width+'.png',fullPage:true});}}
  for(const family of ['Degree Recognition','Degree Audiation','Play by Ear']){
-  await page.getByLabel('Practice family',{exact:true}).selectOption(family);
+  await selectFamily(page,family);
   for(const context of ['Single Chord','Progression']){await page.getByRole('button',{name:context,exact:true}).click();assert.equal(await page.getByRole('button',{name:context,exact:true}).getAttribute('aria-pressed'),'true');assert.equal(await page.getByLabel('Practice family',{exact:true}).inputValue(),family);}
  }
- await page.getByLabel('Practice family',{exact:true}).selectOption('Overall');
+ await selectFamily(page,'Overall');
  for(const width of [320,390,1440]){await page.setViewportSize({width,height:1000});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);}
  if(folder){for(const width of [320,390,1440]){await page.setViewportSize({width,height:1000});await page.screenshot({path:folder+'/overall-'+width+'.png',fullPage:true});}}
  // An independent Single Chord draft must not persist edits into the source preset.
- await page.getByLabel('Practice family',{exact:true}).selectOption('Degree Recognition');await page.getByRole('button',{name:'Single Chord',exact:true}).click();
+ await selectFamily(page,'Degree Recognition');await page.getByRole('button',{name:'Single Chord',exact:true}).click();
  const singlePresets=await page.evaluate(()=>localStorage.getItem('jazzEarLab:v2:presets'));
- await page.locator('summary').filter({hasText:/^Practice coverage$/}).click();
+ await openSources(page);await page.locator('summary').filter({hasText:/^Practice coverage$/}).click();
  await page.getByRole('button',{name:/^Setup practice:/}).first().click();
  await page.getByRole('heading',{name:'Customize Single Chord · Degree Recognition',exact:true}).waitFor();
  await page.getByRole('button',{name:'Practice',exact:true}).click();
