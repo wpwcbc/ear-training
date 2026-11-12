@@ -1,5 +1,5 @@
 import {insightPractice,type InsightPreview} from "./insights.js";
-import {renderInsights} from "./insights-ui.js";
+import {renderInsights,type InsightSetupReturn} from "./insights-ui.js";
 import { exerciseNames, progressionModes, progressionName } from "./exercise-names.js";
 import { configurationChapters, configurationGroup, rememberGroups, practiceSummary, type ConfigurationChapter } from "./configuration.js";
 import {mountProgression, progressionRuns, progressionEvidence, type RecordedSetupReview} from "./progression-ui.js";
@@ -45,7 +45,7 @@ let step: ConfigurationChapter = "Harmony";
 let dirty = false,
   fatal = false;
 let auditionQuality = "";
-let insightPreview:(InsightPreview&{restoreEvidence?:()=>void;review?:RecordedSetupReview})|null=null;
+let insightPreview:(InsightPreview&{returnTo?:InsightSetupReturn;review?:RecordedSetupReview})|null=null;
 const inInsightPreview=()=>location.hash==="#insight-setup"&&insightPreview?.kind==="single";
 let headingFocus = true, lastRoute = "", savedPresetId = "";
 let practiceSignature = "";
@@ -372,7 +372,7 @@ function config() {
   const modeName = exerciseNames[draft.exercise];
   const title = heading(inInsightPreview()?"Customize "+modeName:"Customize " + preset().name + (preset().name === modeName ? "" : " — " + modeName));
   header.append(title);
-  if(inInsightPreview())header.append(el("p","Insights practice: "+insightPreview!.label+". Independent draft; source presets unchanged."),button(insightPreview!.restoreEvidence?"Back to evidence":"Back to Insights",()=>location.hash="insights"));
+  if(inInsightPreview())header.append(el("p","Insights practice: "+insightPreview!.label+". Independent draft; source presets unchanged."),button(insightPreview!.returnTo?.evidence?"Back to evidence":"Back to Insights",()=>location.hash="insights"));
   const editor = el("section", "", "config-editor"), side = el("aside", "", "config-summary");
   editor.setAttribute("aria-label", "Preset settings");
   const tabs = el("nav", "", "steps config-tabs");
@@ -891,15 +891,15 @@ function insights() {
   heading("Insights");
   const work=el("div");host.append(work);
   try {
-    renderInsights(work,sessions,progressionRuns(),progressionEvidence(),(record,label,filters,restoreEvidence)=>{
+    renderInsights(work,sessions,progressionRuns(),progressionEvidence(),(record,label,filters,returnTo)=>{
       const proposal=insightPractice(record,filters,label);
       let review:RecordedSetupReview|undefined;
-      if(restoreEvidence&&record.context==="Progression"&&"mode" in record.source&&proposal.kind==="progression"&&filters.quality&&filters.degree){
+      if(returnTo?.evidence&&record.context==="Progression"&&"mode" in record.source&&proposal.kind==="progression"&&filters.quality&&filters.degree){
         const keysOf=(c:typeof proposal.config)=>c.keyMode==="random"?(c.keyPool??[]).join(", "):c.key??record.key??"C";
         const before=keysOf(record.source),after=keysOf(proposal.config);
         review={family:record.family,target:`${filters.quality}: ${filters.degree}`,keys:before===after?after:`${before} → ${after}`,config:structuredClone(proposal.config)};
       }
-      insightPreview={...proposal,restoreEvidence,review};
+      insightPreview={...proposal,returnTo,review};
       if(proposal.kind==="single")draft=editableConfig(proposal.config);
       if(review)window.scrollTo(0,0);
       step="Harmony";location.hash="insight-setup";
@@ -941,7 +941,7 @@ function render() {
   }
   host.replaceChildren();
   if(route==="insight-setup"&&insightPreview){
-    insightPreview.restoreEvidence?.();
+    insightPreview.returnTo?.restore();
     if(insightPreview.kind==="progression")disposeProgression=mountProgression(host,insightPreview.config.mode,false,undefined,insightPreview);else config();
   }
   else if(route==="insight-setup"){host.append(el("p","This temporary draft is no longer available. Return to its Insights evidence."),button("Back to Insights",()=>location.hash="insights"));}

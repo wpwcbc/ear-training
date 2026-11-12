@@ -1,3 +1,4 @@
+import {selectFamily,openSources} from './insights-browser-support.mjs';
 import assert from 'node:assert/strict';
 import {mkdir} from 'node:fs/promises';
 const {chromium}=await import(process.env.PLAYWRIGHT_MODULE);
@@ -30,29 +31,30 @@ try{
  assert.match(await page.locator('.insight-total-line').textContent(),/531\/567 assessed notes · 162 questions · 18 sessions/);
  const saved=await page.evaluate(()=>Object.fromEntries(Object.keys(localStorage).map(k=>[k,localStorage.getItem(k)])));
  for(const [family,contexts]of [['Degree Recognition',[['Single Chord','m2'],['Progression','recognition']]],['Degree Audiation',[['Single Chord','m1'],['Progression','singing']]],['Play by Ear',[['Single Chord','play-single'],['Progression','play']]]]){
-  await page.getByLabel('Practice family',{exact:true}).selectOption(family);
+  await selectFamily(page,family);
   for(const [context,id]of contexts){await page.getByRole('button',{name:context,exact:true}).click();const outcome=page.locator('.insight-outcome');await outcome.waitFor();assert.equal(await outcome.getAttribute('data-assessed'),String(expected[id].n));assert.equal(await outcome.getAttribute('data-correct'),String(expected[id].correct));
    assert.ok(await page.locator('.insight-practice-summary').count());assert.ok(await page.locator('.insight-performance table').count());
   }
  }
- await page.getByLabel('Practice family',{exact:true}).selectOption('Degree Recognition');await page.getByRole('button',{name:'Single Chord',exact:true}).click();
+ await selectFamily(page,'Degree Recognition');await page.getByRole('button',{name:'Single Chord',exact:true}).click();
  await page.getByLabel('Period',{exact:true}).selectOption('All time');assert.equal(await page.locator('.insight-outcome').getAttribute('data-assessed'),'28');
  await page.getByLabel('Period',{exact:true}).selectOption('Last 7 days');assert.equal(await page.locator('.insight-outcome').getAttribute('data-assessed'),'27');
- await page.getByLabel('Practice family',{exact:true}).selectOption('Play by Ear');await page.getByRole('button',{name:'Progression',exact:true}).click();
+ await selectFamily(page,'Play by Ear');await page.getByRole('button',{name:'Progression',exact:true}).click();
  await mkdir('.impeccable/review/v2-insights-integration',{recursive:true});
  for(const width of [1440,390]){
   await page.setViewportSize({width,height:1000});await page.evaluate(()=>window.scrollTo(0,0));
   await page.getByRole('heading',{name:'Your practice focus',exact:true}).waitFor({state:'visible'});
-  const summary=await page.locator('.insight-practice-summary').boundingBox(),confusions=await page.locator('.insight-confusions').boundingBox(),performance=await page.locator('.insight-performance').boundingBox(),support=await page.locator('.insight-lead').boundingBox();
+  const summary=await page.locator('.insight-practice-summary').boundingBox(),confusions=await page.locator('.insight-confusions').boundingBox(),performance=await page.locator('.insight-performance').boundingBox(),support=await page.locator('.insight-secondary').boundingBox();
   assert.ok(summary.y+summary.height<=confusions.y+1);assert.ok(confusions.y<support.y);
   if(width===1440)assert.ok(confusions.x+confusions.width<=performance.x+1);else assert.ok(confusions.y+confusions.height<=performance.y+1);
   await page.screenshot({path:`.impeccable/review/v2-insights-integration/first-viewport-${width}.png`});
  }
  await page.setViewportSize({width:1440,height:1000});
- await page.getByLabel('Practice family',{exact:true}).selectOption('Degree Audiation');await page.getByRole('button',{name:'Single Chord',exact:true}).click();
- await page.locator('summary').filter({hasText:/^More filters$/}).click();await page.getByLabel('Production category',{exact:true}).selectOption('imagined-sung');assert.equal(await page.locator('.insight-outcome').getAttribute('data-assessed'),'18');
+ await selectFamily(page,'Degree Audiation');await page.getByRole('button',{name:'Single Chord',exact:true}).click();
+ await openSources(page);await page.locator('summary').filter({hasText:/^More filters$/}).click();await page.getByLabel('Production category',{exact:true}).selectOption('imagined-sung');assert.equal(await page.locator('.insight-outcome').getAttribute('data-assessed'),'18');
  await page.getByLabel('Production category',{exact:true}).selectOption('played');assert.equal(await page.locator('.insight-outcome').getAttribute('data-assessed'),'9');
- await page.getByLabel('Practice family',{exact:true}).selectOption('Play by Ear');await page.getByRole('button',{name:'Progression',exact:true}).click();
+ assert.equal(await page.getByRole('button',{name:'Played · remove',exact:true}).isVisible(),true);
+ await selectFamily(page,'Play by Ear');await page.getByRole('button',{name:'Progression',exact:true}).click();
  await page.getByLabel('Period',{exact:true}).selectOption('Last 7 days');await page.getByRole('button',{name:'Degree',exact:true}).click();
  if(!await page.getByLabel('Chord quality',{exact:true}).isVisible())await page.locator('summary').filter({hasText:/^More filters$/}).click();await page.getByLabel('Chord quality',{exact:true}).selectOption('m7');
  assert.ok((await page.locator('.insight-performance tbody th').allTextContents()).every(x=>x==='m7'));
@@ -76,7 +78,7 @@ try{
  assert.equal(await direction.getAttribute('aria-pressed'),'true');
  await confusion.getByRole('button',{name:'List',exact:true}).click();
  assert.equal(await page.getByLabel('Root',{exact:true}).inputValue(),'D');assert.equal(await page.locator('.insight-outcome').getAttribute('data-assessed'),'14');
- await page.getByLabel('Practice family',{exact:true}).selectOption('Overall');
+ await selectFamily(page,'Overall');
  const filterBox=await page.locator('.insight-current-scope').boundingBox(),summaryBox=await page.locator('.insight-practice-summary').boundingBox();
  assert.ok(filterBox.y+filterBox.height<=summaryBox.y);assert.match(await page.locator('.insight-current-scope').textContent(),/root: D/);
  await mkdir('.impeccable/review/v2-insights-integration',{recursive:true});

@@ -145,7 +145,7 @@ export function mountProgression(
   initialMode: ProgressionMode = progressionModes.degreeRecognition,
   autoStart = false,
   resultId?: string,
-  preview?: {config:ProgressionConfig;label:string;restoreEvidence?:()=>void;review?:RecordedSetupReview},
+  preview?: {config:ProgressionConfig;label:string;returnTo?:{evidence?:boolean};review?:RecordedSetupReview},
 ) {
   const host = document.createElement("div");
   host.className = "progression-work";
@@ -528,7 +528,7 @@ export function mountProgression(
       header.append(el("h2", "Customize " + progressionName(config.mode)), presetControls);
     } else {
       header.append(title, presetControls);
-      if(preview)header.append(el("p", "Insights practice: "+preview.label+". Independent draft; source presets unchanged. Key narrowing is shown below. Degree targeting affects every occurrence of that chord quality."),button(preview.restoreEvidence?"Back to evidence":"Back to Insights",()=>{location.hash="insights";}));
+      if(preview)header.append(el("p", "Insights practice: "+preview.label+". Independent draft; source presets unchanged. Key narrowing is shown below. Degree targeting affects every occurrence of that chord quality."),button(preview.returnTo?.evidence?"Back to evidence":"Back to Insights",()=>{location.hash="insights";}));
     }
     tabs.className = "steps config-tabs"; tabs.setAttribute("aria-label", "Configuration chapters");
     for (const name of configurationChapters) {

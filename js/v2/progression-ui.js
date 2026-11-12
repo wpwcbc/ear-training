@@ -505,7 +505,7 @@ export function mountProgression(root, initialMode = progressionModes.degreeReco
         else {
             header.append(title, presetControls);
             if (preview)
-                header.append(el("p", "Insights practice: " + preview.label + ". Independent draft; source presets unchanged. Key narrowing is shown below. Degree targeting affects every occurrence of that chord quality."), button(preview.restoreEvidence ? "Back to evidence" : "Back to Insights", () => { location.hash = "insights"; }));
+                header.append(el("p", "Insights practice: " + preview.label + ". Independent draft; source presets unchanged. Key narrowing is shown below. Degree targeting affects every occurrence of that chord quality."), button(preview.returnTo?.evidence ? "Back to evidence" : "Back to Insights", () => { location.hash = "insights"; }));
         }
         tabs.className = "steps config-tabs";
         tabs.setAttribute("aria-label", "Configuration chapters");

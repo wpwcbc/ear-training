@@ -1,3 +1,4 @@
+import {selectFamily,openSources} from './insights-browser-support.mjs';
 import assert from 'node:assert/strict';
 import {mkdir} from 'node:fs/promises';
 import {referenceRuns} from './fixtures/insights-reference.mjs';
@@ -86,8 +87,8 @@ try{
  assert.equal(await section.getByRole('button',{name:'Matrix',exact:true}).getAttribute('aria-pressed'),'true');
  assert.equal(await page.evaluate(()=>localStorage.getItem('jazzEarLab:v2:sessions')),before);
  await section.getByRole('button',{name:'List',exact:true}).click();
- await page.getByLabel('Practice family',{exact:true}).selectOption('Degree Recognition');
- await page.locator('summary').filter({hasText:/^More filters$/}).click();await page.getByLabel('Root',{exact:true}).selectOption('D');
+ await selectFamily(page,'Degree Recognition');
+ await openSources(page);await page.locator('summary').filter({hasText:/^More filters$/}).click();await page.getByLabel('Root',{exact:true}).selectOption('D');
  await section.getByRole('button',{name:'Matrix',exact:true}).click();
  await section.getByRole('button',{name:'m7: target 5, reported 1, 7 errors'}).waitFor();
  assert.equal(await section.getByRole('button',{name:/target #11/}).count(),0);
